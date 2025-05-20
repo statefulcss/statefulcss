@@ -3,6 +3,9 @@
   "rushVersion": "5.153.2",
   "pnpmVersion": "10.11.0",
   "nodeSupportedVersionRange": ">=20.14.0 <21.0.0 || >=22.0.0 <23.0.0",
+  "ensureConsistentVersions": true,
+  "projectFolderMaxDepth": 2,
+  "projectFolderMinDepth": 2,
   "gitPolicy": {
     "versionBumpCommitMessage": "[repo] Bump versions [skip ci]",
     "changeLogUpdateCommitMessage": "[repo] Update changelogs [skip ci]",

@@ -1,31 +1,31 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/rush.schema.json",
-  "rushVersion": "5.153.2",
-  "pnpmVersion": "10.11.0",
-  "nodeSupportedVersionRange": ">=20.14.0 <21.0.0 || >=22.0.0 <23.0.0",
-  "ensureConsistentVersions": true,
-  "projectFolderMaxDepth": 2,
-  "projectFolderMinDepth": 2,
-  "gitPolicy": {
-    "versionBumpCommitMessage": "[repo] Bump versions [skip ci]",
-    "changeLogUpdateCommitMessage": "[repo] Update changelogs [skip ci]",
-    "changefilesCommitMessage": "[repo] Rush change"
-  },
-  "repository": {
-    "url": "https://github.com/omerbalyali/monorepo-boilerplate",
-    "defaultRemote": "origin"
-  },
-  "eventHooks": {
-    "preRushInstall": [],
-    "postRushInstall": [],
-    "preRushBuild": [],
-    "postRushBuild": [],
-    "preRushx": [],
-    "postRushx": []
-  },
-  "telemetryEnabled": false,
-  "allowedProjectTags": [
-    "config"
-  ],
-  "projects": []
+	"$schema": "https://developer.microsoft.com/json-schemas/rush/v5/rush.schema.json",
+	"rushVersion": "5.153.2",
+	"pnpmVersion": "10.11.0",
+	"nodeSupportedVersionRange": ">=20.14.0 <21.0.0 || >=22.0.0 <23.0.0",
+	"ensureConsistentVersions": true,
+	"projectFolderMaxDepth": 2,
+	"projectFolderMinDepth": 2,
+	"gitPolicy": {
+		"versionBumpCommitMessage": "[repo] Bump versions [skip ci]",
+		"changeLogUpdateCommitMessage": "[repo] Update changelogs [skip ci]",
+		"changefilesCommitMessage": "[repo] Rush change"
+	},
+	"repository": {
+		"url": "https://github.com/omerbalyali/monorepo-boilerplate",
+		"defaultRemote": "origin"
+	},
+	"eventHooks": {
+		"preRushInstall": [],
+		"postRushInstall": [],
+		"preRushBuild": [],
+		"postRushBuild": [],
+		"preRushx": [],
+		"postRushx": []
+	},
+	"telemetryEnabled": false,
+	"allowedProjectTags": [
+		"config"
+	],
+	"projects": []
 }

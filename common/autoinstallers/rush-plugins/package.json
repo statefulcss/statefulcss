@@ -3,6 +3,7 @@
 	"version": "1.0.0",
 	"private": true,
 	"dependencies": {
+		"rush-init-project-plugin": "^0.11.1",
 		"rush-lint-staged-plugin": "^0.2.2",
 		"rush-sort-package-json": "^0.1.1",
 		"rush-upgrade-self-plugin": "^1.1.2"

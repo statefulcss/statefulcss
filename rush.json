@@ -24,8 +24,6 @@
 		"postRushx": []
 	},
 	"telemetryEnabled": false,
-	"allowedProjectTags": [
-		"config"
-	],
+	"allowedProjectTags": ["config"],
 	"projects": []
 }

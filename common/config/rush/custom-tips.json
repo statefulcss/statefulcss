@@ -6,9 +6,9 @@
 {
 	"$schema": "https://developer.microsoft.com/json-schemas/rush/v5/custom-tips.schema.json",
 	/**
-   * Custom tips allow you to annotate Rush's console messages with advice tailored for
-   * your specific monorepo.
-   */
+	 * Custom tips allow you to annotate Rush's console messages with advice tailored for
+	 * your specific monorepo.
+	 */
 	"customTips": [
 		// {
 		//   /**

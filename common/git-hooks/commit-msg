@@ -1,0 +1,40 @@
+#!/bin/sh
+
+# Extract package names from rush.json, filter out empty values
+VALID_IDENTIFIERS=$(node -e "
+  try {
+    const rush = require('./rush.json');
+    const packages = rush.projects.map(p => p.packageName).filter(Boolean);
+    console.log(packages.join('|'));
+  } catch(e) {
+    console.log('');
+  }
+")
+
+# Add 'repo' for repository-wide changes
+if [ -z "$VALID_IDENTIFIERS" ]; then
+  VALID_IDENTIFIERS="repo"
+else
+  VALID_IDENTIFIERS="${VALID_IDENTIFIERS}|repo"
+fi
+
+# Read the commit message
+COMMIT_MSG=$(cat $1)
+
+# Check if commit message starts with an identifier in square brackets
+if ! echo "$COMMIT_MSG" | grep -qE "^\[(${VALID_IDENTIFIERS})\]"; then
+  echo ""
+  echo "Error: Invalid commit message format."
+  echo "Commit message must start with a valid identifier in square brackets"
+  echo "Valid identifiers from rush.json packages:"
+  echo "$VALID_IDENTIFIERS" | tr '|' '\n' | sed 's/^/  [/; s/$/]/'
+  echo "Example: [my-package-name] Add new feature"
+  exit 1
+fi
+
+# Check minimum word count
+if [ `cat $1 | wc -w` -lt 3 ]; then
+  echo ""
+  echo "Invalid commit message: The message must contain at least 3 words."
+  exit 1
+fi

@@ -1,5 +1,24 @@
 {
 	"$schema": "https://developer.microsoft.com/json-schemas/rush/v5/command-line.schema.json",
-	"commands": [],
+	"commands": [
+		{
+			"name": "format",
+			"commandKind": "global",
+			"summary": "Format all files using Prettier",
+			"description": "Formats all files in the repo using Prettier configuration",
+			"safeForSimultaneousRushProcesses": true,
+			"autoinstallerName": "rush-prettier",
+			"shellCommand": "pretty-quick --ignore-path .gitignore"
+		},
+		{
+			"name": "format:check",
+			"commandKind": "global",
+			"summary": "Check if all files are properly formatted",
+			"description": "Checks if all files in the repo are formatted according to Prettier configuration without making changes",
+			"safeForSimultaneousRushProcesses": true,
+			"autoinstallerName": "rush-prettier",
+			"shellCommand": "pretty-quick --check --ignore-path .gitignore"
+		}
+	],
 	"parameters": []
 }

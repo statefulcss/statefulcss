@@ -36,7 +36,7 @@ bower_components/
 build/Release/
 
 # Dependency directories
-node_modules/
+node_modules/**/*
 jspm_packages/
 
 # TypeScript cache
@@ -93,13 +93,6 @@ jspm_packages/
 # https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
 .idea/
 *.iml
-
-# Visual Studio Code
-.vscode/
-!.vscode/extensions.json
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
 
 # Rush temporary files
 common/deploy/

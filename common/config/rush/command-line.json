@@ -8,6 +8,15 @@
 			"description": "Formats all files in the repo using Prettier configuration",
 			"safeForSimultaneousRushProcesses": true,
 			"autoinstallerName": "rush-prettier",
+			"shellCommand": "pretty-quick --ignore-path .prettierignore"
+		},
+		{
+			"name": "format:staged",
+			"commandKind": "global",
+			"summary": "Format all files using Prettier",
+			"description": "Formats staged files in the repo using Prettier configuration",
+			"safeForSimultaneousRushProcesses": true,
+			"autoinstallerName": "rush-prettier",
 			"shellCommand": "pretty-quick --staged --ignore-path .prettierignore"
 		},
 		{
@@ -17,7 +26,7 @@
 			"description": "Checks if all files in the repo are formatted according to Prettier configuration without making changes",
 			"safeForSimultaneousRushProcesses": true,
 			"autoinstallerName": "rush-prettier",
-			"shellCommand": "pretty-quick --staged --check --ignore-path .prettierignore"
+			"shellCommand": "pretty-quick --check --ignore-path .prettierignore"
 		}
 	],
 	"parameters": []

@@ -4,3 +4,11 @@
 # are committed. The command is defined in common/config/rush/command-line.json
 # and uses the "rush-prettier" autoinstaller.
 node common/scripts/install-run-rush.js format:staged || exit $?
+
+# Invoke the "rush sort-package-json" custom command to sort package.json files
+# and uses the "rush-plugins" autoinstaller.
+node common/scripts/install-run-rush.js sort-package-json || exit $?
+
+# Invoke the "rush lint-staged" custom command to lint staged files whenever they
+# are committed and uses the "rush-plugins" autoinstaller.
+node common/scripts/install-run-rush.js lint-staged || exit $?

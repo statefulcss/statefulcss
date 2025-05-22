@@ -94,7 +94,7 @@ jspm_packages/
 *.iml
 
 # Visual Studio Code
-.vscode/
+.vscode/**/*
 !.vscode/extensions.json
 !.vscode/settings.json
 !.vscode/tasks.json

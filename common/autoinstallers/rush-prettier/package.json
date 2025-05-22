@@ -1,9 +1,10 @@
 {
-  "name": "rush-prettier",
-  "version": "1.0.0",
-  "private": true,
-  "dependencies": {
-    "prettier": "^3.5.3",
-    "pretty-quick": "^4.1.1"
-  }
+	"name": "rush-prettier",
+	"version": "1.0.0",
+	"private": true,
+	"dependencies": {
+		"prettier": "^3.5.3",
+		"prettier-plugin-packagejson": "^2.5.14",
+		"pretty-quick": "^4.1.1"
+	}
 }

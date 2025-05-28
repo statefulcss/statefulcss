@@ -1,37 +1,80 @@
-# Monorepo Boilerplate with RushJS
+<a id="top"></a>
 
-## Feature Overview
+<div align="center">
+  <a href="https://statefulcss.com/">
+    <img src="https://avatars.githubusercontent.com/u/195493678?s=150" alt="Stateful CSS Logo" width="150" height="150" />
+  </a>
+  <h1>Stateful CSS</h1>
+  <p>
+    CSS framework for building maintainable design systems and styling stateful components with modern, semantic, native web platform features.
+  </p>
+  <p>
+    <a href="https://www.statefulcss.com">Website</a>
+    &middot;
+    <a href="https://github.com/statefulcss/statefulcss/issues/new?template=bug_report.md">Report Bug</a>
+    &middot;
+    <a href="https://github.com/statefulcss/statefulcss/issues/new?template=feature_request.md">Request Feature</a>
+  </p>
+</div>
 
-- **Formatting**: ESLint Stylistic and EditorConfig
-- **Linting**: ESLint
-- **Commit Hooks**: pre-commit, commit-msg
+<details>
+<summary>Table of Contents</summary>
 
-## Commands
+- [About the Project](#about-the-project)
+  - [Supported CSS and Web Platform Features](#supported-css-and-web-platform-features)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Usage](#usage)
+- [Packages](#packages)
+- [License](#license)
+- [Maintainers](#maintainers)
 
-## Install dependencies
+</details>
 
-Install all dependencies for all projects in the monorepo.
+## About the Project
 
-```bash
-rush install
-```
+### Supported CSS and Web Platform Features
 
-## Build
+- Cascade Layers
+- Custom Properties
+- Container Queries
 
-Build all projects in the monorepo.
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-```bash
-rush build
-```
+## Getting Started
 
-### Upgrade
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-Self-upgrade Rush to the selected version.
+## Prerequisites
 
-```bash
-rush upgrade-self
-```
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Copyright
+## Installation
 
-&copy; 2025 &mdash; [Human Interface Studio](https://humaninterface.studio)
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Usage
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Packages
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Contributing
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## License
+
+Stateful CSS is licensed under the [MIT License](LICENSE)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Maintainers
+
+Stateful CSS is developed and maintained by [Ömer Balyali](https://github.com/omerbalyali) and
+[Human Interface Studio](https://humaninterface.studio).
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>

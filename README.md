@@ -34,7 +34,15 @@
 
 ## About the Project
 
-### Supported CSS and Web Platform Features
+## Getting Started
+
+Stateful CSS is a CSS framework designed to help developers build maintainable design systems and style stateful components using modern, semantic, and native web platform features. It leverages the latest CSS capabilities to provide a robust foundation for styling web applications.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Prerequisites
+
+Stateful CSS requires a modern web browser that supports the latest CSS features, including:
 
 - Cascade Layers
 - Custom Properties
@@ -42,27 +50,71 @@
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Getting Started
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-## Prerequisites
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 ## Installation
+
+Stateful CSS can be installed via npm. Run the following command in your terminal:
+
+```bash
+# npm package manager
+npm install @statefulcss/core
+
+# pnpm package manager
+pnpm add @statefulcss/core
+
+# yarn package manager
+yarn add @statefulcss/core
+
+# bun package manager
+bun add @statefulcss/core
+```
+
+You can also install specific packages as needed:
+
+```bash
+npm install @statefulcss/reset
+```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Usage
 
+To use Stateful CSS in your project, you can import the core styles and any additional packages you need. Here’s a basic example:
+
+```css
+@import '@statefulcss/core';
+```
+
+Alternatively, you can import specific packages as needed:
+
+```css
+@import '@statefulcss/reset';
+```
+
+```css
+@import '@statefulcss/typography';
+```
+
+```css
+@import '@statefulcss/spacing';
+```
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Packages
 
+| Package                                          | Description                                      |
+| ------------------------------------------------ | ------------------------------------------------ |
+| [@statefulcss/core](./packages/core)             | Foundational styles and utilities.               |
+| [@statefulcss/reset](./packages/reset)           | Reset provides a consistent baseline for styles. |
+| [@statefulcss/typography](./packages/typography) | Typography styles for text and fonts.            |
+| [@statefulcss/spacing](./packages/spacing)       | Utilities for margins and paddings.              |
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Contributing
+
+You can see the [Contributing Guide](CONTRIBUTING.md) for more information on how to contribute to Stateful CSS.
+Also please read the [Code of Conduct](CODE_OF_CONDUCT.md) to understand how we expect all contributors to behave.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

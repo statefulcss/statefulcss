@@ -4,7 +4,10 @@
 VALID_IDENTIFIERS=$(node -e "
   try {
     const rush = require('./rush.json');
-    const packages = rush.projects.map(p => p.packageName).filter(Boolean);
+    const packages = rush.projects.map(p => {
+      if (!p.packageName) return null;
+      return p.packageName.split('/').pop();
+    }).filter(Boolean);
     console.log(packages.join('|'));
   } catch(e) {
     console.log('');

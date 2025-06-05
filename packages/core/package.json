@@ -1,5 +1,9 @@
 {
 	"name": "@statefulcss/core",
 	"version": "0.0.1",
-	"description": "Core Stateful CSS package"
+	"description": "Core Stateful CSS package",
+	"scripts": {
+		"build": "echo Building @statefulcss/core",
+		"test": "echo Testing @statefulcss/core"
+	}
 }

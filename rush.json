@@ -24,6 +24,13 @@
 		"postRushx": []
 	},
 	"telemetryEnabled": false,
-	"allowedProjectTags": ["config"],
-	"projects": []
+	"allowedProjectTags": ["core", "config"],
+	"projects": [
+		{
+			"packageName": "@statefulcss/core",
+			"projectFolder": "packages/core",
+			"shouldPublish": true,
+			"tags": ["core"]
+		}
+	]
 }

@@ -31,6 +31,12 @@
 			"projectFolder": "packages/core",
 			"shouldPublish": true,
 			"tags": ["core"]
+		},
+		{
+			"packageName": "@statefulcss/reset",
+			"projectFolder": "packages/reset",
+			"shouldPublish": true,
+			"tags": ["core"]
 		}
 	]
 }

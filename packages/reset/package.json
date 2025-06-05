@@ -1,0 +1,9 @@
+{
+	"name": "@statefulcss/reset",
+	"version": "0.0.1",
+	"description": "Stateful CSS reset package",
+	"scripts": {
+		"build": "echo Building @statefulcss/reset",
+		"test": "echo Testing @statefulcss/reset"
+	}
+}

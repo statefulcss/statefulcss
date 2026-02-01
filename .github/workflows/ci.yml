@@ -18,7 +18,7 @@ jobs:
           email: github-actions[bot]@users.noreply.github.com
       - uses: actions/setup-node@v3
         with:
-          node-version: 22
+          node-version: 24
       - name: Verify Change Logs
         run: node common/scripts/install-run-rush.js change --verify
       - name: Rush Install

@@ -5,11 +5,6 @@
 	"$schema": "https://developer.microsoft.com/json-schemas/rush/v5/rush-plugins.schema.json",
 	"plugins": [
 		{
-			"packageName": "rush-init-project-plugin",
-			"pluginName": "rush-init-project-plugin",
-			"autoinstallerName": "rush-plugins"
-		},
-		{
 			"packageName": "rush-lint-staged-plugin",
 			"pluginName": "rush-lint-staged-plugin",
 			"autoinstallerName": "rush-plugins"

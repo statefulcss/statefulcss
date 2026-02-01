@@ -14,8 +14,8 @@ jobs:
       - name: Git config user
         uses: snow-actions/git-config-user@v1.0.0
         with:
-          name: omerbalyali
-          email: omerbalyali@gmail.com
+          name: github-actions[bot]
+          email: github-actions[bot]@users.noreply.github.com
       - uses: actions/setup-node@v3
         with:
           node-version: 22

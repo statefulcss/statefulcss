@@ -12,7 +12,7 @@
 		"changefilesCommitMessage": "[repo] Rush change"
 	},
 	"repository": {
-		"url": "https://github.com/omerbalyali/monorepo-boilerplate",
+		"url": "https://github.com/statefulcss/statefulcss",
 		"defaultRemote": "origin"
 	},
 	"eventHooks": {

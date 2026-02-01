@@ -1,43 +1,51 @@
 #!/bin/sh
 
-# Extract package names from rush.json, filter out empty values
-VALID_IDENTIFIERS=$(node -e "
-  try {
-    const rush = require('./rush.json');
-    const packages = rush.projects.map(p => {
-      if (!p.packageName) return null;
-      return p.packageName.split('/').pop();
-    }).filter(Boolean);
-    console.log(packages.join('|'));
-  } catch(e) {
-    console.log('');
-  }
-")
+# Conventional Commits validation for Rush.js monorepo
+# Format: <type>(<scope>): <description>
+#         <type>: <description>
 
-# Add 'repo' for repository-wide changes
-if [ -z "$VALID_IDENTIFIERS" ]; then
-  VALID_IDENTIFIERS="repo"
-else
-  VALID_IDENTIFIERS="${VALID_IDENTIFIERS}|repo"
-fi
+# Valid commit types (conventional commits standard)
+COMMIT_TYPES="feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert"
 
-# Read the commit message
-COMMIT_MSG=$(cat $1)
+# Known scopes (add new scopes as packages are added)
+# core     - packages/core/
+# cli      - packages/cli/
+# docs     - apps/docs/
+# examples - examples/
+# repo     - monorepo config
+# ci       - CI/CD workflows
+# deps     - dependency updates
+KNOWN_SCOPES="core|cli|docs|examples|repo|ci|deps"
+# Read the commit message (first line only for validation)
+COMMIT_MSG=$(head -n1 "$1")
 
-# Check if commit message starts with an identifier in square brackets
-if ! echo "$COMMIT_MSG" | grep -qE "^\[(${VALID_IDENTIFIERS})\]"; then
+# Pattern: type(scope): description OR type: description
+# Scope can be any lowercase alphanumeric with hyphens (loose check for future packages)
+PATTERN="^(${COMMIT_TYPES})(\([a-z0-9-]+\))?!?: .{3,}"
+
+if ! echo "$COMMIT_MSG" | grep -qE "$PATTERN"; then
   echo ""
-  echo "Error: Invalid commit message format."
-  echo "Commit message must start with a valid identifier in square brackets"
-  echo "Valid identifiers from rush.json packages:"
-  echo "$VALID_IDENTIFIERS" | tr '|' '\n' | sed 's/^/  [/; s/$/]/'
-  echo "Example: [my-package-name] Add new feature"
-  exit 1
-fi
-
-# Check minimum word count
-if [ `cat $1 | wc -w` -lt 3 ]; then
+  echo "❌ Invalid commit message format"
   echo ""
-  echo "Invalid commit message: The message must contain at least 3 words."
+  echo "Expected: <type>(<scope>): <description>"
+  echo "          <type>: <description>"
+  echo ""
+  echo "Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+  echo ""
+  echo "Scopes:"
+  echo "  core      - packages/core/"
+  echo "  cli       - packages/cli/"
+  echo "  docs      - apps/docs/"
+  echo "  examples  - examples/"
+  echo "  repo      - monorepo config"
+  echo "  ci        - CI/CD workflows"
+  echo "  deps      - dependency updates"
+  echo ""
+  echo "Examples:"
+  echo "  feat(core): add state types"
+  echo "  fix(cli): handle exit codes"
+  echo "  chore(deps): update vitest"
+  echo "  docs: update readme"
+  echo ""
   exit 1
 fi

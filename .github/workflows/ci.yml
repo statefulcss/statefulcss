@@ -41,7 +41,7 @@ jobs:
         run: pnpm prettier --check .
 
       - name: Typecheck
-        run: pnpm turbo typecheck
+        run: pnpm turbo check-types
 
       - name: Test
         run: pnpm turbo test

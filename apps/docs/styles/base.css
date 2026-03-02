@@ -1,0 +1,136 @@
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+}
+
+html {
+	font-family: var(--t-font-family, ui-sans-serif, system-ui, sans-serif);
+	font-size: var(--t-font-size, 1rem);
+	line-height: var(--t-line-height, 1.5);
+
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	text-size-adjust: 100%;
+
+	scroll-padding-block-start: var(--t-scroll-offset, 1rlh);
+
+	-webkit-tap-highlight-color: transparent;
+}
+
+body {
+	background: var(--t-color-background-root, Canvas);
+	color: var(--t-color-foreground-root, CanvasText);
+
+	letter-spacing: var(--t-font-letter-spacing, 0);
+
+	min-block-size: 100dvh;
+}
+
+:where(h1, h2, h3, h4, h5, h6) {
+	font-size: initial;
+	font-weight: var(--t-font-weight-heading, 600);
+	letter-spacing: var(--t-font-letter-spacing-heading, 0);
+	text-wrap: var(--t-text-wrap-heading, balance);
+}
+
+:where(a) {
+	color: currentColor;
+	text-decoration: none;
+	touch-action: manipulation;
+}
+
+:where(p) {
+	text-wrap: pretty;
+}
+
+:where(strong) {
+	font-weight: var(--t-font-weight-semibold, 600);
+}
+
+:where(address) {
+	font-style: normal;
+}
+
+:where(ul, ol) {
+	list-style: none;
+	padding-inline-start: 0;
+}
+
+:where(img, picture, video, canvas, svg) {
+	display: block;
+	max-inline-size: 100%;
+	block-size: auto;
+}
+
+:where(table) {
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+:where(input, button, textarea, select) {
+	font: inherit;
+}
+
+:where(button, [role="button"]) {
+	touch-action: manipulation;
+}
+
+:where(textarea) {
+	resize: vertical;
+}
+
+:where(pre, code, kbd, samp) {
+	font-family: ui-monospace, monospace;
+	font-size: 1em;
+}
+
+:where(sub, sup) {
+	font-size: 75%;
+	line-height: 0;
+	position: relative;
+	vertical-align: baseline;
+}
+:where(sub) {
+	bottom: -0.25em;
+}
+:where(sup) {
+	top: -0.5em;
+}
+
+:where(iframe) {
+	border: 0;
+}
+
+:where(summary) {
+	cursor: pointer;
+}
+
+:where(dialog) {
+	color: inherit;
+}
+
+:where(fieldset) {
+	border: 0;
+	padding: 0;
+	margin: 0;
+}
+
+:where(hr) {
+	border: none;
+	border-block-start: 1px solid;
+	color: inherit;
+	block-size: 0;
+}
+
+:where([hidden]) {
+	display: none !important;
+}
+
+::placeholder {
+	opacity: 1;
+}
+
+:is(img, picture, video)::selection {
+	background-color: transparent;
+}

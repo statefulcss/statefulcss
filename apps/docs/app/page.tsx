@@ -1,3 +1,3 @@
 export default function Home() {
-	return <div></div>;
+	return <h1>Stateful CSS</h1>;
 }

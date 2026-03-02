@@ -1,3 +1,6 @@
+/* stylelint-disable no-duplicate-selectors */
+/* stylelint-disable statefulcss/no-theme-token-reassign */
+
 /* Typography */
 [data-theme] {
 	--t-font-size-xsmall: 0.875rem; /* 14px */

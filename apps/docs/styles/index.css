@@ -1,7 +1,5 @@
 @layer base, tokens, components, utilities;
 
 @import url("./base.css") layer(base);
-
 @import url("./tokens/index.css") layer(tokens);
-
 @import url("./utilities.css") layer(utilities);

@@ -38,6 +38,7 @@
 	"devDependencies": {
 		"@repo/eslint-config": "workspace:*",
 		"@repo/typescript-config": "workspace:*",
+		"eslint": "^9.39.3",
 		"stylelint": "^17.3.0",
 		"tsup": "^8.4.0",
 		"typescript": "5.9.3",

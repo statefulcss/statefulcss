@@ -9,22 +9,17 @@ html {
 	font-family: var(--t-font-family, ui-sans-serif, system-ui, sans-serif);
 	font-size: var(--t-font-size, 1rem);
 	line-height: var(--t-line-height, 1.5);
-
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	text-size-adjust: 100%;
-
 	scroll-padding-block-start: var(--t-scroll-offset, 1rlh);
-
 	-webkit-tap-highlight-color: transparent;
 }
 
 body {
 	background: var(--t-color-background-root, Canvas);
 	color: var(--t-color-foreground-root, CanvasText);
-
 	letter-spacing: var(--t-font-letter-spacing, 0);
-
 	min-block-size: 100dvh;
 }
 
@@ -68,6 +63,7 @@ body {
 	border-collapse: collapse;
 	border-spacing: 0;
 }
+
 :where(input, button, textarea, select) {
 	font: inherit;
 }
@@ -91,9 +87,11 @@ body {
 	position: relative;
 	vertical-align: baseline;
 }
+
 :where(sub) {
 	bottom: -0.25em;
 }
+
 :where(sup) {
 	top: -0.5em;
 }

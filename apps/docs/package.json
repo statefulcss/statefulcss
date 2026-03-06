@@ -9,6 +9,7 @@
 		"build": "next build",
 		"start": "next start",
 		"lint": "eslint --max-warnings 0",
+		"lint:style": "stylelint '**/*.{css,scss}' --max-warnings 0",
 		"test": "echo \"Error: no test specified\" && exit 0",
 		"check-types": "next typegen && tsc --noEmit",
 		"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
@@ -25,10 +26,13 @@
 		"@opennextjs/cloudflare": "^1.17.1",
 		"@repo/eslint-config": "workspace:*",
 		"@repo/typescript-config": "workspace:*",
+		"@statefulcss/stylelint-plugin": "workspace:*",
 		"@types/node": "^22.19.12",
 		"@types/react": "19.2.14",
 		"@types/react-dom": "19.2.3",
 		"eslint": "^9.39.3",
+		"stylelint": "^17.4.0",
+		"stylelint-config-standard": "^40.0.0",
 		"typescript": "5.9.3",
 		"wrangler": "^4.69.0"
 	}

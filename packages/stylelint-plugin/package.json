@@ -3,6 +3,13 @@
 	"version": "0.0.0",
 	"type": "module",
 	"license": "MIT",
+	"author": {
+		"name": "Ömer Balyali",
+		"email": "git@omerbalyali.com",
+		"url": "https://omerbalyali.com"
+	},
+	"homepage": "https://statefulcss.com",
+	"repository": "https://github.com/statefulcss/statefulcss.git",
 	"publishConfig": {
 		"access": "public"
 	},

@@ -33,7 +33,7 @@
 		"eslint": "^9.39.3",
 		"stylelint": "^17.4.0",
 		"stylelint-config-standard": "^40.0.0",
-		"typescript": "5.9.3",
+		"typescript": "^5.9.3",
 		"wrangler": "^4.69.0"
 	}
 }

@@ -53,9 +53,9 @@
 		"@repo/eslint-config": "workspace:*",
 		"@repo/typescript-config": "workspace:*",
 		"eslint": "^9.39.3",
-		"stylelint": "^17.3.0",
+		"stylelint": "^17.6.0",
 		"tsup": "^8.4.0",
-		"typescript": "5.9.3",
-		"vitest": "^4.0.18"
+		"typescript": "^5.9.3",
+		"vitest": "^4.1.3"
 	}
 }

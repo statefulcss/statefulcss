@@ -5,13 +5,22 @@ pre-commit:
   jobs:
     - name: prettier
       glob: "*.{ts,tsx,md}"
-      run: npx prettier --check {staged_files}
+      run: npx prettier --write {staged_files}
+      stage_fixed: true
 
-    - name: eslint
+    - name: eslint (apps/docs)
+      root: "apps/docs/"
       glob: "*.{js,ts,tsx}"
       run: npx eslint --max-warnings 0 {staged_files}
+      stage_fixed: true
 
-    - name: stylelint
+    - name: eslint (packages/stylelint-plugin)
+      root: "packages/stylelint-plugin/"
+      glob: "*.{js,ts,tsx}"
+      run: npx eslint --max-warnings 0 {staged_files}
+      stage_fixed: true
+
+    - name: stylelint (apps/docs)
       root: "apps/docs/"
       glob: "*.{css,scss}"
       run: npx stylelint --max-warnings 0 {staged_files}

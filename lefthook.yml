@@ -4,28 +4,27 @@ pre-commit:
   parallel: true
   jobs:
     - name: prettier
-      glob: "*.{ts,tsx,md}"
-      run: npx prettier --write {staged_files}
+      run: pnpm exec prettier --write {staged_files}
       stage_fixed: true
 
     - name: eslint (apps/docs)
       root: "apps/docs/"
       glob: "*.{js,ts,tsx}"
-      run: npx eslint --max-warnings 0 {staged_files}
+      run: pnpm exec eslint --max-warnings 0 {staged_files}
       stage_fixed: true
 
     - name: eslint (packages/stylelint-plugin)
       root: "packages/stylelint-plugin/"
       glob: "*.{js,ts,tsx}"
-      run: npx eslint --max-warnings 0 {staged_files}
+      run: pnpm exec eslint --max-warnings 0 {staged_files}
       stage_fixed: true
 
     - name: stylelint (apps/docs)
       root: "apps/docs/"
       glob: "*.{css,scss}"
-      run: npx stylelint --max-warnings 0 {staged_files}
+      run: pnpm exec stylelint --max-warnings 0 {staged_files}
 
 commit-msg:
   jobs:
     - name: commitlint
-      run: npx commitlint --edit
+      run: pnpm exec commitlint --edit

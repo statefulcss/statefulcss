@@ -26,3 +26,7 @@ coverage
 
 # Cloudflare Types
 cloudflare-env.d.ts
+
+# Misc
+.gitignore
+.prettierignore

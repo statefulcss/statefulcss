@@ -49,6 +49,10 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Build for Cloudflare
+        working-directory: apps/docs
+        run: pnpm exec opennextjs-cloudflare build
+
       - name: Deploy to Cloudflare (preview)
         if: github.ref_type != 'tag'
         working-directory: apps/docs

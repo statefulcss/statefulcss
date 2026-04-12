@@ -21,7 +21,7 @@ This project is a monorepo managed with [Turborepo](https://turborepo.dev/) and 
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) >= 22
+- [Node.js](https://nodejs.org/) >= 24
 - [pnpm](https://pnpm.io/) >=10 (managed via `packageManager` field)
 
 ## Setting Up the Project

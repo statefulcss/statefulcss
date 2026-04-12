@@ -67,7 +67,7 @@ body:
       description: Please provide relevant version info.
       placeholder: |
         - OS: macOS 15
-        - Node.js: 22.x
+        - Node.js: 24.x
         - pnpm: 9.x
         - stylelint: 16.x
         - Package version: x.x.x

@@ -7,15 +7,15 @@
 			"inputs": ["$TURBO_DEFAULT$", ".env*"],
 			"outputs": [".next/**", "!.next/cache/**", "dist/**"]
 		},
-		"lint": {
-			"dependsOn": ["^lint"]
+		"lint": {},
+		"lint:style": {},
+		"transit": {
+			"dependsOn": ["^transit"]
 		},
 		"check-types": {
-			"dependsOn": ["^check-types"]
+			"dependsOn": ["transit"]
 		},
-		"test": {
-			"dependsOn": ["^test"]
-		},
+		"test": {},
 		"dev": {
 			"cache": false,
 			"persistent": true

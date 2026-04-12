@@ -12,9 +12,9 @@
 		"lint:style": "stylelint '**/*.{css,scss}' --max-warnings 0",
 		"test": "echo \"Error: no test specified\" && exit 0",
 		"check-types": "next typegen && tsc --noEmit",
-		"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-		"deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-		"upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+		"preview": "opennextjs-cloudflare preview",
+		"deploy": "opennextjs-cloudflare deploy",
+		"upload": "opennextjs-cloudflare upload",
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
 	},
 	"dependencies": {
@@ -33,7 +33,7 @@
 		"eslint": "^9.39.3",
 		"stylelint": "^17.4.0",
 		"stylelint-config-standard": "^40.0.0",
-		"typescript": "5.9.3",
+		"typescript": "^5.9.3",
 		"wrangler": "^4.69.0"
 	}
 }

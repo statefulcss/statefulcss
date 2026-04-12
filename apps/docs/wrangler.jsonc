@@ -27,4 +27,20 @@
 			"service": "statefulcss-website",
 		},
 	],
+	"env": {
+		"preview": {
+			"routes": [
+				{
+					"pattern": "preview.statefulcss.com",
+					"custom_domain": true,
+				},
+			],
+			"services": [
+				{
+					"binding": "WORKER_SELF_REFERENCE",
+					"service": "statefulcss-website-preview",
+				},
+			],
+		},
+	},
 }

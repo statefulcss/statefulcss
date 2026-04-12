@@ -8,7 +8,9 @@
 			"outputs": [".next/**", "!.next/cache/**", "dist/**"]
 		},
 		"lint": {},
-		"lint:style": {},
+		"lint:style": {
+			"dependsOn": ["^build"]
+		},
 		"transit": {
 			"dependsOn": ["^transit"]
 		},

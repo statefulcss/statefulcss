@@ -10,13 +10,13 @@ pre-commit:
     - name: eslint (apps/docs)
       root: "apps/docs/"
       glob: "*.{js,ts,tsx}"
-      run: pnpm exec eslint --max-warnings 0 {staged_files}
+      run: pnpm exec eslint --no-warn-ignored --max-warnings 0 {staged_files}
       stage_fixed: true
 
     - name: eslint (packages/stylelint-plugin)
       root: "packages/stylelint-plugin/"
       glob: "*.{js,ts,tsx}"
-      run: pnpm exec eslint --max-warnings 0 {staged_files}
+      run: pnpm exec eslint --no-warn-ignored --max-warnings 0 {staged_files}
       stage_fixed: true
 
     - name: stylelint (apps/docs)

@@ -29,6 +29,9 @@ coverage
 worker-configuration.d.ts
 cloudflare-env.d.ts
 
+# Binary assets
+**/*.{woff,woff2,ttf,eot,otf}
+
 # Astro
 .astro
 

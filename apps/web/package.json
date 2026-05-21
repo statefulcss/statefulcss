@@ -17,6 +17,8 @@
 	},
 	"devDependencies": {
 		"@astrojs/check": "^0.9.9",
+		"@astrojs/rss": "^4.0.18",
+		"@astrojs/sitemap": "^3.7.2",
 		"@repo/eslint-config": "workspace:*",
 		"@typescript-eslint/parser": "^8.59.4",
 		"eslint": "^10.4.0",

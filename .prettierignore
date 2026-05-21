@@ -24,8 +24,13 @@ next-env.d.ts
 # Coverage
 coverage
 
-# Cloudflare Types
+# Cloudflare & Wrangler
+.wrangler/
+worker-configuration.d.ts
 cloudflare-env.d.ts
+
+# Astro
+.astro
 
 # Misc
 .gitignore

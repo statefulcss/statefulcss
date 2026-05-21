@@ -16,6 +16,7 @@
 		"astro": "^6.3.6"
 	},
 	"devDependencies": {
+		"@astrojs/check": "^0.9.9",
 		"@repo/eslint-config": "workspace:*",
 		"@typescript-eslint/parser": "^8.59.4",
 		"eslint": "^10.4.0",

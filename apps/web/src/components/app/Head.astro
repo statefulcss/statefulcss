@@ -1,14 +1,105 @@
 ---
 import { Font } from "astro:assets";
 import { ClientRouter } from "astro:transitions";
+
+import { formatPageTitle, siteConfig, toAbsoluteUrl, toCanonicalUrl, type JsonLdSchema } from "@config/site";
+
+interface Props {
+	title?: string;
+	description?: string;
+	canonical?: string | URL;
+	robots?: string;
+	author?: string;
+	themeColor?: string;
+	type?: "website" | "article";
+	publishedTime?: string | Date;
+	modifiedTime?: string | Date;
+	schema?: JsonLdSchema | JsonLdSchema[];
+}
+
+const {
+	title,
+	description = siteConfig.description,
+	canonical = Astro.url.pathname,
+	robots = siteConfig.robots,
+	author = siteConfig.author.name,
+	themeColor = siteConfig.themeColor,
+	type = "website",
+	publishedTime,
+	modifiedTime,
+	schema = [],
+} = Astro.props;
+
+const pageTitle = formatPageTitle(title);
+const canonicalUrl = toCanonicalUrl(canonical);
+const rssUrl = toAbsoluteUrl(siteConfig.rssPath).toString();
+const sitemapUrl = toAbsoluteUrl(siteConfig.sitemapPath).toString();
+
+const baseSchema: JsonLdSchema[] = [
+	{
+		"@context": "https://schema.org",
+		"@type": "Organization",
+		"@id": `${siteConfig.url}/#organization`,
+		name: siteConfig.name,
+		url: siteConfig.url,
+	},
+	{
+		"@context": "https://schema.org",
+		"@type": "WebSite",
+		"@id": `${siteConfig.url}/#website`,
+		name: siteConfig.name,
+		url: siteConfig.url,
+		description: siteConfig.description,
+		inLanguage: siteConfig.language,
+		publisher: {
+			"@id": `${siteConfig.url}/#organization`,
+		},
+	},
+	{
+		"@context": "https://schema.org",
+		"@type": type === "article" ? "Article" : "WebPage",
+		"@id": `${canonicalUrl}#webpage`,
+		url: canonicalUrl,
+		name: pageTitle,
+		description,
+		inLanguage: siteConfig.language,
+		isPartOf: {
+			"@id": `${siteConfig.url}/#website`,
+		},
+		publisher: {
+			"@id": `${siteConfig.url}/#organization`,
+		},
+		...(publishedTime ? { datePublished: publishedTime } : {}),
+		...(modifiedTime ? { dateModified: modifiedTime } : {}),
+	},
+];
+
+const jsonLd = [...baseSchema, ...(Array.isArray(schema) ? schema : [schema])];
+const serializeJsonLd = (item: JsonLdSchema) => JSON.stringify(item).replaceAll("<", "\\u003c");
 ---
 
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width" />
+<title>{pageTitle}</title>
+<meta name="description" content={description} />
+<meta name="author" content={author} />
+<meta name="robots" content={robots} />
+<meta name="theme-color" content={themeColor} />
+<link rel="canonical" href={canonicalUrl} />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="32x32" />
-<link rel="sitemap" href="/sitemap-index.xml" />
-<title>Stateful CSS</title>
+<link rel="sitemap" href={sitemapUrl} />
+<link rel="alternate" type="application/rss+xml" title={`${siteConfig.name} RSS Feed`} href={rssUrl} />
+<meta property="og:site_name" content={siteConfig.name} />
+<meta property="og:title" content={pageTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:type" content={type} />
+<meta property="og:url" content={canonicalUrl} />
+<meta property="og:locale" content={siteConfig.locale} />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content={pageTitle} />
+<meta name="twitter:description" content={description} />
+{jsonLd.map((item) => <script is:inline type="application/ld+json" set:html={serializeJsonLd(item)} />)}
 <Font cssVariable="--font-switzer" preload />
 <Font cssVariable="--font-jetbrains-mono" preload />
 <ClientRouter />

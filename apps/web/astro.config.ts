@@ -1,8 +1,12 @@
 import sitemap from "@astrojs/sitemap";
 import { defineConfig, fontProviders } from "astro/config";
 
+import { siteConfig } from "./src/config/site";
+
 // https://astro.build/config
 export default defineConfig({
+	site: siteConfig.url,
+	trailingSlash: "always",
 	integrations: [sitemap()],
 	fonts: [
 		{

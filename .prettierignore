@@ -24,8 +24,16 @@ next-env.d.ts
 # Coverage
 coverage
 
-# Cloudflare Types
+# Cloudflare & Wrangler
+.wrangler/
+worker-configuration.d.ts
 cloudflare-env.d.ts
+
+# Binary assets
+**/*.{woff,woff2,ttf,eot,otf}
+
+# Astro
+.astro
 
 # Misc
 .gitignore

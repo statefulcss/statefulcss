@@ -1,0 +1,15 @@
+{
+	"extends": "astro/tsconfigs/strict",
+	"include": [".astro/types.d.ts", "**/*"],
+	"exclude": ["dist", "eslint.config.js"],
+	"compilerOptions": {
+		"paths": {
+			"@assets/*": ["./src/assets/*"],
+			"@config/*": ["./src/config/*"],
+			"@components/*": ["./src/components/*"],
+			"@layouts/*": ["./src/layouts/*"],
+			"@styles/*": ["./src/styles/*"],
+			"@utils/*": ["./src/utils/*"]
+		}
+	}
+}

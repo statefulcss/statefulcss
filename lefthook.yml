@@ -4,12 +4,18 @@ pre-commit:
   parallel: true
   jobs:
     - name: prettier
-      run: pnpm exec prettier --write {staged_files}
+      run: pnpm exec prettier --ignore-unknown --write {staged_files}
       stage_fixed: true
 
     - name: eslint (apps/docs)
       root: "apps/docs/"
       glob: "*.{js,ts,tsx}"
+      run: pnpm exec eslint --no-warn-ignored --max-warnings 0 {staged_files}
+      stage_fixed: true
+
+    - name: eslint (apps/web)
+      root: "apps/web/"
+      glob: "*.{js,ts,astro}"
       run: pnpm exec eslint --no-warn-ignored --max-warnings 0 {staged_files}
       stage_fixed: true
 

@@ -1,0 +1,28 @@
+{
+	"name": "web",
+	"type": "module",
+	"version": "0.0.1",
+	"engines": {
+		"node": ">=24"
+	},
+	"scripts": {
+		"dev": "astro dev",
+		"build": "astro build",
+		"lint": "eslint --max-warnings 0 \"**/*.{js,mjs,ts,astro}\"",
+		"preview": "astro preview",
+		"astro": "astro"
+	},
+	"dependencies": {
+		"astro": "^6.3.6"
+	},
+	"devDependencies": {
+		"@astrojs/check": "^0.9.9",
+		"@astrojs/rss": "^4.0.18",
+		"@astrojs/sitemap": "^3.7.2",
+		"@repo/eslint-config": "workspace:*",
+		"@typescript-eslint/parser": "^8.59.4",
+		"eslint": "^10.4.0",
+		"eslint-plugin-astro": "^1.7.0",
+		"typescript": "^6.0.3"
+	}
+}

@@ -1,0 +1,55 @@
+---
+import Footer from "@components/app/Footer.astro";
+import Head from "@components/app/Head.astro";
+import Header from "@components/app/Header.astro";
+import type { JsonLdSchema } from "@config/site";
+
+interface Props {
+	title?: string;
+	description?: string;
+	canonical?: string | URL;
+	robots?: string;
+	author?: string;
+	themeColor?: string;
+	type?: "website" | "article";
+	publishedTime?: string | Date;
+	modifiedTime?: string | Date;
+	schema?: JsonLdSchema | JsonLdSchema[];
+}
+
+const {
+	title,
+	description,
+	canonical,
+	robots,
+	author,
+	themeColor,
+	type,
+	publishedTime,
+	modifiedTime,
+	schema,
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<Head
+			title={title}
+			description={description}
+			canonical={canonical}
+			robots={robots}
+			author={author}
+			themeColor={themeColor}
+			type={type}
+			publishedTime={publishedTime}
+			modifiedTime={modifiedTime}
+			schema={schema}
+		/>
+	</head>
+	<body>
+		<Header />
+		<slot />
+		<Footer />
+	</body>
+</html>

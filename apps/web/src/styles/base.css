@@ -1,0 +1,17 @@
+html {
+	font-family: var(--t-font-family, ui-sans-serif, system-ui, sans-serif);
+	font-size: var(--t-font-size-base, 1rem);
+	line-height: var(--t-font-line-height, 1.5);
+	letter-spacing: var(--t-font-letter-spacing, 0);
+	text-size-adjust: 100%;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	scroll-padding-block-start: var(--t-scroll-offset, 1.5rlh);
+	-webkit-tap-highlight-color: transparent;
+}
+
+body {
+	background: var(--t-color-background-root);
+	letter-spacing: var(--t-font-letter-spacing, 0);
+	min-block-size: 100dvh;
+}

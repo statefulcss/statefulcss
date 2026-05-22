@@ -2,7 +2,7 @@
 import { getCollection, render, type CollectionEntry } from "astro:content";
 
 import Layout from "@layouts/Layout.astro";
-import { getDocsEntryPath } from "@utils/content";
+import { getDocsEntryMeta } from "@utils/content";
 
 export async function getStaticPaths() {
 	const entries = await getCollection("docsTools", ({ data }) => !data.draft);
@@ -19,14 +19,16 @@ interface Props {
 
 const { entry } = Astro.props;
 const { Content } = await render(entry);
+const meta = getDocsEntryMeta("tools", entry);
 ---
 
 <Layout
 	title={entry.data.title}
 	description={entry.data.description}
-	canonical={getDocsEntryPath("tools", entry)}
+	canonical={meta.canonicalUrl}
 	type="article"
-	modifiedTime={entry.data.updatedAt}
+	modifiedTime={meta.modifiedDate}
+	schema={meta.schema}
 >
 	<main>
 		<article>

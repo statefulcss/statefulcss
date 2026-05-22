@@ -2,7 +2,7 @@
 import { getCollection, render, type CollectionEntry } from "astro:content";
 
 import Layout from "@layouts/Layout.astro";
-import { getBlogPostPath, getReadingTime } from "@utils/content";
+import { getBlogPostMeta, getReadingTime } from "@utils/content";
 
 export async function getStaticPaths() {
 	const posts = await getCollection("blog", ({ data }) => !data.draft);
@@ -19,16 +19,18 @@ interface Props {
 
 const { post } = Astro.props;
 const { Content } = await render(post);
+const meta = getBlogPostMeta(post);
 const readingTime = getReadingTime(post.body);
 ---
 
 <Layout
 	title={post.data.title}
 	description={post.data.description}
-	canonical={getBlogPostPath(post)}
+	canonical={meta.canonicalUrl}
 	type="article"
 	publishedTime={post.data.publishedAt}
-	modifiedTime={post.data.updatedAt ?? post.data.publishedAt}
+	modifiedTime={meta.modifiedDate}
+	schema={meta.schema}
 >
 	<main>
 		<article>

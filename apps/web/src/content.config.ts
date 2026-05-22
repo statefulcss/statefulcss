@@ -8,6 +8,8 @@ const docsSchema = z.object({
 	order: z.number().int().nonnegative().default(0),
 	draft: z.boolean().default(false),
 	updatedAt: z.coerce.date().optional(),
+	canonical: z.string().optional(),
+	tags: z.array(z.string()).default([]),
 });
 
 const blogSchema = z.object({
@@ -17,6 +19,7 @@ const blogSchema = z.object({
 	updatedAt: z.coerce.date().optional(),
 	draft: z.boolean().default(false),
 	tags: z.array(z.string()).default([]),
+	canonical: z.string().optional(),
 });
 
 const docsConcepts = defineCollection({

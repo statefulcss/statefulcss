@@ -58,7 +58,7 @@ const baseSchema: JsonLdSchema[] = [
 	},
 	{
 		"@context": "https://schema.org",
-		"@type": type === "article" ? "Article" : "WebPage",
+		"@type": "WebPage",
 		"@id": `${canonicalUrl}#webpage`,
 		url: canonicalUrl,
 		name: pageTitle,

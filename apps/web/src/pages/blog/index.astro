@@ -2,12 +2,18 @@
 import { getCollection } from "astro:content";
 
 import Layout from "@layouts/Layout.astro";
-import { comparePostsByDate, getBlogPostPath } from "@utils/content";
+import { comparePostsByDate, getBlogPostPath, getCollectionPageSchema, getReadingTime } from "@utils/content";
 
 const posts = (await getCollection("blog", ({ data }) => !data.draft)).sort(comparePostsByDate);
+const title = "Blog";
+const description = "Articles and updates from Stateful CSS.";
 ---
 
-<Layout title="Blog" description="Articles and updates from Stateful CSS.">
+<Layout
+	title={title}
+	description={description}
+	schema={getCollectionPageSchema("/blog/", title, description)}
+>
 	<main>
 		<h1>Blog Home</h1>
 		<ul>
@@ -23,6 +29,7 @@ const posts = (await getCollection("blog", ({ data }) => !data.draft)).sort(comp
 								year: "numeric",
 							})}
 						</time>
+						<span>{getReadingTime(post.body).text}</span>
 					</li>
 				))
 			}

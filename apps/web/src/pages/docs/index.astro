@@ -1,11 +1,18 @@
 ---
 import { docsSections } from "@utils/content";
 import Layout from "@layouts/Layout.astro";
+import { getCollectionPageSchema } from "@utils/content";
 
 const sections = Object.values(docsSections);
+const title = "Docs";
+const description = "Documentation for Stateful CSS.";
 ---
 
-<Layout title="Docs" description="Documentation for Stateful CSS.">
+<Layout
+	title={title}
+	description={description}
+	schema={getCollectionPageSchema("/docs/", title, description)}
+>
 	<main>
 		<h1>Docs</h1>
 		<ul>

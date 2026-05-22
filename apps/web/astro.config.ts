@@ -1,3 +1,4 @@
+import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
 import { defineConfig, fontProviders } from "astro/config";
 
@@ -7,7 +8,7 @@ import { siteConfig } from "./src/config/site";
 export default defineConfig({
 	site: siteConfig.url,
 	trailingSlash: "always",
-	integrations: [sitemap()],
+	integrations: [mdx(), sitemap()],
 	fonts: [
 		{
 			provider: fontProviders.local(),

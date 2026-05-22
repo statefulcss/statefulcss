@@ -1,9 +1,22 @@
 ---
+import { docsSections } from "@utils/content";
 import Layout from "@layouts/Layout.astro";
+
+const sections = Object.values(docsSections);
 ---
 
-<Layout>
+<Layout title="Docs" description="Documentation for Stateful CSS.">
 	<main>
 		<h1>Docs</h1>
+		<ul>
+			{
+				sections.map((section) => (
+					<li>
+						<a href={section.path}>{section.title}</a>
+						<p>{section.description}</p>
+					</li>
+				))
+			}
+		</ul>
 	</main>
 </Layout>

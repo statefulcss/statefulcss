@@ -1,0 +1,25 @@
+---
+import { getCollection } from "astro:content";
+
+import Layout from "@layouts/Layout.astro";
+import { compareByOrderAndTitle, docsSections, getDocsEntryPath } from "@utils/content";
+
+const section = docsSections.concepts;
+const entries = (await getCollection("docsConcepts", ({ data }) => !data.draft)).sort(compareByOrderAndTitle);
+---
+
+<Layout title={section.title} description={section.description}>
+	<main>
+		<h1>{section.title}</h1>
+		<ul>
+			{
+				entries.map((entry) => (
+					<li>
+						<a href={getDocsEntryPath("concepts", entry)}>{entry.data.title}</a>
+						<p>{entry.data.description}</p>
+					</li>
+				))
+			}
+		</ul>
+	</main>
+</Layout>

@@ -1,0 +1,49 @@
+---
+import { getCollection, render, type CollectionEntry } from "astro:content";
+
+import Layout from "@layouts/Layout.astro";
+import { getBlogPostPath } from "@utils/content";
+
+export async function getStaticPaths() {
+	const posts = await getCollection("blog", ({ data }) => !data.draft);
+
+	return posts.map((post) => ({
+		params: { slug: post.id },
+		props: { post },
+	}));
+}
+
+interface Props {
+	post: CollectionEntry<"blog">;
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+---
+
+<Layout
+	title={post.data.title}
+	description={post.data.description}
+	canonical={getBlogPostPath(post)}
+	type="article"
+	publishedTime={post.data.publishedAt}
+	modifiedTime={post.data.updatedAt ?? post.data.publishedAt}
+>
+	<main>
+		<article>
+			<header>
+				<h1>{post.data.title}</h1>
+				<time datetime={post.data.publishedAt.toISOString()}>
+					{
+						post.data.publishedAt.toLocaleDateString("en", {
+							day: "numeric",
+							month: "long",
+							year: "numeric",
+						})
+					}
+				</time>
+			</header>
+			<Content />
+		</article>
+	</main>
+</Layout>

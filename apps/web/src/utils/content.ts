@@ -1,4 +1,5 @@
 import type { CollectionEntry } from "astro:content";
+import readingTime from "reading-time";
 
 export const docsSections = {
 	concepts: {
@@ -42,4 +43,8 @@ export function getDocsEntryPath(section: DocsSection, entry: DocsEntry): string
 
 export function getBlogPostPath(entry: CollectionEntry<"blog">): string {
 	return `/blog/${entry.id}/`;
+}
+
+export function getReadingTime(content = ""): ReturnType<typeof readingTime> {
+	return readingTime(content);
 }

@@ -1,0 +1,210 @@
+---
+import { siteConfig } from "@config/site";
+import { renderOgSvg } from "@og/render";
+import type { OgImageTemplateProps } from "@og/templates";
+
+interface PreviewSample extends OgImageTemplateProps {
+	label: string;
+	note: string;
+}
+
+export function getStaticPaths() {
+	// eslint-disable-next-line turbo/no-undeclared-env-vars -- Astro provides PROD as a built-in environment flag.
+	if (import.meta.env.PROD) {
+		return [];
+	}
+
+	return [
+		{ params: { ogPreview: "__og-preview" } },
+		{ params: { ogPreview: "__og-preview/default" } },
+		{ params: { ogPreview: "__og-preview/content" } },
+	];
+}
+
+const samples: PreviewSample[] = [
+	{
+		label: "Default / Homepage",
+		note: "Generic marketing fallback",
+		title: siteConfig.name,
+		variant: "default",
+	},
+	{
+		label: "Default / Generic",
+		note: "Generic fallback repeated for comparison",
+		title: siteConfig.name,
+		variant: "default",
+	},
+	{
+		label: "Content / Short",
+		note: "Short docs title",
+		title: "Tools",
+		variant: "content",
+	},
+	{
+		label: "Content / Current Docs",
+		note: "Representative docs detail page",
+		title: "Markup Defines States",
+		variant: "content",
+	},
+	{
+		label: "Content / Long Title",
+		note: "Stress test for wrapping",
+		title: "Designing State-Driven Components That Stay Predictable",
+		variant: "content",
+	},
+	{
+		label: "Content / Very Long Title",
+		note: "Stress test for multi-line wrapping",
+		title: "Designing State-Driven Components That Stay Predictable Across Complex Interaction Patterns",
+		variant: "content",
+	},
+];
+
+const toSvgDataUrl = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+const previews = await Promise.all(
+	samples.map(async (sample) => ({
+		...sample,
+		svgDataUrl: toSvgDataUrl(await renderOgSvg(sample)),
+	})),
+);
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>OG Preview Gallery</title>
+		<style>
+			:root {
+				color-scheme: light;
+				background: #f6f7f8;
+				color: #1f2329;
+				font-family: ui-sans-serif, system-ui, sans-serif;
+			}
+
+			body {
+				margin: 0;
+				min-block-size: 100dvh;
+			}
+
+			main {
+				box-sizing: border-box;
+				width: min(100%, 1240px);
+				margin-inline: auto;
+				padding: clamp(24px, 4vw, 56px);
+			}
+
+			header {
+				display: grid;
+				gap: 10px;
+				margin-block-end: clamp(24px, 4vw, 40px);
+			}
+
+			h1,
+			p {
+				margin: 0;
+			}
+
+			h1 {
+				color: #181b20;
+				font-size: clamp(18px, 5vw, 36px);
+				letter-spacing: -0.01em;
+				line-height: 0.95;
+			}
+
+			p {
+				max-width: 720px;
+				color: #626a73;
+				font-size: 16px;
+				line-height: 1.5;
+			}
+
+			.grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(min(100%, 545px), 1fr));
+				gap: clamp(18px, 3vw, 32px);
+				align-items: start;
+			}
+
+			.card {
+				display: grid;
+				overflow: hidden;
+				gap: 14px;
+				padding: 10px;
+				border: 1px solid #dde1e6;
+				border-radius: 10px;
+				background: rgb(255 255 255 / 76%);
+				box-shadow:
+					0 1px 2px rgb(24 27 32 / 1%),
+					0 8px 16px rgb(24 27 32 / 2%);
+			}
+
+			.frame {
+				display: block;
+				overflow: hidden;
+				aspect-ratio: 1200 / 630;
+				border: 1px solid #e8ebef;
+				border-radius: 6px;
+				background: #f7f8f9;
+			}
+
+			.frame img {
+				display: block;
+				width: 100%;
+				height: auto;
+			}
+
+			.meta {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 6px 12px;
+				align-items: baseline;
+				padding: 0 2px 2px;
+				color: #6d747d;
+				font-size: 0.875em;
+				line-height: 1.35;
+			}
+
+			strong {
+				color: #20242a;
+				font-size: 14px;
+			}
+
+			@media (max-width: 560px) {
+				main {
+					padding-inline: 12px;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<header>
+				<h1>OG Preview Gallery</h1>
+				<p>
+					Rendered from the same Satori templates used for build-time PNG generation. Cards scale down to
+					approximate real sharing surfaces while preserving the 1200x630 composition.
+				</p>
+			</header>
+			<div class="grid">
+				{
+					previews.map((preview) => (
+						<article class="card">
+							<div class="frame">
+								<img src={preview.svgDataUrl} width="1200" height="630" alt={`${preview.label} OG preview`} />
+							</div>
+							<div class="meta">
+								<div>
+									<strong>{preview.label}</strong>
+									<br />
+									{preview.note}
+								</div>
+							</div>
+						</article>
+					))
+				}
+			</div>
+		</main>
+	</body>
+</html>

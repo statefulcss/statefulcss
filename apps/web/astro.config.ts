@@ -1,13 +1,50 @@
+import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
+import {
+	transformerMetaHighlight,
+	transformerMetaWordHighlight,
+	transformerNotationDiff,
+	transformerNotationFocus,
+	transformerNotationHighlight,
+	transformerNotationWordHighlight,
+} from "@shikijs/transformers";
 import { defineConfig, fontProviders } from "astro/config";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import rehypeSlug from "rehype-slug";
 
-import { siteConfig } from "./src/config/site";
+import { getSiteUrl } from "./src/config/site";
 
 // https://astro.build/config
 export default defineConfig({
-	site: siteConfig.url,
+	site: getSiteUrl(),
 	trailingSlash: "always",
-	integrations: [sitemap()],
+	integrations: [mdx(), sitemap()],
+	markdown: {
+		rehypePlugins: [
+			rehypeSlug,
+			[
+				rehypeAutolinkHeadings,
+				{
+					behavior: "wrap",
+					test: ["h2", "h3", "h4", "h5", "h6"],
+				},
+			],
+		],
+		shikiConfig: {
+			themes: {
+				light: "github-light",
+				dark: "github-dark",
+			},
+			transformers: [
+				transformerNotationDiff(),
+				transformerNotationFocus(),
+				transformerNotationHighlight(),
+				transformerNotationWordHighlight(),
+				transformerMetaHighlight(),
+				transformerMetaWordHighlight(),
+			],
+		},
+	},
 	fonts: [
 		{
 			provider: fontProviders.local(),

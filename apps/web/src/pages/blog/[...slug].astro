@@ -1,0 +1,55 @@
+---
+import { getCollection, render, type CollectionEntry } from "astro:content";
+
+import Layout from "@layouts/Layout.astro";
+import { getOgImagePath } from "@og/templates";
+import { getBlogPostMeta, getReadingTime } from "@utils/content";
+
+export async function getStaticPaths() {
+	const posts = await getCollection("blog", ({ data }) => !data.draft);
+
+	return posts.map((post) => ({
+		params: { slug: post.id },
+		props: { post },
+	}));
+}
+
+interface Props {
+	post: CollectionEntry<"blog">;
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+const meta = getBlogPostMeta(post);
+const readingTime = getReadingTime(post.body);
+---
+
+<Layout
+	title={post.data.title}
+	description={post.data.description}
+	canonical={meta.canonicalUrl}
+	type="article"
+	publishedTime={post.data.publishedAt}
+	modifiedTime={meta.modifiedDate}
+	image={getOgImagePath(meta.path)}
+	schema={meta.schema}
+>
+	<main>
+		<article>
+			<header>
+				<h1>{post.data.title}</h1>
+				<time datetime={post.data.publishedAt.toISOString()}>
+					{
+						post.data.publishedAt.toLocaleDateString("en", {
+							day: "numeric",
+							month: "long",
+							year: "numeric",
+						})
+					}
+				</time>
+				<span>{readingTime.text}</span>
+			</header>
+			<Content />
+		</article>
+	</main>
+</Layout>

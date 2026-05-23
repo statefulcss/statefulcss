@@ -1,8 +1,13 @@
 ---
 import Layout from "@layouts/Layout.astro";
+import { getOgImagePath } from "@og/templates";
 ---
 
-<Layout>
+<Layout
+	title="Stateful CSS"
+	description="The official website of Stateful CSS."
+	image={getOgImagePath("/", { index: true })}
+>
 	<main>
 		<h1>Stateful CSS</h1>
 	</main>

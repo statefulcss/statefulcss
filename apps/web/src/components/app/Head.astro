@@ -3,7 +3,14 @@ import "@styles/index.css";
 import { Font } from "astro:assets";
 import { ClientRouter } from "astro:transitions";
 
-import { formatPageTitle, siteConfig, toAbsoluteUrl, toCanonicalUrl, type JsonLdSchema } from "@config/site";
+import {
+	formatPageTitle,
+	getSiteUrl,
+	siteConfig,
+	toAbsoluteUrl,
+	toCanonicalUrl,
+	type JsonLdSchema,
+} from "@config/site";
 
 interface Props {
 	title?: string;
@@ -16,6 +23,10 @@ interface Props {
 	publishedTime?: string | Date;
 	modifiedTime?: string | Date;
 	schema?: JsonLdSchema | JsonLdSchema[];
+	image?: string | URL;
+	imageAlt?: string;
+	imageWidth?: number;
+	imageHeight?: number;
 }
 
 const {
@@ -29,46 +40,53 @@ const {
 	publishedTime,
 	modifiedTime,
 	schema = [],
+	image,
+	imageAlt,
+	imageWidth = 1200,
+	imageHeight = 630,
 } = Astro.props;
 
 const pageTitle = formatPageTitle(title);
+const siteUrl = getSiteUrl();
 const canonicalUrl = toCanonicalUrl(canonical);
 const rssUrl = toAbsoluteUrl(siteConfig.rssPath).toString();
 const sitemapUrl = toAbsoluteUrl(siteConfig.sitemapPath).toString();
+const imageUrl = image ? toAbsoluteUrl(image).toString() : undefined;
+const imageDescription = imageAlt ?? pageTitle;
 
 const baseSchema: JsonLdSchema[] = [
 	{
 		"@context": "https://schema.org",
 		"@type": "Organization",
-		"@id": `${siteConfig.url}/#organization`,
+		"@id": `${siteUrl}/#organization`,
 		name: siteConfig.name,
-		url: siteConfig.url,
+		url: siteUrl,
 	},
 	{
 		"@context": "https://schema.org",
 		"@type": "WebSite",
-		"@id": `${siteConfig.url}/#website`,
+		"@id": `${siteUrl}/#website`,
 		name: siteConfig.name,
-		url: siteConfig.url,
+		url: siteUrl,
 		description: siteConfig.description,
 		inLanguage: siteConfig.language,
 		publisher: {
-			"@id": `${siteConfig.url}/#organization`,
+			"@id": `${siteUrl}/#organization`,
 		},
 	},
 	{
 		"@context": "https://schema.org",
-		"@type": type === "article" ? "Article" : "WebPage",
+		"@type": "WebPage",
 		"@id": `${canonicalUrl}#webpage`,
 		url: canonicalUrl,
 		name: pageTitle,
 		description,
 		inLanguage: siteConfig.language,
 		isPartOf: {
-			"@id": `${siteConfig.url}/#website`,
+			"@id": `${siteUrl}/#website`,
 		},
 		publisher: {
-			"@id": `${siteConfig.url}/#organization`,
+			"@id": `${siteUrl}/#organization`,
 		},
 		...(publishedTime ? { datePublished: publishedTime } : {}),
 		...(modifiedTime ? { dateModified: modifiedTime } : {}),
@@ -104,9 +122,27 @@ const serializeJsonLd = (item: JsonLdSchema) => JSON.stringify(item).replaceAll(
 <meta property="og:type" content={type} />
 <meta property="og:url" content={canonicalUrl} />
 <meta property="og:locale" content={siteConfig.locale} />
-<meta name="twitter:card" content="summary" />
+{
+	imageUrl && (
+		<>
+			<meta property="og:image" content={imageUrl} />
+			<meta property="og:image:alt" content={imageDescription} />
+			<meta property="og:image:width" content={String(imageWidth)} />
+			<meta property="og:image:height" content={String(imageHeight)} />
+		</>
+	)
+}
+<meta name="twitter:card" content={imageUrl ? "summary_large_image" : "summary"} />
 <meta name="twitter:title" content={pageTitle} />
 <meta name="twitter:description" content={description} />
+{
+	imageUrl && (
+		<>
+			<meta name="twitter:image" content={imageUrl} />
+			<meta name="twitter:image:alt" content={imageDescription} />
+		</>
+	)
+}
 {jsonLd.map((item) => <script is:inline type="application/ld+json" set:html={serializeJsonLd(item)} />)}
 <Font cssVariable="--font-switzer" preload />
 <Font cssVariable="--font-jetbrains-mono" preload />

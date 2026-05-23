@@ -8,6 +8,7 @@
 			"@config/*": ["./src/config/*"],
 			"@components/*": ["./src/components/*"],
 			"@layouts/*": ["./src/layouts/*"],
+			"@og/*": ["./src/og/*"],
 			"@styles/*": ["./src/styles/*"],
 			"@utils/*": ["./src/utils/*"]
 		}

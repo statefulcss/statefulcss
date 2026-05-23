@@ -2,6 +2,7 @@
 import { getCollection, render, type CollectionEntry } from "astro:content";
 
 import Layout from "@layouts/Layout.astro";
+import { getOgImagePath } from "@og/templates";
 import { getBlogPostMeta, getReadingTime } from "@utils/content";
 
 export async function getStaticPaths() {
@@ -30,6 +31,7 @@ const readingTime = getReadingTime(post.body);
 	type="article"
 	publishedTime={post.data.publishedAt}
 	modifiedTime={meta.modifiedDate}
+	image={getOgImagePath(meta.path)}
 	schema={meta.schema}
 >
 	<main>

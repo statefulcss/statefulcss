@@ -2,6 +2,7 @@
 import { getCollection, render, type CollectionEntry } from "astro:content";
 
 import Layout from "@layouts/Layout.astro";
+import { getOgImagePath } from "@og/templates";
 import { getDocsEntryMeta } from "@utils/content";
 
 export async function getStaticPaths() {
@@ -28,6 +29,7 @@ const meta = getDocsEntryMeta("concepts", entry);
 	canonical={meta.canonicalUrl}
 	type="article"
 	modifiedTime={meta.modifiedDate}
+	image={getOgImagePath(meta.path)}
 	schema={meta.schema}
 >
 	<main>

@@ -2,6 +2,7 @@
 import { docsSections } from "@utils/content";
 import Layout from "@layouts/Layout.astro";
 import { getCollectionPageSchema } from "@utils/content";
+import { getOgImagePath } from "@og/templates";
 
 const sections = Object.values(docsSections);
 const title = "Docs";
@@ -11,6 +12,7 @@ const description = "Documentation for Stateful CSS.";
 <Layout
 	title={title}
 	description={description}
+	image={getOgImagePath("/docs/", { index: true })}
 	schema={getCollectionPageSchema("/docs/", title, description)}
 >
 	<main>

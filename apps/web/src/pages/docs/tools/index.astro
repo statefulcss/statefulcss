@@ -2,6 +2,7 @@
 import { getCollection } from "astro:content";
 
 import Layout from "@layouts/Layout.astro";
+import { getOgImagePath } from "@og/templates";
 import {
 	compareByOrderAndTitle,
 	docsSections,
@@ -16,6 +17,7 @@ const entries = (await getCollection("docsTools", ({ data }) => !data.draft)).so
 <Layout
 	title={section.title}
 	description={section.description}
+	image={getOgImagePath(section.path, { index: true })}
 	schema={getCollectionPageSchema(section.path, section.title, section.description)}
 >
 	<main>

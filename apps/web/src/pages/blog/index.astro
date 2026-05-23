@@ -2,6 +2,7 @@
 import { getCollection } from "astro:content";
 
 import Layout from "@layouts/Layout.astro";
+import { getOgImagePath } from "@og/templates";
 import { comparePostsByDate, getBlogPostPath, getCollectionPageSchema, getReadingTime } from "@utils/content";
 
 const posts = (await getCollection("blog", ({ data }) => !data.draft)).sort(comparePostsByDate);
@@ -12,6 +13,7 @@ const description = "Articles and updates from Stateful CSS.";
 <Layout
 	title={title}
 	description={description}
+	image={getOgImagePath("/blog/", { index: true })}
 	schema={getCollectionPageSchema("/blog/", title, description)}
 >
 	<main>

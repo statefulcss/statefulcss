@@ -15,6 +15,10 @@ interface Props {
 	publishedTime?: string | Date;
 	modifiedTime?: string | Date;
 	schema?: JsonLdSchema | JsonLdSchema[];
+	image?: string | URL;
+	imageAlt?: string;
+	imageWidth?: number;
+	imageHeight?: number;
 }
 
 const {
@@ -28,6 +32,10 @@ const {
 	publishedTime,
 	modifiedTime,
 	schema,
+	image,
+	imageAlt,
+	imageWidth,
+	imageHeight,
 } = Astro.props;
 ---
 
@@ -45,6 +53,10 @@ const {
 			publishedTime={publishedTime}
 			modifiedTime={modifiedTime}
 			schema={schema}
+			image={image}
+			imageAlt={imageAlt}
+			imageWidth={imageWidth}
+			imageHeight={imageHeight}
 		/>
 	</head>
 	<body>

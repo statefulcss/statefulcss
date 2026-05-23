@@ -21,6 +21,7 @@
 		"@astrojs/rss": "^4.0.18",
 		"@astrojs/sitemap": "^3.7.2",
 		"@repo/eslint-config": "workspace:*",
+		"@resvg/resvg-wasm": "^2.6.2",
 		"@shikijs/transformers": "^4.1.0",
 		"@typescript-eslint/parser": "^8.59.4",
 		"eslint": "^10.4.0",
@@ -28,6 +29,7 @@
 		"reading-time": "^1.5.0",
 		"rehype-autolink-headings": "^7.1.0",
 		"rehype-slug": "^6.0.0",
+		"satori": "^0.26.0",
 		"typescript": "^6.0.3"
 	}
 }

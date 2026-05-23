@@ -12,11 +12,11 @@ import { defineConfig, fontProviders } from "astro/config";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeSlug from "rehype-slug";
 
-import { siteConfig } from "./src/config/site";
+import { getSiteUrl } from "./src/config/site";
 
 // https://astro.build/config
 export default defineConfig({
-	site: siteConfig.url,
+	site: getSiteUrl(),
 	trailingSlash: "always",
 	integrations: [mdx(), sitemap()],
 	markdown: {

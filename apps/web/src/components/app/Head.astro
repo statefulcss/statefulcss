@@ -3,7 +3,14 @@ import "@styles/index.css";
 import { Font } from "astro:assets";
 import { ClientRouter } from "astro:transitions";
 
-import { formatPageTitle, siteConfig, toAbsoluteUrl, toCanonicalUrl, type JsonLdSchema } from "@config/site";
+import {
+	formatPageTitle,
+	getSiteUrl,
+	siteConfig,
+	toAbsoluteUrl,
+	toCanonicalUrl,
+	type JsonLdSchema,
+} from "@config/site";
 
 interface Props {
 	title?: string;
@@ -32,6 +39,7 @@ const {
 } = Astro.props;
 
 const pageTitle = formatPageTitle(title);
+const siteUrl = getSiteUrl();
 const canonicalUrl = toCanonicalUrl(canonical);
 const rssUrl = toAbsoluteUrl(siteConfig.rssPath).toString();
 const sitemapUrl = toAbsoluteUrl(siteConfig.sitemapPath).toString();
@@ -40,20 +48,20 @@ const baseSchema: JsonLdSchema[] = [
 	{
 		"@context": "https://schema.org",
 		"@type": "Organization",
-		"@id": `${siteConfig.url}/#organization`,
+		"@id": `${siteUrl}/#organization`,
 		name: siteConfig.name,
-		url: siteConfig.url,
+		url: siteUrl,
 	},
 	{
 		"@context": "https://schema.org",
 		"@type": "WebSite",
-		"@id": `${siteConfig.url}/#website`,
+		"@id": `${siteUrl}/#website`,
 		name: siteConfig.name,
-		url: siteConfig.url,
+		url: siteUrl,
 		description: siteConfig.description,
 		inLanguage: siteConfig.language,
 		publisher: {
-			"@id": `${siteConfig.url}/#organization`,
+			"@id": `${siteUrl}/#organization`,
 		},
 	},
 	{
@@ -65,10 +73,10 @@ const baseSchema: JsonLdSchema[] = [
 		description,
 		inLanguage: siteConfig.language,
 		isPartOf: {
-			"@id": `${siteConfig.url}/#website`,
+			"@id": `${siteUrl}/#website`,
 		},
 		publisher: {
-			"@id": `${siteConfig.url}/#organization`,
+			"@id": `${siteUrl}/#organization`,
 		},
 		...(publishedTime ? { datePublished: publishedTime } : {}),
 		...(modifiedTime ? { dateModified: modifiedTime } : {}),

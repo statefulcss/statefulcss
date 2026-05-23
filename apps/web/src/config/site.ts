@@ -19,6 +19,10 @@ export const siteConfig = {
 
 const fileExtensionPattern = /\.[a-z0-9]+$/i;
 
+export function getSiteUrl(): string {
+	return new URL(process.env.PUBLIC_SITE_URL ?? siteConfig.url).origin;
+}
+
 export function formatPageTitle(title?: string): string {
 	if (!title || title === siteConfig.name) {
 		return siteConfig.name;
@@ -28,7 +32,7 @@ export function formatPageTitle(title?: string): string {
 }
 
 export function toAbsoluteUrl(pathOrUrl: string | URL): URL {
-	return new URL(pathOrUrl, siteConfig.url);
+	return new URL(pathOrUrl, getSiteUrl());
 }
 
 export function toCanonicalUrl(pathOrUrl: string | URL): string {

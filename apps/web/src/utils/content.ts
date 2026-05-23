@@ -1,7 +1,7 @@
 import type { CollectionEntry } from "astro:content";
 import readingTime from "reading-time";
 
-import { formatPageTitle, siteConfig, toCanonicalUrl, type JsonLdSchema } from "@config/site";
+import { formatPageTitle, getSiteUrl, siteConfig, toCanonicalUrl, type JsonLdSchema } from "@config/site";
 
 export const docsSections = {
 	concepts: {
@@ -61,6 +61,7 @@ export function getReadingTime(content = ""): ReturnType<typeof readingTime> {
 
 export function getCollectionPageSchema(path: string, title: string, description: string): JsonLdSchema {
 	const canonicalUrl = getEntryCanonicalUrl(path);
+	const siteUrl = getSiteUrl();
 
 	return {
 		"@context": "https://schema.org",
@@ -71,7 +72,7 @@ export function getCollectionPageSchema(path: string, title: string, description
 		description,
 		inLanguage: siteConfig.language,
 		isPartOf: {
-			"@id": `${siteConfig.url}/#website`,
+			"@id": `${siteUrl}/#website`,
 		},
 	};
 }
@@ -101,6 +102,7 @@ export function getBlogPostMeta(post: CollectionEntry<"blog">): {
 } {
 	const path = getBlogPostPath(post);
 	const canonicalUrl = getEntryCanonicalUrl(path, post.data.canonical);
+	const siteUrl = getSiteUrl();
 	const modifiedDate =
 		getEntryModifiedDate(post.data.updatedAt, post.data.publishedAt) ?? post.data.publishedAt;
 
@@ -124,10 +126,10 @@ export function getBlogPostMeta(post: CollectionEntry<"blog">): {
 				...(post.data.tags.length ? { keywords: post.data.tags } : {}),
 				inLanguage: siteConfig.language,
 				author: {
-					"@id": `${siteConfig.url}/#organization`,
+					"@id": `${siteUrl}/#organization`,
 				},
 				publisher: {
-					"@id": `${siteConfig.url}/#organization`,
+					"@id": `${siteUrl}/#organization`,
 				},
 			},
 			getBreadcrumbListSchema(canonicalUrl, [
@@ -151,6 +153,7 @@ export function getDocsEntryMeta(
 	const path = getDocsEntryPath(section, entry);
 	const sectionConfig = docsSections[section];
 	const canonicalUrl = getEntryCanonicalUrl(path, entry.data.canonical);
+	const siteUrl = getSiteUrl();
 	const modifiedDate = getEntryModifiedDate(entry.data.updatedAt);
 
 	return {
@@ -172,10 +175,10 @@ export function getDocsEntryMeta(
 				...(entry.data.tags.length ? { keywords: entry.data.tags } : {}),
 				inLanguage: siteConfig.language,
 				author: {
-					"@id": `${siteConfig.url}/#organization`,
+					"@id": `${siteUrl}/#organization`,
 				},
 				publisher: {
-					"@id": `${siteConfig.url}/#organization`,
+					"@id": `${siteUrl}/#organization`,
 				},
 			},
 			getBreadcrumbListSchema(canonicalUrl, [

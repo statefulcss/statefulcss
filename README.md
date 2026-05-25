@@ -30,11 +30,11 @@ turbo dev --filter=web
 
 ## Contributing
 
-See [CONTRIBUTING.md](./.github/CONTRIBUTING.md) for details on how to contribute to this project.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for details on how to contribute to this project.
 
 ## Code of Conduct
 
-See [CODE_OF_CONDUCT.md](./.github/CODE_OF_CONDUCT.md) for details on our code of conduct and how to report issues.
+See [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) for details on our code of conduct and how to report issues.
 
 ## Licensing
 

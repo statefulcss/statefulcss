@@ -1,0 +1,30 @@
+{
+	"$schema": "https://cdn.jsdelivr.net/npm/wrangler@4/config-schema.json",
+	"name": "statefulcss-website",
+	"compatibility_date": "2026-05-23",
+	"assets": {
+		"directory": "./dist",
+		"not_found_handling": "404-page",
+	},
+	"routes": [
+		{
+			"pattern": "statefulcss.com",
+			"custom_domain": true,
+		},
+		{
+			"pattern": "www.statefulcss.com",
+			"custom_domain": true,
+		},
+	],
+	"env": {
+		"preview": {
+			"name": "statefulcss-website-preview",
+			"routes": [
+				{
+					"pattern": "preview.statefulcss.com",
+					"custom_domain": true,
+				},
+			],
+		},
+	},
+}

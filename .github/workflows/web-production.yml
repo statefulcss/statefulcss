@@ -48,4 +48,4 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           NO_COLOR: "1"
-        run: pnpm exec wrangler deploy --env=""
+        run: pnpm run deploy:production

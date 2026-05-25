@@ -123,9 +123,9 @@ importers:
       '@repo/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@repo/typescript-config':
+      '@repo/tsconfig':
         specifier: workspace:*
-        version: link:../typescript-config
+        version: link:../tsconfig
       eslint:
         specifier: ^9.39.4
         version: 9.39.4(jiti@2.6.1)
@@ -142,7 +142,7 @@ importers:
         specifier: ^4.1.7
         version: 4.1.7(@types/node@24.12.4)(vite@7.3.3(@types/node@24.12.4)(jiti@2.6.1)(yaml@2.9.0))
 
-  packages/typescript-config: {}
+  packages/tsconfig: {}
 
 packages:
 

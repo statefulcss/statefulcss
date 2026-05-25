@@ -8,4 +8,4 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
 
 The code in this repository is licensed under the MIT License, EXCEPT for the directories specified below, which are subject to their own respective licenses.
 
-- apps/docs is NOT LICENSED under any permissive open source license. Please refer to the LICENSE file in that directory for more information.
+- apps/web is NOT LICENSED under any permissive open source license. Please refer to the LICENSE file in that directory for more information.

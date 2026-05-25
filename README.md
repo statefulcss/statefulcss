@@ -11,7 +11,7 @@ turbo build
 You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
 
 ```
-turbo build --filter=docs
+turbo build --filter=web
 ```
 
 ### Develop
@@ -38,6 +38,6 @@ See [CODE_OF_CONDUCT.md](./.github/CODE_OF_CONDUCT.md) for details on our code o
 
 ## Licensing
 
-This is a multi-license repository. Most packages are MIT-licensed, but some projects (such as `apps/docs`) have different licenses. See each package's `LICENSE` file for details. Make sure your contributions are compatible with the target package's license.
+This is a multi-license repository. Most packages are MIT-licensed, but some projects (such as `apps/web`) have different licenses. See each package's `LICENSE` file for details. Make sure your contributions are compatible with the target package's license.
 
 &copy; 2026 [Human Interface Studio](https://humaninterface.studio).

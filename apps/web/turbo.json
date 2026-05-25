@@ -1,0 +1,8 @@
+{
+	"extends": ["//"],
+	"tasks": {
+		"build": {
+			"env": ["PUBLIC_SITE_URL"]
+		}
+	}
+}

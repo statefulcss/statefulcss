@@ -2,16 +2,23 @@
 	"name": "web",
 	"type": "module",
 	"version": "0.0.1",
+	"private": true,
+	"license": "UNLICENSED",
 	"engines": {
 		"node": ">=24"
 	},
 	"scripts": {
+		"astro": "astro",
 		"dev": "astro dev",
 		"build": "astro build",
+		"check": "astro check",
 		"check-types": "astro check",
 		"lint": "eslint --max-warnings 0 \"**/*.{js,mjs,ts,astro}\"",
 		"preview": "astro preview",
-		"astro": "astro"
+		"deploy": "wrangler deploy --env=\"\"",
+		"deploy:production": "wrangler deploy --env=\"\"",
+		"deploy:preview": "wrangler deploy --env preview",
+		"types:cf": "wrangler types"
 	},
 	"dependencies": {
 		"astro": "^6.3.6"

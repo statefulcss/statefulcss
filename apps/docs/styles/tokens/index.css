@@ -1,4 +1,0 @@
-@layer global, themes;
-
-@import url("./global.css") layer(global);
-@import url("./themes/default.css") layer(themes.default);

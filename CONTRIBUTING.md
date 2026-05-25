@@ -84,8 +84,7 @@ pnpm format
 
 ```
 feat(stylelint): add new rule for stateful selectors
-fix(docs): fix typo in getting started page
-docs: update contributing guide
+fix(web): fix typo in getting started page
 ```
 
 6. Push your branch and open a Pull Request.
@@ -124,4 +123,4 @@ If you find a bug or have a feature request, please [open an issue](https://gith
 
 ## License
 
-By contributing to this project, you agree that your contributions will be licensed under the [MIT License](LICENSE), with the exception of `apps/docs`, which has its own license. Please review the `LICENSE` file for details.
+By contributing to this project, you agree that your contributions will be licensed under the [MIT License](LICENSE), with the exception of `apps/web`, which has its own license. Please review the `LICENSE` file for details.

@@ -1,4 +1,0 @@
-/* stylelint-disable statefulcss/no-theme-token-reassign */
-[data-theme="default"] {
-	--t-font-family: var(--font-switzer);
-}

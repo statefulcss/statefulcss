@@ -1,0 +1,32 @@
+{
+	"name": "statefulcss",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"license": "MIT",
+	"description": "Stateful CSS CLI",
+	"author": {
+		"name": "Ömer Balyali",
+		"email": "git@omerbalyali.com",
+		"url": "https://omerbalyali.com"
+	},
+	"homepage": "https://statefulcss.com",
+	"keywords": [
+		"stateful-css",
+		"cli",
+		"css"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/statefulcss/statefulcss.git",
+		"directory": "packages/cli"
+	},
+	"bugs": {
+		"url": "https://github.com/statefulcss/statefulcss/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {},
+	"devDependencies": {}
+}

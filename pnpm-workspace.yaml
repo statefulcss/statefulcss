@@ -1,15 +1,11 @@
-packages:
-  - apps/*
-  - packages/*
-
 allowBuilds:
   esbuild: true
   lefthook: true
   sharp: true
   workerd: true
-
-onlyBuiltDependencies:
-  - esbuild
-  - lefthook
-  - sharp
-  - workerd
+engineStrict: true
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: true
+packages:
+  - apps/*
+  - packages/*

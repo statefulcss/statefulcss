@@ -80,11 +80,21 @@ turbo check-types
 pnpm format
 ```
 
-5. Commit your changes with a clear, descriptive commit message. We recommend following the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+5. Commit your changes with a clear, descriptive commit message. We use the [Conventional Commits](https://www.conventionalcommits.org/) specification with a required scope.
+
+Use the package or repo area as the scope:
+
+- `web` for `apps/web`
+- `cli` for `packages/cli`
+- `stylelint` for `packages/stylelint-plugin`
+- `eslint-config` for `packages/eslint-config`
+- `tsconfig` for `packages/tsconfig`
+- `repo` for repo-wide changes such as CI, release tooling, root config, docs, or housekeeping
 
 ```
 feat(stylelint): add new rule for stateful selectors
 fix(web): fix typo in getting started page
+docs(repo): document npm release workflow
 ```
 
 6. Push your branch and open a Pull Request.

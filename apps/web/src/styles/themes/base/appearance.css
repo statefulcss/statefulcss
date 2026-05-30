@@ -1,0 +1,25 @@
+[data-theme] {
+	--t-border-width-thin: 1px;
+	--t-border-width-base: 2px;
+	--t-border-width-thick: 3px;
+	--t-border-width-heavy: 4px;
+	--t-border-style-base: solid;
+
+	--t-radius-none: 0;
+	--t-radius-small: 0.25rem;
+	--t-radius-medium: 0.5rem;
+	--t-radius-large: 0.75rem;
+	--t-radius-xlarge: 1rem;
+	--t-radius-2xlarge: 1.5rem;
+	--t-radius-full: 9999px;
+
+	--t-shadow-none: none;
+	--t-shadow-small: 0 1px 2px var(--t-color-shadow-base);
+	--t-shadow-medium: 0 4px 12px var(--t-color-shadow-base-strong);
+	--t-shadow-large: 0 12px 32px var(--t-color-shadow-base-stronger);
+
+	--t-opacity-disabled: 0.5;
+	--t-opacity-muted: 0.72;
+	--t-opacity-hidden: 0;
+	--t-opacity-visible: 1;
+}

@@ -1,3 +1,4 @@
-@layer base;
+@layer base, themes, components, utilities;
 
 @import url("./base.css") layer(base);
+@import url("./themes/index.css") layer(themes);

@@ -1,16 +1,10 @@
-*,
-*::before,
-*::after {
-	box-sizing: border-box;
-	margin: 0;
-}
+/* Root */
 
 html {
 	font-family: var(--t-font-family-base, ui-sans-serif, system-ui, sans-serif);
 	font-size: var(--t-font-size-base, 1rem);
 	line-height: var(--t-font-line-height-base, 1.5);
 	letter-spacing: var(--t-font-letter-spacing-base, 0);
-	text-size-adjust: 100%;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	scroll-padding-block-start: var(--t-app-scroll-padding-block-start, 1.5rlh);
@@ -18,11 +12,12 @@ html {
 }
 
 body {
-	background: var(--t-color-background-root);
-	color: var(--t-color-foreground-base);
+	background: var(--t-color-background-root, Canvas);
+	color: var(--t-color-foreground-base, CanvasText);
 	letter-spacing: var(--t-font-letter-spacing-base, 0);
-	min-block-size: 100dvh;
 }
+
+/* Typography */
 
 :where(h1, h2, h3, h4, h5, h6) {
 	font-size: initial;
@@ -33,27 +28,10 @@ body {
 }
 
 :where(a) {
-	&:where(&) {
-		--s-color: currentColor;
-		--s-text-decoration-color: transparent;
-	}
-
-	color: var(--s-color);
-	text-decoration: none;
-	text-decoration-color: var(--s-text-decoration-color);
+	color: currentColor;
 	text-decoration-thickness: var(--t-text-underline-thickness, 0.0625em);
 	text-underline-offset: var(--t-text-underline-offset-comfortable, 0.25em);
 	touch-action: manipulation;
-	transition:
-		color var(--t-transition-default, 0.2s ease),
-		background-color var(--t-transition-default, 0.2s ease),
-		border-color var(--t-transition-default, 0.2s ease),
-		text-decoration-color var(--t-transition-default, 0.2s ease);
-
-	&:hover {
-		--s-color: var(--t-color-foreground-accent);
-		--s-text-decoration-color: currentColor;
-	}
 }
 
 :where(p) {
@@ -64,20 +42,76 @@ body {
 	font-weight: var(--t-font-weight-strong, 600);
 }
 
-:where(nav > ul, nav > ol) {
+:where(address) {
+	font-style: normal;
+}
+
+:where(small) {
+	font-size: 80%;
+}
+
+:where(sub, sup) {
+	font-size: 75%;
+	line-height: 0;
+	position: relative;
+	vertical-align: baseline;
+}
+
+:where(sub) {
+	bottom: -0.25em;
+}
+
+:where(sup) {
+	top: -0.5em;
+}
+
+:where(abbr[title]) {
+	cursor: help;
+	text-decoration: underline dotted;
+	text-underline-offset: 0.125em;
+}
+
+/* Lists */
+
+:where(ul, ol) {
 	list-style: none;
+}
+
+:where(ul, ol, menu) {
 	padding-inline-start: 0;
 }
 
-:where(button, [role="button"]) {
-	touch-action: manipulation;
-}
+/* Code */
 
 :where(pre, code, kbd, samp) {
-	font-family: ui-monospace, monospace;
+	font-family: var(--t-font-family-monospace, ui-monospace, monospace);
 	font-size: 1em;
 }
 
-:where([hidden]) {
-	display: none !important;
+:where(pre) {
+	overflow: auto;
+}
+
+/* Elements */
+
+:where(hr) {
+	border: 0;
+	border-block-start: var(--t-border-width-thin, 1px) solid var(--t-color-border-base, currentColor);
+	margin-block: var(--t-space-6, 1.5rem);
+}
+
+:focus-visible {
+	outline-color: var(--t-focus-ring-color, Highlight);
+	outline-offset: var(--t-focus-ring-offset, 2px);
+	outline-style: var(--t-focus-ring-style, solid);
+	outline-width: var(--t-focus-ring-width, 2px);
+}
+
+::selection {
+	background-color: var(--t-color-selection-background, Highlight);
+	color: var(--t-color-selection-foreground, HighlightText);
+}
+
+:is(img, picture, video)::selection {
+	background-color: transparent;
 }

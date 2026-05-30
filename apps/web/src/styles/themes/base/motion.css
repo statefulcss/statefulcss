@@ -1,0 +1,18 @@
+[data-theme] {
+	--t-duration-instant: 0s;
+	--t-duration-faster: 0.075s;
+	--t-duration-fast: 0.15s;
+	--t-duration-base: 0.2s;
+	--t-duration-slow: 0.3s;
+	--t-duration-slower: 0.5s;
+
+	--t-ease-linear: linear;
+	--t-ease-default: cubic-bezier(0.2, 0, 0, 1);
+	--t-ease-in: cubic-bezier(0.4, 0, 1, 1);
+	--t-ease-out: cubic-bezier(0, 0, 0.2, 1);
+	--t-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+	--t-transition-default: var(--t-duration-base) var(--t-ease-default);
+	--t-transition-fast: var(--t-duration-fast) var(--t-ease-default);
+	--t-transition-slow: var(--t-duration-slow) var(--t-ease-default);
+}

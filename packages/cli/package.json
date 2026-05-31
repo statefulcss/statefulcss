@@ -18,7 +18,7 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/statefulcss/statefulcss.git",
+		"url": "git+https://github.com/statefulcss/statefulcss.git",
 		"directory": "packages/cli"
 	},
 	"bugs": {
@@ -28,7 +28,7 @@
 		"access": "public"
 	},
 	"bin": {
-		"statefulcss": "./dist/bin.js"
+		"statefulcss": "dist/bin.js"
 	},
 	"exports": {
 		".": {

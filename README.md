@@ -38,6 +38,10 @@ See [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) for details on our code of conduc
 
 ## Licensing
 
-This is a multi-license repository. Most packages are MIT-licensed, but some projects (such as `apps/web`) have different licenses. See each package's `LICENSE` file for details. Make sure your contributions are compatible with the target package's license.
+This is a multi-license repository.
 
-&copy; 2026 [Human Interface Studio](https://humaninterface.studio).
+- The repository root and packages are MIT-licensed unless a package says otherwise.
+- `apps/web` is source-available, all rights reserved, and is not MIT-licensed.
+- See each package or app `LICENSE` file for the authoritative license terms.
+
+Maintained by [Human Interface Studio](https://humaninterface.studio).

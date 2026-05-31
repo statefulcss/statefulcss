@@ -27,6 +27,14 @@
 	"publishConfig": {
 		"access": "public"
 	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"lint": "eslint --max-warnings 0",
+		"check-types": "tsc --noEmit"
+	},
 	"devDependencies": {
 		"@repo/eslint-config": "workspace:*",
 		"@repo/tsconfig": "workspace:*",

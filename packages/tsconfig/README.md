@@ -1,6 +1,6 @@
-# `@repo/eslint-config`
+# `@repo/tsconfig`
 
-Collection of internal eslint configurations.
+Shared TypeScript configuration for Stateful CSS packages.
 
 ## License
 

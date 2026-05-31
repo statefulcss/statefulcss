@@ -1,0 +1,15 @@
+[data-scheme="light"] {
+	color-scheme: light;
+}
+
+[data-scheme="dark"] {
+	color-scheme: dark;
+}
+
+[data-theme] {
+	color-scheme: light dark;
+
+	--t-color-background-root: light-dark(oklch(100% 0 0), oklch(0% 0 0));
+	--t-color-background-base: light-dark(oklch(100% 0 0), oklch(0% 0 0));
+	--t-color-foreground-base: light-dark(oklch(0% 0 0), oklch(100% 0 0));
+}

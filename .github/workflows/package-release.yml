@@ -5,10 +5,8 @@ on:
     branches: [main]
     paths:
       - ".changeset/**"
-      - "packages/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
+      - "packages/**/package.json"
+      - "packages/**/CHANGELOG.md"
       - ".github/workflows/package-release.yml"
 
 concurrency:

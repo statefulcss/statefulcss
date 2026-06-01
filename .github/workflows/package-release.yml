@@ -91,10 +91,13 @@ jobs:
       - name: Lint, typecheck, test, and build
         run: pnpm turbo run lint check-types test build
 
-      - name: Publish to npm
+      - name: Publish to npm and create GitHub releases
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          publish: pnpm release
+          createGithubReleases: true
+          commitMode: github-api
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
-        run: pnpm release
-
-      - name: Push release tags
-        run: git push --follow-tags

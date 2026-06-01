@@ -1,0 +1,66 @@
+{
+	"name": "statefulcss",
+	"version": "0.0.0",
+	"type": "module",
+	"license": "MIT",
+	"description": "Command line tools for Stateful CSS",
+	"author": {
+		"name": "Ömer Balyali",
+		"email": "git@omerbalyali.com",
+		"url": "https://omerbalyali.com"
+	},
+	"homepage": "https://statefulcss.com",
+	"keywords": [
+		"statefulcss",
+		"stateful-css",
+		"css",
+		"cli"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/statefulcss/statefulcss.git",
+		"directory": "packages/cli"
+	},
+	"bugs": {
+		"url": "https://github.com/statefulcss/statefulcss/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"bin": {
+		"statefulcss": "dist/bin.js"
+	},
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"lint": "eslint --max-warnings 0",
+		"check-types": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@repo/eslint-config": "workspace:*",
+		"@repo/tsconfig": "workspace:*",
+		"@types/node": "^24.1.0",
+		"eslint": "^10.4.1",
+		"tsup": "^8.5.1",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.7"
+	},
+	"dependencies": {
+		"commander": "^15.0.0"
+	}
+}

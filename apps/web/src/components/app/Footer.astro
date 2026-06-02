@@ -1,3 +1,58 @@
 <footer>
-	<span>&copy; 2026 - Human Interface Studio</span>
+	<div class="copyright">
+		&copy; 2026 &mdash; <a href="https://humaninterface.studio" target="_blank" rel="noopener noreferrer"
+			>Human Interface Studio</a
+		>
+	</div>
+	<nav aria-label="Legal links" class="legal-nav">
+		<ul>
+			<li>
+				<a href="/legal-notice/">Legal Notice</a>
+			</li>
+			<li>
+				<a href="/privacy-policy/">Privacy Policy</a>
+			</li>
+		</ul>
+	</nav>
 </footer>
+
+<style>
+	footer {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-block: var(--t-space-12);
+		font-size: var(--t-font-size-small);
+	}
+
+	.copyright {
+		font-weight: var(--t-font-weight-medium);
+
+		& a {
+			text-decoration: none;
+
+			&:hover {
+				color: var(--t-color-accent);
+			}
+		}
+	}
+
+	.legal-nav {
+		& > ul {
+			display: flex;
+			align-items: center;
+			gap: var(--t-space-4);
+			font-weight: var(--t-font-weight-medium);
+
+			& > li {
+				& > a {
+					text-decoration: none;
+
+					&:hover {
+						color: var(--t-color-accent);
+					}
+				}
+			}
+		}
+	}
+</style>

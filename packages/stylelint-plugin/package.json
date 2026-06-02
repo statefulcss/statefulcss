@@ -40,7 +40,7 @@
 		"dist"
 	],
 	"scripts": {
-		"build": "tsup",
+		"build": "tsup && tsc --emitDeclarationOnly",
 		"dev": "tsup --watch",
 		"test": "vitest run",
 		"test:watch": "vitest",

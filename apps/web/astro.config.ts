@@ -1,3 +1,4 @@
+import { unified } from "@astrojs/markdown-remark";
 import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
 import {
@@ -20,16 +21,18 @@ export default defineConfig({
 	trailingSlash: "always",
 	integrations: [mdx(), sitemap()],
 	markdown: {
-		rehypePlugins: [
-			rehypeSlug,
-			[
-				rehypeAutolinkHeadings,
-				{
-					behavior: "wrap",
-					test: ["h2", "h3", "h4", "h5", "h6"],
-				},
+		processor: unified({
+			rehypePlugins: [
+				rehypeSlug,
+				[
+					rehypeAutolinkHeadings,
+					{
+						behavior: "wrap",
+						test: ["h2", "h3", "h4", "h5", "h6"],
+					},
+				],
 			],
-		],
+		}),
 		shikiConfig: {
 			themes: {
 				light: "github-light",

@@ -30,14 +30,6 @@
 	"bin": {
 		"statefulcss": "dist/bin.js"
 	},
-	"exports": {
-		".": {
-			"import": "./dist/index.js",
-			"types": "./dist/index.d.ts"
-		}
-	},
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
 	"files": [
 		"dist",
 		"README.md",

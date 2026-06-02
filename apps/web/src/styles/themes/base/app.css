@@ -1,9 +1,13 @@
 [data-theme] {
-	--t-app-content-width-narrow: 48rem;
-	--t-app-content-width: 72rem;
-	--t-app-content-width-wide: 90rem;
-	--t-app-container-gutter-inline: clamp(var(--t-space-4), 4vw, var(--t-space-6));
-	--t-app-header-height: 4rem;
+	--t-app-container-max-width: 90rem;
+	--t-app-container-gutter: var(--t-space-6);
+	--t-app-container-gutter-inline: max(
+		var(--t-app-container-gutter),
+		calc((100svw - var(--t-app-container-max-width)) / 2)
+	);
+	--t-app-header-height: var(--t-space-18);
 	--t-app-sidebar-width: 18rem;
 	--t-app-scroll-padding-block-start: var(--t-space-6);
+
+	--t-app-logomark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 66 96'%3E%3Cpath d='M36 37.54c0-.86.73-1.54 1.59-1.5C53.42 36.87 66 49.96 66 66S53.42 95.13 37.59 95.96c-.86.04-1.59-.63-1.59-1.5zM30 58.46c0 .86-.73 1.54-1.59 1.5C12.58 59.13 0 46.04 0 30S12.58.87 28.41.04C29.27 0 30 .67 30 1.54z'/%3E%3Ccircle cx='51' cy='15' r='15'/%3E%3Ccircle cx='15' cy='81' r='15'/%3E%3C/svg%3E");
 }

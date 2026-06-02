@@ -1,17 +1,117 @@
+/* Root */
+
 html {
-	font-family: var(--t-font-family, ui-sans-serif, system-ui, sans-serif);
+	font-family: var(--t-font-family-base, ui-sans-serif, system-ui, sans-serif);
 	font-size: var(--t-font-size-base, 1rem);
-	line-height: var(--t-font-line-height, 1.5);
-	letter-spacing: var(--t-font-letter-spacing, 0);
-	text-size-adjust: 100%;
+	line-height: var(--t-font-line-height-base, 1.5);
+	letter-spacing: var(--t-font-letter-spacing-base, 0);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
-	scroll-padding-block-start: var(--t-scroll-offset, 1.5rlh);
+	scroll-padding-block-start: var(--t-app-scroll-padding-block-start, 1.5rlh);
 	-webkit-tap-highlight-color: transparent;
 }
 
 body {
-	background: var(--t-color-background-root);
-	letter-spacing: var(--t-font-letter-spacing, 0);
-	min-block-size: 100dvh;
+	background: var(--t-color-background-root, Canvas);
+	color: var(--t-color-foreground-base, CanvasText);
+	letter-spacing: var(--t-font-letter-spacing-base, 0);
+}
+
+/* Typography */
+
+:where(h1, h2, h3, h4, h5, h6) {
+	font-size: initial;
+	font-weight: var(--t-font-weight-heading, 600);
+	line-height: var(--t-font-line-height-heading, 1.25);
+	letter-spacing: var(--t-font-letter-spacing-heading, var(--t-font-letter-spacing-base, 0));
+	text-wrap: var(--t-text-wrap-heading, balance);
+}
+
+:where(a) {
+	color: currentColor;
+	text-decoration-thickness: var(--t-text-underline-thickness, 0.0625em);
+	text-underline-offset: var(--t-text-underline-offset-comfortable, 0.25em);
+	touch-action: manipulation;
+}
+
+:where(p) {
+	text-wrap: pretty;
+}
+
+:where(strong) {
+	font-weight: var(--t-font-weight-strong, 600);
+}
+
+:where(address) {
+	font-style: normal;
+}
+
+:where(small) {
+	font-size: 80%;
+}
+
+:where(sub, sup) {
+	font-size: 75%;
+	line-height: 0;
+	position: relative;
+	vertical-align: baseline;
+}
+
+:where(sub) {
+	bottom: -0.25em;
+}
+
+:where(sup) {
+	top: -0.5em;
+}
+
+:where(abbr[title]) {
+	cursor: help;
+	text-decoration: underline dotted;
+	text-underline-offset: 0.125em;
+}
+
+/* Lists */
+
+:where(ul, ol) {
+	list-style: none;
+}
+
+:where(ul, ol, menu) {
+	padding-inline-start: 0;
+}
+
+/* Code */
+
+:where(pre, code, kbd, samp) {
+	font-family: var(--t-font-family-monospace, ui-monospace, monospace);
+	font-size: 1em;
+}
+
+:where(pre) {
+	overflow: auto;
+}
+
+/* Elements */
+
+:where(hr) {
+	border: 0;
+	border-block-start: var(--t-border-width-thin, 1px) solid var(--t-color-border-base, currentColor);
+	margin-block: var(--t-space-6, 1.5rem);
+}
+
+:focus-visible {
+	outline-color: var(--t-focus-ring-color, Highlight);
+	outline-offset: var(--t-focus-ring-offset, 2px);
+	outline-style: var(--t-focus-ring-style, solid);
+	outline-width: var(--t-focus-ring-width, 2px);
+}
+
+::selection {
+	background-color: var(--t-color-selection-background, Highlight);
+	color: var(--t-color-selection-foreground, HighlightText);
+}
+
+:is(img, picture, video)::selection {
+	background-color: transparent;
 }

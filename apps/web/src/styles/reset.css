@@ -1,0 +1,223 @@
+/* Reset the box model and browser-authored outer spacing. */
+
+*,
+*::before,
+*::after,
+::backdrop,
+::file-selector-button {
+	box-sizing: border-box;
+	margin: 0;
+}
+
+/* Stabilize mobile text sizing and code indentation defaults. */
+
+html {
+	text-size-adjust: 100%;
+	tab-size: 4;
+}
+
+/* Keep short pages at least as tall as the dynamic viewport. */
+
+body {
+	min-block-size: 100dvh;
+}
+
+/* Make replaced and embedded elements easier to place in layout. */
+
+:where(img, svg, video, canvas, audio, iframe, embed, object) {
+	display: block;
+	vertical-align: middle;
+}
+
+/* Prevent common visual media from overflowing their container. */
+
+:where(img, picture, video, canvas, svg, iframe) {
+	max-inline-size: 100%;
+}
+
+/* Preserve intrinsic aspect ratio when images and videos are constrained. */
+
+:where(img, video) {
+	block-size: auto;
+	height: auto;
+}
+
+/* Remove the default frame around embedded documents. */
+
+:where(iframe) {
+	border: 0;
+}
+
+/* Use the table model most UI table styles expect. */
+
+:where(table) {
+	border-collapse: collapse;
+	border-color: inherit;
+	border-spacing: 0;
+	text-indent: 0;
+}
+
+/* Avoid centered table headings unless a component asks for them. */
+
+:where(th) {
+	text-align: inherit;
+}
+
+/* Make form controls inherit surrounding typography before component styling. */
+
+:where(button, input, optgroup, select, textarea),
+::file-selector-button {
+	color: inherit;
+	font: inherit;
+	font-feature-settings: inherit;
+	font-variation-settings: inherit;
+	letter-spacing: inherit;
+}
+
+/* Preserve native button behavior after font/control normalization. */
+
+:where(button, input:is([type="button"], [type="reset"], [type="submit"])),
+::file-selector-button {
+	-webkit-appearance: button;
+	appearance: button;
+}
+
+/* Keep button and select labels from inheriting unexpected text transforms. */
+
+:where(button, select) {
+	text-transform: none;
+}
+
+/* Remove awkward default fieldset sizing and spacing. */
+
+:where(fieldset) {
+	border: 0;
+	margin: 0;
+	padding: 0;
+	min-inline-size: 0;
+}
+
+/* Remove default legend padding while preserving normal text behavior. */
+
+:where(legend) {
+	color: inherit;
+	padding: 0;
+	white-space: normal;
+}
+
+/* Prevent horizontal textarea resizing from breaking layouts. */
+
+:where(textarea) {
+	resize: vertical;
+}
+
+/* Avoid unexpected wrapping behavior in native select controls. */
+
+:where(select) {
+	word-wrap: normal;
+}
+
+/* Keep file input buttons aligned with surrounding form controls. */
+
+::file-selector-button {
+	font: inherit;
+	margin-inline-end: 0.25rem;
+}
+
+::-webkit-file-upload-button {
+	-webkit-appearance: button;
+	appearance: button;
+	font: inherit;
+}
+
+/* Normalize WebKit search input decoration. */
+
+:where(input[type="search"]) {
+	-webkit-appearance: textfield;
+	appearance: textfield;
+	outline-offset: -2px;
+}
+
+::-webkit-search-decoration {
+	-webkit-appearance: none;
+}
+
+/* Keep WebKit spin buttons from creating odd height/cursor behavior. */
+
+::-webkit-inner-spin-button,
+::-webkit-outer-spin-button {
+	block-size: auto;
+	height: auto;
+}
+
+/* Normalize empty date/time inputs and internal WebKit field padding. */
+
+::-webkit-date-and-time-value {
+	min-block-size: 1lh;
+	text-align: inherit;
+}
+
+::-webkit-datetime-edit {
+	display: inline-flex;
+}
+
+::-webkit-datetime-edit-fields-wrapper {
+	padding: 0;
+}
+
+::-webkit-datetime-edit,
+::-webkit-datetime-edit-year-field,
+::-webkit-datetime-edit-month-field,
+::-webkit-datetime-edit-day-field,
+::-webkit-datetime-edit-hour-field,
+::-webkit-datetime-edit-minute-field,
+::-webkit-datetime-edit-second-field,
+::-webkit-datetime-edit-millisecond-field,
+::-webkit-datetime-edit-meridiem-field {
+	padding-block: 0;
+}
+
+::-webkit-calendar-picker-indicator {
+	line-height: 1;
+}
+
+/* Remove Firefox's extra invalid-control shadow. */
+
+:-moz-ui-invalid {
+	box-shadow: none;
+}
+
+/* Keep placeholder text from becoming semi-transparent in Firefox. */
+
+::placeholder {
+	opacity: 1;
+}
+
+/* Signal pointer interaction for button-like controls. */
+
+:where(button, [role="button"]) {
+	touch-action: manipulation;
+}
+
+/* Signal disabled interaction without forcing an opacity/color decision. */
+
+:where(:disabled, [aria-disabled="true"]) {
+	cursor: not-allowed;
+}
+
+/* Align progress with surrounding text and keep summaries interactive. */
+
+:where(progress) {
+	vertical-align: baseline;
+}
+
+:where(summary) {
+	cursor: pointer;
+	display: list-item;
+}
+
+/* Keep hidden authoritative while preserving hidden="until-found". */
+
+:where([hidden]:not([hidden="until-found"])) {
+	display: none !important;
+}

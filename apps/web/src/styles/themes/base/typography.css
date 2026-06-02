@@ -1,0 +1,46 @@
+[data-theme] {
+	--t-font-family-base: ui-sans-serif, system-ui, sans-serif;
+	--t-font-family-monospace: ui-monospace, "SFMono-Regular", Consolas, monospace;
+	--t-font-family-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+
+	--t-font-size-2xsmall: 0.75rem;
+	--t-font-size-xsmall: 0.875rem;
+	--t-font-size-small: 0.9375rem;
+	--t-font-size-base: 1rem;
+	--t-font-size-medium: 1.125rem;
+	--t-font-size-large: 1.25rem;
+	--t-font-size-xlarge: 1.5rem;
+	--t-font-size-2xlarge: 2rem;
+	--t-font-size-3xlarge: 3rem;
+	--t-font-size-4xlarge: 4rem;
+	--t-font-size-5xlarge: 4.5rem;
+
+	--t-font-line-height-tightest: 1;
+	--t-font-line-height-tighter: 1.125;
+	--t-font-line-height-tight: 1.25;
+	--t-font-line-height-base: 1.5;
+	--t-font-line-height-relaxed: 1.625;
+
+	--t-font-letter-spacing-tight: 0;
+	--t-font-letter-spacing-base: 0;
+	--t-font-letter-spacing-wide: 0.025em;
+
+	--t-font-weight-regular: 400;
+	--t-font-weight-medium: 500;
+	--t-font-weight-semibold: 575;
+	--t-font-weight-bold: 650;
+	--t-font-weight-black: 900;
+
+	--t-font-weight-heading: var(--t-font-weight-semibold);
+	--t-font-line-height-heading: var(--t-font-line-height-tight);
+	--t-font-letter-spacing-heading: var(--t-font-letter-spacing-base);
+	--t-font-weight-strong: var(--t-font-weight-semibold);
+	--t-text-wrap-heading: balance;
+
+	--t-text-underline-style: underline;
+	--t-text-underline-thickness: 0.0625em;
+	--t-text-underline-thickness-thick: 0.125em;
+	--t-text-underline-offset: 0.125em;
+	--t-text-underline-offset-comfortable: 0.25em;
+	--t-text-underline-color: var(--t-color-decoration-base);
+}

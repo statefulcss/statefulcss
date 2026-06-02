@@ -1,3 +1,6 @@
-@layer base;
+@layer reset, base, themes, components, utilities;
 
+@import url("./reset.css") layer(reset);
 @import url("./base.css") layer(base);
+@import url("./themes/index.css") layer(themes);
+@import url("./utilities.css") layer(utilities);

@@ -1,0 +1,12 @@
+[data-theme] {
+	--t-stack-below: -1;
+	--t-stack-base: 0;
+	--t-stack-above: 1;
+	--t-stack-dropdown: 100;
+	--t-stack-popover: 200;
+	--t-stack-overlay: 300;
+	--t-stack-modal: 400;
+	--t-stack-toast: 500;
+	--t-stack-tooltip: 600;
+	--t-stack-max: 9999;
+}

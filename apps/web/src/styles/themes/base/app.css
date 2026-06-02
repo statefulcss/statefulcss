@@ -1,0 +1,9 @@
+[data-theme] {
+	--t-app-content-width-narrow: 48rem;
+	--t-app-content-width: 72rem;
+	--t-app-content-width-wide: 90rem;
+	--t-app-container-gutter-inline: clamp(var(--t-space-4), 4vw, var(--t-space-6));
+	--t-app-header-height: 4rem;
+	--t-app-sidebar-width: 18rem;
+	--t-app-scroll-padding-block-start: var(--t-space-6);
+}

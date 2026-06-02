@@ -21,24 +21,24 @@
 		"types:cf": "wrangler types"
 	},
 	"dependencies": {
-		"astro": "^6.3.6"
+		"astro": "^6.4.2"
 	},
 	"devDependencies": {
 		"@astrojs/check": "^0.9.9",
-		"@astrojs/mdx": "^5.0.6",
+		"@astrojs/mdx": "^6.0.1",
 		"@astrojs/rss": "^4.0.18",
-		"@astrojs/sitemap": "^3.7.2",
+		"@astrojs/sitemap": "^3.7.3",
 		"@repo/eslint-config": "workspace:*",
 		"@resvg/resvg-wasm": "^2.6.2",
 		"@shikijs/transformers": "^4.1.0",
-		"@typescript-eslint/parser": "^8.59.4",
-		"eslint": "^10.4.0",
+		"@typescript-eslint/parser": "catalog:",
+		"eslint": "catalog:",
 		"eslint-plugin-astro": "^1.7.0",
 		"reading-time": "^1.5.0",
 		"rehype-autolink-headings": "^7.1.0",
 		"rehype-slug": "^6.0.0",
 		"satori": "^0.26.0",
-		"typescript": "^6.0.3",
-		"wrangler": "4.93.0"
+		"typescript": "catalog:",
+		"wrangler": "4.95.0"
 	}
 }

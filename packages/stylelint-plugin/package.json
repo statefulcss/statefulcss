@@ -11,6 +11,9 @@
 		"url": "https://omerbalyali.com"
 	},
 	"homepage": "https://statefulcss.com",
+	"engines": {
+		"node": ">=20.19.0"
+	},
 	"keywords": [
 		"stylelint",
 		"plugin",

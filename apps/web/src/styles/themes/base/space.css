@@ -1,4 +1,6 @@
 [data-theme] {
+	--t-space: var(--t-space-1);
+
 	--t-space-0: 0;
 	--t-space-0-5: 0.125rem;
 	--t-space-1: 0.25rem;

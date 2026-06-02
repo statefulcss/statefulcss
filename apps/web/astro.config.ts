@@ -17,6 +17,9 @@ import { getSiteUrl } from "./src/config/site";
 
 // https://astro.build/config
 export default defineConfig({
+	devToolbar: {
+		enabled: false,
+	},
 	site: getSiteUrl(),
 	trailingSlash: "always",
 	integrations: [mdx(), sitemap()],

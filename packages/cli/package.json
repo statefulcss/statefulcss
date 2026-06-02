@@ -1,29 +1,25 @@
 {
-	"name": "@statefulcss/stylelint-plugin",
-	"version": "0.0.0",
-	"private": true,
+	"name": "statefulcss",
+	"version": "0.1.0",
 	"type": "module",
 	"license": "MIT",
-	"description": "Stylelint plugin for Stateful CSS",
+	"description": "Command line tools for Stateful CSS",
 	"author": {
 		"name": "Ömer Balyali",
 		"email": "git@omerbalyali.com",
 		"url": "https://omerbalyali.com"
 	},
 	"homepage": "https://statefulcss.com",
-	"engines": {
-		"node": ">=20.19.0"
-	},
 	"keywords": [
-		"stylelint",
-		"plugin",
+		"statefulcss",
+		"stateful-css",
 		"css",
-		"stateful-css"
+		"cli"
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/statefulcss/statefulcss.git",
-		"directory": "packages/stylelint-plugin"
+		"url": "git+https://github.com/statefulcss/statefulcss.git",
+		"directory": "packages/cli"
 	},
 	"bugs": {
 		"url": "https://github.com/statefulcss/statefulcss/issues"
@@ -31,35 +27,32 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"exports": {
-		".": {
-			"import": "./dist/index.js",
-			"types": "./dist/index.d.ts"
-		}
+	"bin": {
+		"statefulcss": "dist/bin.js"
 	},
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
 	"files": [
-		"dist"
+		"dist",
+		"README.md",
+		"LICENSE"
 	],
 	"scripts": {
-		"build": "tsup && tsc --emitDeclarationOnly",
+		"build": "tsup",
 		"dev": "tsup --watch",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"lint": "eslint --max-warnings 0",
 		"check-types": "tsc --noEmit"
 	},
-	"peerDependencies": {
-		"stylelint": "^17.0.0"
-	},
 	"devDependencies": {
 		"@repo/eslint-config": "workspace:*",
 		"@repo/tsconfig": "workspace:*",
+		"@types/node": "^24.1.0",
 		"eslint": "catalog:",
-		"stylelint": "^17.12.0",
 		"tsup": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:"
+	},
+	"dependencies": {
+		"commander": "^15.0.0"
 	}
 }

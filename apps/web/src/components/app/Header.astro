@@ -28,8 +28,11 @@
 		height: var(--t-app-header-height);
 		min-height: var(--t-app-header-height);
 		margin-block: var(--t-space-3);
-
-		/* background-color: color-mix(in oklch, black 3%, transparent); */
+		padding-block: var(--t-space-3);
+		padding-inline: var(--t-space-6);
+		margin-inline: calc(var(--t-space-6) * -1);
+		border-radius: var(--t-radius-large);
+		background-color: color-mix(in oklch, black 3%, transparent);
 	}
 
 	.brand {
@@ -38,7 +41,7 @@
 
 			--s-color: currentColor;
 			--s-background-color: transparent;
-			--s-outline: var(--t-border-thin) solid var(--s-outline-color);
+			--s-outline: var(--t-border-width-base) solid var(--s-outline-color);
 			--s-outline-color: transparent;
 		}
 
@@ -47,7 +50,7 @@
 		padding-inline: var(--_padding);
 		margin-inline: calc(var(--_padding) * -1);
 		display: flex;
-		gap: var(--t-space-3);
+		gap: calc(var(--t-space) * 2.5);
 		align-items: center;
 		color: var(--s-color);
 		font-size: var(--t-font-size-large);
@@ -59,6 +62,7 @@
 		transition: var(--t-transition-default);
 		transition-property: color, background-color, outline-color;
 		user-select: none;
+		outline: var(--s-outline);
 
 		&::before {
 			content: "";

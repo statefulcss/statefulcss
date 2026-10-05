@@ -27,9 +27,7 @@ export const docsSections = {
 export type DocsSection = keyof typeof docsSections;
 export type DocsCollectionName = (typeof docsSections)[DocsSection]["collection"];
 export type DocsEntry =
-	| CollectionEntry<"docsArchitecture">
-	| CollectionEntry<"docsConcepts">
-	| CollectionEntry<"docsTools">;
+	CollectionEntry<"docsArchitecture"> | CollectionEntry<"docsConcepts"> | CollectionEntry<"docsTools">;
 
 export function compareByOrderAndTitle<T extends DocsEntry>(a: T, b: T): number {
 	return a.data.order - b.data.order || a.data.title.localeCompare(b.data.title);

@@ -5,7 +5,6 @@
 		var(--t-app-container-gutter),
 		calc((100svw - var(--t-app-container-max-width)) / 2)
 	);
-	--t-app-header-height: var(--t-space-18);
 	--t-app-sidebar-width: 18rem;
 	--t-app-scroll-padding-block-start: var(--t-space-6);
 

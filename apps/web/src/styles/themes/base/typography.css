@@ -1,5 +1,5 @@
 [data-theme] {
-	--t-font-family-base: ui-sans-serif, system-ui, sans-serif;
+	--t-font-family-base: var(--font-switzer), ui-sans-serif, system-ui, sans-serif;
 	--t-font-family-monospace: ui-monospace, "SFMono-Regular", Consolas, monospace;
 	--t-font-family-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 
@@ -22,7 +22,7 @@
 	--t-font-line-height-relaxed: 1.625;
 
 	--t-font-letter-spacing-tight: -0.01em;
-	--t-font-letter-spacing-base: 0.003em;
+	--t-font-letter-spacing-base: -0.0025em;
 	--t-font-letter-spacing-wide: 0.025em;
 
 	--t-font-weight-regular: 400;

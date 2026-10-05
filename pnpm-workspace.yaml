@@ -4,13 +4,13 @@ allowBuilds:
   sharp: true
   workerd: true
 catalog:
-  "@eslint/js": ^9.39.4
-  "@typescript-eslint/parser": ^8.60.0
-  eslint: ^9.39.4
+  "@eslint/js": ^10.0.1
+  "@typescript-eslint/parser": ^8.71.0
+  eslint: ^10.12.0
   tsup: ^8.5.1
   typescript: ^6.0.3
-  typescript-eslint: ^8.60.0
-  vitest: ^4.1.7
+  typescript-eslint: ^8.71.0
+  vitest: ^5.0.3
 engineStrict: true
 minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true

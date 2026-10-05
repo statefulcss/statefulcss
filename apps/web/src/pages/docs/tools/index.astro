@@ -23,14 +23,10 @@ const entries = (await getCollection("docsTools", ({ data }) => !data.draft)).so
 	<main>
 		<h1>{section.title}</h1>
 		<ul>
-			{
-				entries.map((entry) => (
-					<li>
-						<a href={getDocsEntryPath("tools", entry)}>{entry.data.title}</a>
-						<p>{entry.data.description}</p>
-					</li>
-				))
-			}
+			{entries.map((entry) => <li>
+				<a href={getDocsEntryPath("tools", entry)}>{entry.data.title}</a>
+				<p>{entry.data.description}</p>
+			</li>)}
 		</ul>
 	</main>
 </Layout>

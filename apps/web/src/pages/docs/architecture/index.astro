@@ -25,14 +25,10 @@ const entries = (await getCollection("docsArchitecture", ({ data }) => !data.dra
 	<main>
 		<h1>{section.title}</h1>
 		<ul>
-			{
-				entries.map((entry) => (
-					<li>
-						<a href={getDocsEntryPath("architecture", entry)}>{entry.data.title}</a>
-						<p>{entry.data.description}</p>
-					</li>
-				))
-			}
+			{entries.map((entry) => <li>
+				<a href={getDocsEntryPath("architecture", entry)}>{entry.data.title}</a>
+				<p>{entry.data.description}</p>
+			</li>)}
 		</ul>
 	</main>
 </Layout>

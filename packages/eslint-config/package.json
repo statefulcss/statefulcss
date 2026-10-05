@@ -5,8 +5,7 @@
 	"private": true,
 	"license": "MIT",
 	"exports": {
-		"./base": "./base.js",
-		"./react": "./react.js"
+		"./base": "./base.js"
 	},
 	"devDependencies": {
 		"@eslint/js": "catalog:",

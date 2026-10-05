@@ -39,13 +39,11 @@ const readingTime = getReadingTime(post.body);
 			<header>
 				<h1>{post.data.title}</h1>
 				<time datetime={post.data.publishedAt.toISOString()}>
-					{
-						post.data.publishedAt.toLocaleDateString("en", {
-							day: "numeric",
-							month: "long",
-							year: "numeric",
-						})
-					}
+					{post.data.publishedAt.toLocaleDateString("en", {
+						day: "numeric",
+						month: "long",
+						year: "numeric",
+					})}
 				</time>
 				<span>{readingTime.text}</span>
 			</header>

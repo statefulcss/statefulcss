@@ -23,6 +23,9 @@ export function getSiteUrl(): string {
 	return new URL(process.env.PUBLIC_SITE_URL ?? siteConfig.url).origin;
 }
 
+/** False for preview and other non-production deployments, which should stay out of search results. */
+export const isProductionSite = getSiteUrl() === new URL(siteConfig.url).origin;
+
 export function formatPageTitle(title?: string): string {
 	if (!title || title === siteConfig.name) {
 		return siteConfig.name;

@@ -6,6 +6,7 @@ import { ClientRouter } from "astro:transitions";
 import {
 	formatPageTitle,
 	getSiteUrl,
+	isProductionSite,
 	siteConfig,
 	toAbsoluteUrl,
 	toCanonicalUrl,
@@ -47,6 +48,7 @@ const {
 } = Astro.props;
 
 const pageTitle = formatPageTitle(title);
+const robotsContent = isProductionSite ? robots : "noindex, nofollow, noarchive";
 const siteUrl = getSiteUrl();
 const canonicalUrl = toCanonicalUrl(canonical);
 const rssUrl = toAbsoluteUrl(siteConfig.rssPath).toString();
@@ -104,7 +106,7 @@ const serializeJsonLd = (item: JsonLdSchema) => JSON.stringify(item).replaceAll(
 <meta name="application-name" content={siteConfig.name} />
 <meta name="author" content={author} />
 <meta name="referrer" content="strict-origin-when-cross-origin" />
-<meta name="robots" content={robots} />
+<meta name="robots" content={robotsContent} />
 <meta name="theme-color" content={themeColor} />
 <link rel="canonical" href={canonicalUrl} />
 <link rel="icon" type="image/png" href="/favicon-16x16.png" sizes="16x16" />

@@ -1,0 +1,16 @@
+# Cloudflare static asset headers: https://developers.cloudflare.com/workers/static-assets/headers/
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+
+# Astro fingerprints everything under /_astro/, so it can be cached forever.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# OG images keep stable URLs across deploys, so they must be revalidated eventually.
+/og/*
+  Cache-Control: public, max-age=86400

@@ -30,6 +30,9 @@ dist
 # astro
 .astro/
 
+# Wrangler
+.wrangler/
+
 
 # Debug
 npm-debug.log*

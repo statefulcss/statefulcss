@@ -8,7 +8,31 @@ import { getOgImagePath } from "@og/templates";
 	description="The official website of Stateful CSS."
 	image={getOgImagePath("/", { index: true })}
 >
-	<main>
-		<h1>Stateful CSS</h1>
-	</main>
+	<div class="hero">
+		<strong>Styling is state management.</strong>
+		<p>
+			A CSS architecture where markup declares state and styles flow from it. Making every visual change
+			predictable and traceable by design.
+		</p>
+	</div>
 </Layout>
+
+<style>
+	.hero {
+		margin-block: var(--t-space-24);
+
+		& > strong {
+			display: block;
+			margin-block-end: var(--t-space-6);
+			font-size: var(--t-font-size-3xlarge);
+			font-weight: var(--t-font-weight-semibold);
+			letter-spacing: var(--t-font-letter-spacing-tight);
+			line-height: var(--t-font-line-height-tighter);
+		}
+
+		& > p {
+			font-size: var(--t-font-size-xlarge);
+			line-height: var(--t-font-line-height-tight);
+		}
+	}
+</style>

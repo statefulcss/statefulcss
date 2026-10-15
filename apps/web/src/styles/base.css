@@ -12,8 +12,8 @@ html {
 }
 
 body {
-	background: var(--t-color-background-root, Canvas);
-	color: var(--t-color-foreground-base, CanvasText);
+	background: var(--t-color-background-app, Canvas);
+	color: var(--t-color-foreground-app, CanvasText);
 	letter-spacing: var(--t-font-letter-spacing-base, 0);
 }
 

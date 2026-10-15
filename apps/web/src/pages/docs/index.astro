@@ -18,14 +18,10 @@ const description = "Documentation for Stateful CSS.";
 	<main>
 		<h1>Docs</h1>
 		<ul>
-			{
-				sections.map((section) => (
-					<li>
-						<a href={section.path}>{section.title}</a>
-						<p>{section.description}</p>
-					</li>
-				))
-			}
+			{sections.map((section) => <li>
+				<a href={section.path}>{section.title}</a>
+				<p>{section.description}</p>
+			</li>)}
 		</ul>
 	</main>
 </Layout>

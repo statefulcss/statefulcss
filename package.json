@@ -26,7 +26,7 @@
 		"@commitlint/config-conventional": "^21.2.3",
 		"lefthook": "^2.1.16",
 		"prettier": "^3.9.9",
-		"prettier-plugin-astro": "0.14.1",
+		"prettier-plugin-astro": "1.1.0",
 		"turbo": "^2.11.7",
 		"typescript": "catalog:"
 	}

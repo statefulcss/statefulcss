@@ -1,3 +1,147 @@
 <header>
-	<span>Stateful CSS</span>
+	<a href="/" class="brand">Stateful CSS</a>
+	<nav aria-label="Primary" class="primary-nav">
+		<ul>
+			<li>
+				<a href="/docs/concepts/">Concepts</a>
+			</li>
+			<li>
+				<a href="/docs/">Documentation</a>
+			</li>
+			<li>
+				<a
+					href="https://github.com/statefulcss/statefulcss"
+					target="_blank"
+					rel="noopener noreferrer"
+					data-item="github"
+					>GitHub</a
+				>
+			</li>
+		</ul>
+	</nav>
 </header>
+
+<style>
+	header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		height: var(--t-app-header-height);
+		min-height: var(--t-app-header-height);
+		margin-block: var(--t-space-3);
+		padding-block: var(--t-space-3);
+		padding-inline: var(--t-space-6);
+		margin-inline: calc(var(--t-space-6) * -1);
+		border-radius: var(--t-radius-large);
+		background-color: color-mix(in oklch, black 3%, transparent);
+	}
+
+	.brand {
+		:where(&) {
+			--_padding: var(--t-space-3);
+
+			--s-color: currentColor;
+			--s-background-color: transparent;
+			--s-outline: var(--t-border-width-base) solid var(--s-outline-color);
+			--s-outline-color: transparent;
+		}
+
+		position: relative;
+		padding-block: var(--_padding);
+		padding-inline: var(--_padding);
+		margin-inline: calc(var(--_padding) * -1);
+		display: flex;
+		gap: calc(var(--t-space) * 2.5);
+		align-items: center;
+		color: var(--s-color);
+		font-size: var(--t-font-size-large);
+		font-weight: var(--t-font-weight-semibold);
+		text-decoration: none;
+		text-wrap: nowrap;
+		background-color: var(--s-background-color);
+		border-radius: var(--t-radius-medium);
+		transition: var(--t-transition-default);
+		transition-property: color, background-color, outline-color;
+		user-select: none;
+		outline: var(--s-outline);
+
+		&::before {
+			content: "";
+			height: var(--t-space-6);
+			aspect-ratio: 1 / 1.4545;
+			mask-image: var(--t-app-logomark);
+			mask-repeat: no-repeat;
+			background-color: currentColor;
+		}
+
+		&:focus-visible {
+			--s-outline-color: color-mix(in oklch, currentColor 40%, transparent);
+		}
+	}
+
+	.primary-nav {
+		& > ul {
+			display: flex;
+			gap: var(--t-space-4);
+			align-items: center;
+
+			& > li > a {
+				:where(&) {
+					--_padding: var(--t-space-1-5);
+
+					--s-background-color: transparent;
+					--s-color: currentColor;
+					--s-margin-inline: 0;
+					--s-padding-block: var(--_padding);
+					--s-padding-inline: var(--_padding);
+				}
+
+				display: inline-flex;
+				align-items: center;
+				padding-block: var(--s-padding-block);
+				padding-inline: var(--s-padding-inline);
+				margin-inline: var(--s-margin-inline);
+				color: var(--s-color);
+				font-weight: var(--t-font-weight-medium);
+				text-decoration: none;
+				background-color: var(--s-background-color);
+				border-radius: var(--t-radius-medium);
+				transition: var(--t-transition-default);
+				transition-property: background-color, color, text-decoration-color;
+
+				&:is(:hover, :active, :focus-visible) {
+					--s-color: var(--t-color-accent);
+				}
+
+				&[data-item="github"] {
+					--s-background-color: var(--t-color-foreground-app);
+					--s-color: var(--t-color-background-app);
+					--s-margin-inline: var(--t-space-1-5) 0;
+					--s-padding-block: var(--t-space-2);
+					--s-padding-inline: calc(var(--t-space) * 2.5);
+
+					&:is(:hover, :active, :focus-visible) {
+						--s-background-color: color-mix(
+							in oklch,
+							var(--t-color-foreground-app) 10%,
+							var(--t-color-accent)
+						);
+						--s-background-color: var(--t-color-accent);
+					}
+
+					&::before {
+						content: "";
+						display: block;
+						height: var(--t-font-size-large);
+						aspect-ratio: 1 / 1;
+						mask-repeat: no-repeat;
+						mask-size: contain;
+						mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='98' height='96' fill='none'%3E%3Cg clip-path='url(%23a)'%3E%3Cpath fill='%23000' d='M41.44 69.385C28.807 67.853 19.906 58.762 19.906 46.99c0-4.785 1.723-9.953 4.594-13.398-1.244-3.158-1.053-9.858.383-12.633 3.828-.479 8.996 1.531 12.058 4.307 3.637-1.149 7.465-1.723 12.155-1.723s8.517.574 11.963 1.627c2.966-2.68 8.23-4.69 12.058-4.211 1.34 2.584 1.531 9.283.287 12.537 3.063 3.637 4.69 8.518 4.69 13.494 0 11.772-8.9 20.672-21.725 22.3 3.254 2.104 5.455 6.698 5.455 11.962v9.953c0 2.871 2.393 4.498 5.264 3.35C84.41 87.95 98 70.629 98 49.19 98 22.107 75.988 0 48.904 0S0 22.107 0 49.191c0 21.246 13.494 38.856 31.678 45.46 2.584.956 5.072-.766 5.072-3.35v-7.657c-1.34.575-3.062.958-4.594.958-6.316 0-10.049-3.446-12.728-9.858-1.053-2.584-2.201-4.115-4.403-4.402-1.148-.096-1.53-.574-1.53-1.149 0-1.148 1.913-2.01 3.827-2.01 2.776 0 5.168 1.723 7.657 5.264 1.914 2.776 3.923 4.02 6.316 4.02s3.924-.861 6.125-3.063c1.627-1.627 2.871-3.062 4.02-4.02'/%3E%3C/g%3E%3Cdefs%3E%3CclipPath id='a'%3E%3Cpath fill='%23fff' d='M0 0h98v96H0z'/%3E%3C/clipPath%3E%3C/defs%3E%3C/svg%3E");
+						background-color: currentColor;
+						margin-inline-end: var(--t-space-2);
+					}
+				}
+			}
+		}
+	}
+</style>

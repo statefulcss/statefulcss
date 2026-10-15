@@ -60,8 +60,25 @@ const {
 		/>
 	</head>
 	<body>
-		<Header />
-		<slot />
-		<Footer />
+		<div class="app-container">
+			<Header />
+			<main id="main-content" class="main-content">
+				<slot />
+			</main>
+			<Footer />
+		</div>
 	</body>
 </html>
+
+<style>
+	.app-container {
+		display: flex;
+		flex-direction: column;
+		min-height: 100dvh;
+	}
+
+	.main-content {
+		flex: 1;
+		padding-block: var(--t-space-6);
+	}
+</style>

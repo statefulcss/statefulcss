@@ -108,9 +108,44 @@ jobs:
             echo "web=true" >> "$GITHUB_OUTPUT"
           fi
 
+  website-tests:
+    name: Website tests
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build web
+        run: pnpm turbo run build --filter=web
+
+      - name: Install Chromium
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run website tests
+        working-directory: apps/web
+        run: pnpm test:e2e
+
+      - name: Upload test traces
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: website-test-results
+          path: apps/web/test-results/
+          retention-days: 7
+
   deploy-preview:
     name: Deploy Preview
-    needs: [checks, changes]
+    needs: [checks, changes, website-tests]
     # Same-repo PRs only (forks get no secrets); Renovate PRs would overwrite the single shared preview.
     if: >-
       github.event_name == 'pull_request' &&
@@ -152,7 +187,7 @@ jobs:
 
   deploy-production:
     name: Deploy Production
-    needs: [checks, changes]
+    needs: [checks, changes, website-tests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20

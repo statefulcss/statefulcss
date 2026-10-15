@@ -6,5 +6,5 @@ export default defineConfig({
 	dts: false,
 	clean: true,
 	outDir: "dist",
-	target: "node24",
+	target: "node22",
 });

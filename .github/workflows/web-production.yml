@@ -40,6 +40,7 @@ jobs:
       - name: Build web
         env:
           PUBLIC_SITE_URL: https://statefulcss.com
+          PUBLIC_CF_WEB_ANALYTICS_TOKEN: ${{ vars.PUBLIC_CF_WEB_ANALYTICS_TOKEN }}
         run: pnpm turbo run build --filter=web
 
       - name: Deploy production

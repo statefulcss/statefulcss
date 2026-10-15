@@ -10,6 +10,7 @@ import {
 	siteConfig,
 	toAbsoluteUrl,
 	toCanonicalUrl,
+	webAnalyticsToken,
 	type JsonLdSchema,
 } from "@config/site";
 
@@ -147,3 +148,11 @@ const serializeJsonLd = (item: JsonLdSchema) => JSON.stringify(item).replaceAll(
 <Font cssVariable="--font-switzer" preload />
 <Font cssVariable="--font-jetbrains-mono" preload />
 <ClientRouter />
+{webAnalyticsToken && (
+	<script
+		is:inline
+		type="module"
+		src="https://static.cloudflareinsights.com/beacon.min.js"
+		data-cf-beacon={JSON.stringify({ token: webAnalyticsToken })}
+	></script>
+)}

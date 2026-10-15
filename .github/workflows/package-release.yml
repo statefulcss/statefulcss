@@ -16,10 +16,6 @@ concurrency:
   group: package-release-${{ github.ref }}
   cancel-in-progress: false
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
   select-mode:
     name: Select Release Mode
@@ -37,17 +33,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
+      - name: Setup
+        uses: ./.github/actions/setup
         with:
-          node-version-file: .nvmrc
-          package-manager-cache: false
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          cache: "false"
 
       - name: Select mode
         id: select-mode
@@ -69,17 +58,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
+      - name: Setup
+        uses: ./.github/actions/setup
         with:
-          node-version-file: .nvmrc
-          package-manager-cache: false
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          cache: "false"
 
       - name: Create or update release PR
         uses: changesets/action/version@v2
@@ -105,17 +87,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
+      - name: Setup
+        uses: ./.github/actions/setup
         with:
-          node-version-file: .nvmrc
-          package-manager-cache: false
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          cache: "false"
 
       - name: Check formatting
         run: pnpm format:check
@@ -146,23 +121,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
+      - name: Setup
+        uses: ./.github/actions/setup
         with:
-          node-version-file: .nvmrc
+          cache: "false"
           registry-url: https://registry.npmjs.org
-          package-manager-cache: false
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Publish to npm and create GitHub releases
         uses: changesets/action/publish@v2
         with:
           pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}
           create-github-releases: true
-        env:
-          NPM_CONFIG_PROVENANCE: "true"

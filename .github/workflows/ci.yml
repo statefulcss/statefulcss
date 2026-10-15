@@ -11,31 +11,179 @@ permissions:
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded PR runs, but let every push to main finish so each merge is checked and deployed.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  ci:
-    name: Format, Lint, Typecheck, Test & Build
+  checks:
+    name: Checks
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          node-version: 24
+          persist-credentials: false
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup
+        uses: ./.github/actions/setup
 
       - name: Check formatting
         run: pnpm format:check
 
       - name: Lint, typecheck, test & build
         run: pnpm turbo run lint check-types test build
+
+      - name: Pack publishable packages
+        run: pnpm --filter ./packages/cli --filter ./packages/stylelint-plugin pack --pack-destination "$RUNNER_TEMP/packs"
+
+      - name: Upload packages
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: packages
+          path: ${{ runner.temp }}/packs/*.tgz
+          if-no-files-found: error
+          retention-days: 3
+
+  package-smoke-test:
+    name: Package smoke test (Node ${{ matrix.node }})
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        # Lowest supported versions of the published packages, plus the current LTS.
+        node: ["20.19.0", "22.12.0", "24"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+
+      - name: Download packages
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: packages
+          path: ${{ runner.temp }}/packs
+
+      - name: Install and run packed packages
+        run: .github/scripts/package-smoke-test.sh "$RUNNER_TEMP/packs"
+
+  changes:
+    name: Detect website changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Compare with base
+        id: filter
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          # Anything that can change the built site: the app itself, shared configs, and dependencies.
+          paths=(apps/web packages/eslint-config packages/tsconfig package.json pnpm-lock.yaml pnpm-workspace.yaml)
+          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            echo "Base commit unavailable; treating the website as changed."
+            echo "web=true" >> "$GITHUB_OUTPUT"
+          elif git diff --quiet "$BASE_SHA" "$GITHUB_SHA" -- "${paths[@]}"; then
+            echo "web=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "web=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy-preview:
+    name: Deploy Preview
+    needs: [checks, changes]
+    # Same-repo PRs only (forks get no secrets); Renovate PRs would overwrite the single shared preview.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'renovate[bot]' &&
+      needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: web-preview
+      cancel-in-progress: false
+    environment:
+      name: web-preview
+      url: https://preview.statefulcss.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          cache: "false"
+
+      - name: Build web
+        env:
+          PUBLIC_SITE_URL: https://preview.statefulcss.com
+        run: pnpm turbo run build --filter=web
+
+      - name: Deploy preview
+        working-directory: apps/web
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          NO_COLOR: "1"
+        run: pnpm run deploy:preview
+
+  deploy-production:
+    name: Deploy Production
+    needs: [checks, changes]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: web-production
+      cancel-in-progress: false
+    environment:
+      name: web-production
+      url: https://statefulcss.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          cache: "false"
+
+      - name: Build web
+        env:
+          PUBLIC_SITE_URL: https://statefulcss.com
+          PUBLIC_CF_WEB_ANALYTICS_TOKEN: ${{ vars.PUBLIC_CF_WEB_ANALYTICS_TOKEN }}
+        run: pnpm turbo run build --filter=web
+
+      - name: Deploy production
+        working-directory: apps/web
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          NO_COLOR: "1"
+        run: pnpm run deploy:production

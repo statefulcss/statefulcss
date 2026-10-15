@@ -1,5 +1,6 @@
 name: Package Release
 
+# Keep this file name and the npm-publish environment: npm trusted publishing is configured against them.
 on:
   push:
     branches: [main]
@@ -9,58 +10,106 @@ on:
       - "packages/**/CHANGELOG.md"
       - ".github/workflows/package-release.yml"
 
+permissions: {}
+
 concurrency:
   group: package-release-${{ github.ref }}
   cancel-in-progress: false
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
-  release-pr:
+  select-mode:
+    name: Select Release Mode
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      mode: ${{ steps.select-mode.outputs.mode }}
+      publish-plan-artifact-id: ${{ steps.select-mode.outputs.publish-plan-artifact-id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          cache: "false"
+
+      - name: Select mode
+        id: select-mode
+        uses: changesets/action/select-mode@v2
+
+  version:
     name: Create Release PR
+    needs: select-mode
+    if: needs.select-mode.outputs.mode == 'version'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: write
       pull-requests: write
-    outputs:
-      has-changesets: ${{ steps.changesets.outputs.hasChangesets }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          node-version: 24
-          package-manager-cache: false
+          persist-credentials: false
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          cache: "false"
 
       - name: Create or update release PR
-        id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action/version@v2
         with:
-          version: pnpm version-packages
-          commit: "chore(repo): version packages"
-          title: "chore(repo): version packages"
-          commitMode: github-api
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          script: pnpm version-packages
+          commit-message: "chore(repo): version packages"
+          pr-title: "chore(repo): version packages"
+
+  pack:
+    name: Check & Pack
+    needs: select-mode
+    if: needs.select-mode.outputs.mode == 'publish'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      pack-dir-artifact-id: ${{ steps.pack.outputs.pack-dir-artifact-id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          cache: "false"
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Lint, typecheck, test, and build packages
+        run: pnpm turbo run lint check-types test build --filter="./packages/*"
+
+      - name: Pack publishable packages
+        id: pack
+        uses: changesets/action/pack@v2
+        with:
+          publish-plan-artifact-id: ${{ needs.select-mode.outputs.publish-plan-artifact-id }}
 
   publish:
     name: Publish Packages
-    needs: release-pr
-    if: needs.release-pr.outputs.has-changesets == 'false'
+    needs: pack
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Requires approval and only runs from main (environment protection rules).
     environment: npm-publish
     permissions:
       contents: write
@@ -68,36 +117,18 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup
+        uses: ./.github/actions/setup
         with:
-          node-version: 24
+          cache: "false"
           registry-url: https://registry.npmjs.org
-          package-manager-cache: false
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Check formatting
-        run: pnpm format:check
-
-      - name: Lint, typecheck, test, and build
-        run: pnpm turbo run lint check-types test build
 
       - name: Publish to npm and create GitHub releases
-        id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action/publish@v2
         with:
-          publish: pnpm release
-          createGithubReleases: true
-          commitMode: github-api
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_CONFIG_PROVENANCE: "true"
+          pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}
+          create-github-releases: true

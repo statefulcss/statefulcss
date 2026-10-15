@@ -1,0 +1,119 @@
+{
+	$schema: "https://docs.renovatebot.com/renovate-schema.json",
+	extends: ["config:recommended", "helpers:pinGitHubActionDigests"],
+	timezone: "Europe/Berlin",
+	schedule: ["before 6am on monday"],
+	labels: ["dependencies"],
+
+	// PR titles become squash commit messages, so they must pass commitlint (allowed scopes: repo, web, ...).
+	semanticCommits: "enabled",
+	semanticCommitType: "chore",
+	semanticCommitScope: "repo",
+
+	// Longer than pnpm's minimumReleaseAge (1 day, strict), so lockfile updates never pick a version pnpm rejects.
+	minimumReleaseAge: "3 days",
+	internalChecksFilter: "strict",
+
+	// Refresh transitive dependencies within their ranges; stale lockfile entries caused most audit findings.
+	lockFileMaintenance: {
+		enabled: true,
+		schedule: ["before 6am on monday"],
+	},
+
+	vulnerabilityAlerts: {
+		labels: ["security"],
+		schedule: ["at any time"],
+		// pnpm still rejects anything younger than 1 day.
+		minimumReleaseAge: "1 day",
+	},
+
+	automergeStrategy: "squash",
+	rangeStrategy: "bump",
+
+	packageRules: [
+		{
+			description: "Website dependencies use the web scope.",
+			matchFileNames: ["apps/web/**"],
+			semanticCommitScope: "web",
+		},
+		{
+			description: "Auto-merge minor and patch updates once required checks pass.",
+			matchUpdateTypes: ["minor", "patch", "pin", "pinDigest", "digest", "lockFileMaintenance"],
+			automerge: true,
+		},
+		{
+			description: "Astro pins its markdown pipeline and Shiki versions, so they move together and get reviewed.",
+			matchPackageNames: ["astro", "@astrojs/**", "@shikijs/**", "shiki"],
+			groupName: "astro",
+			automerge: false,
+		},
+		{
+			description: "0.x releases can break on minor bumps; review OG image output.",
+			matchPackageNames: ["satori"],
+			automerge: false,
+		},
+		{
+			description: "Runtime dependencies of published packages get reviewed and keep their ranges for consumers.",
+			matchFileNames: ["packages/cli/package.json", "packages/stylelint-plugin/package.json"],
+			matchDepTypes: ["dependencies"],
+			rangeStrategy: "update-lockfile",
+			automerge: false,
+		},
+		{
+			description: "Widen peer ranges instead of dropping support for older versions.",
+			matchDepTypes: ["peerDependencies"],
+			rangeStrategy: "widen",
+			automerge: false,
+		},
+		{
+			matchPackageNames: ["eslint", "@eslint/**", "typescript-eslint", "@typescript-eslint/**", "eslint-*"],
+			groupName: "eslint",
+		},
+		{
+			matchPackageNames: ["vitest", "@vitest/**"],
+			groupName: "vitest",
+		},
+		{
+			matchPackageNames: ["@changesets/**"],
+			groupName: "changesets",
+		},
+		{
+			matchPackageNames: ["@commitlint/**"],
+			groupName: "commitlint",
+		},
+		{
+			matchPackageNames: ["wrangler"],
+			groupName: "wrangler",
+		},
+		{
+			matchManagers: ["github-actions"],
+			matchUpdateTypes: ["minor", "patch", "digest", "pin", "pinDigest"],
+			groupName: "github actions",
+		},
+		{
+			description: "Raising engines minimums is a breaking change for consumers; change them deliberately.",
+			matchDepTypes: ["engines"],
+			enabled: false,
+		},
+		{
+			description: "Hold website updates on main until feat/web (already on Astro 7) is merged; approve from the Dependency Dashboard if needed.",
+			matchFileNames: ["apps/web/**"],
+			dependencyDashboardApproval: true,
+		},
+		{
+			description: "Already updated on feat/web; see above.",
+			matchPackageNames: ["prettier-plugin-astro"],
+			dependencyDashboardApproval: true,
+		},
+		{
+			description: "Hold TypeScript 7 until @astrojs/check and typescript-eslint support it.",
+			matchPackageNames: ["typescript"],
+			allowedVersions: "<7",
+		},
+		{
+			description: "Stay on the Node 24 line (.nvmrc, engines, @types/node) until a deliberate runtime upgrade.",
+			matchPackageNames: ["node", "@types/node"],
+			allowedVersions: "<25",
+		},
+	],
+}

@@ -1,0 +1,25 @@
+---
+import Layout from "@layouts/Layout.astro";
+
+interface Props {
+	frontmatter: {
+		title: string;
+		description: string;
+	};
+}
+
+const { title, description } = Astro.props.frontmatter;
+---
+
+<Layout title={title} description={description}>
+	<article class="legal">
+		<slot />
+	</article>
+</Layout>
+
+<style>
+	.legal {
+		max-inline-size: 80ch;
+		text-wrap: pretty;
+	}
+</style>

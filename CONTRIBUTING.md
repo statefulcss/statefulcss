@@ -88,6 +88,13 @@ pnpm test
 pnpm build
 ```
 
+For website changes, also run the browser tests against a production build. The first run needs the Chromium browser (`pnpm --filter web exec playwright install chromium`):
+
+```bash
+pnpm build --filter=web
+pnpm --filter web test:e2e
+```
+
 4. Format your code with `pnpm format` if needed.
 
 5. Commit your changes. We use the [Conventional Commits](https://www.conventionalcommits.org/) specification with a required scope, checked by a commit hook.

@@ -15,11 +15,12 @@ Resolves #
 
 ## Checklist
 
+- [ ] The PR title follows Conventional Commits with a scope, e.g. `fix(web): …` (it becomes the squash commit message)
 - [ ] My code follows the project's style guidelines
 - [ ] I have performed a self-review of my code
 - [ ] I have added tests that prove my fix is effective or my feature works
-- [ ] New and existing tests pass locally with `pnpm turbo test`
-- [ ] Linting passes with `pnpm turbo lint`
+- [ ] New and existing tests pass locally with `pnpm test`
+- [ ] Linting passes with `pnpm lint`
 - [ ] I have added a changeset (`pnpm changeset`) if this change affects a published package
 - [ ] I have updated documentation as needed
 

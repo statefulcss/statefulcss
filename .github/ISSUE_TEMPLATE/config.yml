@@ -3,3 +3,6 @@ contact_links:
   - name: Documentation
     url: https://statefulcss.com
     about: Check the documentation before opening an issue
+  - name: Report a security vulnerability
+    url: https://github.com/statefulcss/statefulcss/security/advisories/new
+    about: Please report security issues privately, not as public issues

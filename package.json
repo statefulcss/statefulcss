@@ -1,5 +1,5 @@
 {
-	"name": "statefulcss",
+	"name": "statefulcss-monorepo",
 	"private": true,
 	"type": "module",
 	"packageManager": "pnpm@12.9.1",

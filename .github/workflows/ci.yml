@@ -42,6 +42,70 @@ jobs:
       - name: Lint, typecheck, test & build
         run: pnpm turbo run lint check-types test build
 
+  pack:
+    name: Pack packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm turbo run build --filter="./packages/*"
+
+      - name: Pack publishable packages
+        run: pnpm --filter ./packages/cli --filter ./packages/stylelint-plugin pack --pack-destination "$RUNNER_TEMP/packs"
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages
+          path: ${{ runner.temp }}/packs/*.tgz
+          if-no-files-found: error
+          retention-days: 3
+
+  package-smoke-test:
+    name: Package smoke test (Node ${{ matrix.node }})
+    needs: pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        # Lowest supported versions of the published packages, plus the current LTS.
+        node: ["20.19.0", "22.12.0", "24"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Download packages
+        uses: actions/download-artifact@v8
+        with:
+          name: packages
+          path: ${{ runner.temp }}/packs
+
+      - name: Install and run packed packages
+        run: .github/scripts/package-smoke-test.sh "$RUNNER_TEMP/packs"
+
   changes:
     name: Detect website changes
     runs-on: ubuntu-latest

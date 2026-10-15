@@ -4,8 +4,14 @@ Copyright (c) 2026 Ömer Balyalı and Human Interface Studio
 
 The source code and content in this directory are provided for viewing, learning, and contribution review only.
 
-This directory is not licensed under the MIT License or any other permissive open source license. No permission is granted to use, copy, modify, publish, distribute, sublicense, sell, deploy, or create derivative works from this software or content without prior written permission from Ömer Balyalı or Human Interface Studio.
-
-For permissions or inquiries, please contact hi@humaninterface.studio.
+This directory is not licensed under the MIT License or any other permissive open source license. No permission is granted to use, copy, modify, publish, distribute, sublicense, sell, deploy, or create derivative works from this software or content without prior written permission from Ömer Balyalı or Human Interface Studio, except as stated under "Code Examples" below.
 
 All rights reserved.
+
+Code Examples
+
+Code examples published on statefulcss.com, and the corresponding code blocks in the documentation and blog content in this directory, are dedicated to the public domain under the CC0 1.0 Universal Public Domain Dedication: https://creativecommons.org/publicdomain/zero/1.0/
+
+You may copy, modify, and use these code examples for any purpose, including commercial projects, without asking permission or giving attribution. This exception covers code examples only; the surrounding text, the website's design, and the website's source code remain all rights reserved.
+
+For permissions or inquiries, please contact info@statefulcss.com.

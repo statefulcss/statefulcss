@@ -7,6 +7,9 @@
 	"exports": {
 		"./base": "./base.js"
 	},
+	"scripts": {
+		"lint": "eslint --max-warnings 0"
+	},
 	"devDependencies": {
 		"@eslint/js": "catalog:",
 		"eslint": "catalog:",

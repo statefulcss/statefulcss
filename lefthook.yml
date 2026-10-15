@@ -1,29 +1,36 @@
 # https://lefthook.dev/configuration/
 
 pre-commit:
-  parallel: true
+  # Format first, then lint the formatted files; ESLint must not see mid-format content.
+  piped: true
   jobs:
     - name: prettier
       run: pnpm exec prettier --ignore-unknown --write {staged_files}
       stage_fixed: true
 
-    - name: eslint (apps/web)
-      root: "apps/web/"
-      glob: "*.{js,ts,astro}"
-      run: pnpm exec eslint --no-warn-ignored --max-warnings 0 {staged_files}
-      stage_fixed: true
+    - name: eslint
+      group:
+        parallel: true
+        jobs:
+          - name: eslint (apps/web)
+            root: "apps/web/"
+            glob: "*.{js,ts,astro}"
+            run: pnpm exec eslint --no-warn-ignored --max-warnings 0 {staged_files}
 
-    - name: eslint (packages/cli)
-      root: "packages/cli/"
-      glob: "*.{js,ts}"
-      run: pnpm exec eslint --no-warn-ignored --max-warnings 0 {staged_files}
-      stage_fixed: true
+          - name: eslint (packages/cli)
+            root: "packages/cli/"
+            glob: "*.{js,ts}"
+            run: pnpm exec eslint --no-warn-ignored --max-warnings 0 {staged_files}
 
-    - name: eslint (packages/stylelint-plugin)
-      root: "packages/stylelint-plugin/"
-      glob: "*.{js,ts,tsx}"
-      run: pnpm exec eslint --no-warn-ignored --max-warnings 0 {staged_files}
-      stage_fixed: true
+          - name: eslint (packages/eslint-config)
+            root: "packages/eslint-config/"
+            glob: "*.js"
+            run: pnpm exec eslint --no-warn-ignored --max-warnings 0 {staged_files}
+
+          - name: eslint (packages/stylelint-plugin)
+            root: "packages/stylelint-plugin/"
+            glob: "*.{js,ts,tsx}"
+            run: pnpm exec eslint --no-warn-ignored --max-warnings 0 {staged_files}
 
 commit-msg:
   jobs:

@@ -15,13 +15,13 @@ const description = "Documentation for Stateful CSS.";
 	image={getOgImagePath("/docs/", { index: true })}
 	schema={getCollectionPageSchema("/docs/", title, description)}
 >
-	<main>
-		<h1>Docs</h1>
-		<ul>
-			{sections.map((section) => <li>
+	<h1>Docs</h1>
+	<ul>
+		{sections.map((section) => (
+			<li>
 				<a href={section.path}>{section.title}</a>
 				<p>{section.description}</p>
-			</li>)}
-		</ul>
-	</main>
+			</li>
+		))}
+	</ul>
 </Layout>

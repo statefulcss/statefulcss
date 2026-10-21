@@ -22,8 +22,6 @@ export default defineConfig({
 	},
 	site: getSiteUrl(),
 	trailingSlash: "always",
-	// Keep Astro 6 whitespace handling; Astro 7 defaults to "jsx", which strips spaces between inline elements.
-	compressHTML: true,
 	integrations: [mdx(), sitemap()],
 	markdown: {
 		processor: unified({

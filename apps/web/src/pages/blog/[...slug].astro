@@ -34,20 +34,18 @@ const readingTime = getReadingTime(post.body);
 	image={getOgImagePath(meta.path)}
 	schema={meta.schema}
 >
-	<main>
-		<article>
-			<header>
-				<h1>{post.data.title}</h1>
-				<time datetime={post.data.publishedAt.toISOString()}>
-					{post.data.publishedAt.toLocaleDateString("en", {
-						day: "numeric",
-						month: "long",
-						year: "numeric",
-					})}
-				</time>
-				<span>{readingTime.text}</span>
-			</header>
-			<Content />
-		</article>
-	</main>
+	<article>
+		<header>
+			<h1>{post.data.title}</h1>
+			<time datetime={post.data.publishedAt.toISOString()}>
+				{post.data.publishedAt.toLocaleDateString("en", {
+					day: "numeric",
+					month: "long",
+					year: "numeric",
+				})}
+			</time>{" "}
+			<span>{readingTime.text}</span>
+		</header>
+		<Content />
+	</article>
 </Layout>

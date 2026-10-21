@@ -16,10 +16,10 @@ const description = "Articles and updates from Stateful CSS.";
 	image={getOgImagePath("/blog/", { index: true })}
 	schema={getCollectionPageSchema("/blog/", title, description)}
 >
-	<main>
-		<h1>Blog Home</h1>
-		<ul>
-			{posts.map((post) => <li>
+	<h1>Blog Home</h1>
+	<ul>
+		{posts.map((post) => (
+			<li>
 				<a href={getBlogPostPath(post)}>{post.data.title}</a>
 				<p>{post.data.description}</p>
 				<time datetime={post.data.publishedAt.toISOString()}>
@@ -28,9 +28,9 @@ const description = "Articles and updates from Stateful CSS.";
 						month: "long",
 						year: "numeric",
 					})}
-				</time>
+				</time>{" "}
 				<span>{getReadingTime(post.body).text}</span>
-			</li>)}
-		</ul>
-	</main>
+			</li>
+		))}
+	</ul>
 </Layout>

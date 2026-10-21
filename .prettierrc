@@ -4,8 +4,7 @@
 		{
 			"files": "*.astro",
 			"options": {
-				"parser": "astro",
-				"astroCompressHTML": "html"
+				"parser": "astro"
 			}
 		}
 	],

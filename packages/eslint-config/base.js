@@ -21,6 +21,8 @@ export const config = [
 		},
 	},
 	{
-		ignores: ["dist/**", "coverage/**"],
+		// tsup writes a temporary bundled config next to tsup.config.ts while building; turbo runs lint and
+		// build in parallel, so ESLint can find that file and fail when it disappears mid-run.
+		ignores: ["dist/**", "coverage/**", "**/*.bundled_*.mjs"],
 	},
 ];

@@ -14,7 +14,7 @@
 		"@eslint/js": "catalog:",
 		"eslint": "catalog:",
 		"eslint-config-prettier": "^10.1.8",
-		"eslint-plugin-turbo": "^2.11.7",
+		"eslint-plugin-turbo": "^2.11.9",
 		"typescript": "catalog:",
 		"typescript-eslint": "catalog:"
 	}

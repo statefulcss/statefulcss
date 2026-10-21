@@ -188,22 +188,20 @@ const previews = await Promise.all(
 				</p>
 			</header>
 			<div class="grid">
-				{
-					previews.map((preview) => (
-						<article class="card">
-							<div class="frame">
-								<img src={preview.svgDataUrl} width="1200" height="630" alt={`${preview.label} OG preview`} />
+				{previews.map((preview) => (
+					<article class="card">
+						<div class="frame">
+							<img src={preview.svgDataUrl} width="1200" height="630" alt={`${preview.label} OG preview`} />
+						</div>
+						<div class="meta">
+							<div>
+								<strong>{preview.label}</strong>
+								<br />
+								{preview.note}
 							</div>
-							<div class="meta">
-								<div>
-									<strong>{preview.label}</strong>
-									<br />
-									{preview.note}
-								</div>
-							</div>
-						</article>
-					))
-				}
+						</div>
+					</article>
+				))}
 			</div>
 		</main>
 	</body>

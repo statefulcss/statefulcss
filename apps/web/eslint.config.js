@@ -6,6 +6,6 @@ export default [
 	...baseConfig,
 	...eslintPluginAstro.configs.recommended,
 	{
-		ignores: [".astro/**", "dist/**"],
+		ignores: [".astro/**", ".wrangler/**", "dist/**", "playwright-report/**", "test-results/**"],
 	},
 ];

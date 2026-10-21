@@ -22,17 +22,13 @@ const entries = (await getCollection("docsArchitecture", ({ data }) => !data.dra
 	image={getOgImagePath(section.path, { index: true })}
 	schema={getCollectionPageSchema(section.path, section.title, section.description)}
 >
-	<main>
-		<h1>{section.title}</h1>
-		<ul>
-			{
-				entries.map((entry) => (
-					<li>
-						<a href={getDocsEntryPath("architecture", entry)}>{entry.data.title}</a>
-						<p>{entry.data.description}</p>
-					</li>
-				))
-			}
-		</ul>
-	</main>
+	<h1>{section.title}</h1>
+	<ul>
+		{entries.map((entry) => (
+			<li>
+				<a href={getDocsEntryPath("architecture", entry)}>{entry.data.title}</a>
+				<p>{entry.data.description}</p>
+			</li>
+		))}
+	</ul>
 </Layout>

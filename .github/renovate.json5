@@ -48,9 +48,10 @@
 			automerge: false,
 		},
 		{
-			description: "0.x releases can break on minor bumps; review OG image output.",
+			description: "0.x releases can break on minor bumps; 0.63 shifts the OG layout, so hold until the OG template is redesigned and images are re-checked.",
 			matchPackageNames: ["satori"],
 			automerge: false,
+			dependencyDashboardApproval: true,
 		},
 		{
 			description: "Runtime dependencies of published packages get reviewed and keep their ranges for consumers.",
@@ -94,16 +95,6 @@
 			description: "Raising engines minimums is a breaking change for consumers; change them deliberately.",
 			matchDepTypes: ["engines"],
 			enabled: false,
-		},
-		{
-			description: "Hold website updates on main until feat/web (already on Astro 7) is merged; approve from the Dependency Dashboard if needed.",
-			matchFileNames: ["apps/web/**"],
-			dependencyDashboardApproval: true,
-		},
-		{
-			description: "Already updated on feat/web; see above.",
-			matchPackageNames: ["prettier-plugin-astro"],
-			dependencyDashboardApproval: true,
 		},
 		{
 			description: "Hold TypeScript 7 until @astrojs/check and typescript-eslint support it.",

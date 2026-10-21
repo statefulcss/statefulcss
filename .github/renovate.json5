@@ -48,7 +48,7 @@
 			automerge: false,
 		},
 		{
-			description: "0.x releases can break on minor bumps; 0.63 shifts the OG layout, so hold until the OG template is redesigned and images are re-checked.",
+			description: "Satori releases almost daily and its rendering changes between 0.x versions; update it deliberately from the dashboard and compare the OG images.",
 			matchPackageNames: ["satori"],
 			automerge: false,
 			dependencyDashboardApproval: true,

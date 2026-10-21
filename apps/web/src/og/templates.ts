@@ -33,6 +33,7 @@ const colors = {
 const rootStyle = {
 	width: `${ogImageWidth}px`,
 	height: `${ogImageHeight}px`,
+	boxSizing: "border-box",
 	display: "flex",
 	flexDirection: "column",
 	background: colors.background,

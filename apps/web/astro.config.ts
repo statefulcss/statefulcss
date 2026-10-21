@@ -13,6 +13,7 @@ import { defineConfig, fontProviders } from "astro/config";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeSlug from "rehype-slug";
 
+import csp from "./integrations/csp";
 import { getSiteUrl } from "./src/config/site";
 
 // https://astro.build/config
@@ -22,7 +23,15 @@ export default defineConfig({
 	},
 	site: getSiteUrl(),
 	trailingSlash: "always",
-	integrations: [mdx(), sitemap()],
+	integrations: [
+		mdx(),
+		sitemap(),
+		// Cloudflare Web Analytics (production only): beacon script and its report endpoint.
+		csp({
+			scriptOrigins: ["https://static.cloudflareinsights.com"],
+			connectOrigins: ["https://cloudflareinsights.com"],
+		}),
+	],
 	markdown: {
 		processor: unified({
 			rehypePlugins: [

@@ -10,7 +10,6 @@ import tseslint from "typescript-eslint";
  * */
 export const config = [
 	js.configs.recommended,
-	eslintConfigPrettier,
 	...tseslint.configs.recommended,
 	{
 		plugins: {
@@ -25,4 +24,6 @@ export const config = [
 		// build in parallel, so ESLint can find that file and fail when it disappears mid-run.
 		ignores: ["dist/**", "coverage/**", "**/*.bundled_*.mjs"],
 	},
+	// Last, so it turns off every rule above that conflicts with Prettier.
+	eslintConfigPrettier,
 ];

@@ -1,13 +1,4 @@
-import { config } from "@repo/eslint-config/base";
+import { config } from "@repo/eslint-config/node";
 
 /** @type {import("eslint").Linter.Config[]} */
-export default [
-	...config,
-	{
-		languageOptions: {
-			globals: {
-				process: "readonly",
-			},
-		},
-	},
-];
+export default [...config];

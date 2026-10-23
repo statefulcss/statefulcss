@@ -301,7 +301,7 @@ importers:
         specifier: workspace:*
         version: link:../tsconfig
       '@types/node':
-        specifier: ^22.12.0
+        specifier: ^22.20.5
         version: 22.20.5
       eslint:
         specifier: 'catalog:'

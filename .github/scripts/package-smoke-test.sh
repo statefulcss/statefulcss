@@ -12,18 +12,26 @@ node_major="$(node -p 'process.versions.node.split(".")[0]')"
 echo "Node $(node --version), npm $(npm --version)"
 npm init -y >/dev/null
 
-# Stylelint plugin (supports the same Node versions as Stylelint 17: >=20.19.0)
-npm install --no-audit --no-fund "$packs"/statefulcss-stylelint-plugin-*.tgz stylelint@17
-printf ':root { --t-color-primary: red; }\n' >fixture.css
-printf '{ "plugins": ["@statefulcss/stylelint-plugin"], "rules": { "statefulcss/no-theme-token-reassign": true } }\n' >.stylelintrc.json
+# Stylelint plugin, with core and config (the same Node versions as Stylelint 17: >=20.19.0).
+# All three install together: the plugin's tarball depends on the exact versions of the other two.
+npm install --no-audit --no-fund \
+	"$packs"/statefulcss-config-*.tgz \
+	"$packs"/statefulcss-core-*.tgz \
+	"$packs"/statefulcss-stylelint-plugin-*.tgz \
+	stylelint@17
 
-if output="$(npx --no-install stylelint fixture.css 2>&1)"; then
-	echo "Expected Stylelint to report fixture.css, but it passed:"
-	echo "$output"
-	exit 1
-fi
-if ! grep -q "statefulcss/no-theme-token-reassign" <<<"$output"; then
-	echo "Stylelint failed without reporting the plugin rule:"
+node --input-type=module -e '
+	await import("@statefulcss/config");
+	await import("@statefulcss/core");
+	import.meta.resolve("@statefulcss/config/schema.json");
+'
+echo "Config and core: ok"
+
+printf '.button {\n\tcolor: red;\n}\n' >fixture.css
+printf '{ "extends": ["@statefulcss/stylelint-plugin/recommended"] }\n' >.stylelintrc.json
+
+if ! output="$(npx --no-install stylelint fixture.css 2>&1)"; then
+	echo "Expected Stylelint to pass fixture.css with the recommended config, but it failed:"
 	echo "$output"
 	exit 1
 fi

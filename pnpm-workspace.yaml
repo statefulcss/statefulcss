@@ -10,7 +10,6 @@ catalog:
   "@typescript-eslint/parser": ^8.72.0
   eslint: ^10.13.0
   stylelint: ^17.16.0
-  tsup: ^9.0.0
   typescript: ^6.0.3
   typescript-eslint: ^8.72.0
   vitest: ^5.0.5

@@ -11,18 +11,16 @@
 		"url": "https://omerbalyali.com"
 	},
 	"homepage": "https://statefulcss.com",
-	"engines": {
-		"node": ">=20.19.0"
-	},
 	"keywords": [
-		"stylelint",
-		"plugin",
+		"statefulcss",
+		"stateful-css",
 		"css",
-		"stateful-css"
+		"stylelint",
+		"stylelint-plugin"
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/statefulcss/statefulcss.git",
+		"url": "git+https://github.com/statefulcss/statefulcss.git",
 		"directory": "packages/stylelint-plugin"
 	},
 	"bugs": {
@@ -31,24 +29,40 @@
 	"publishConfig": {
 		"access": "public"
 	},
+	"engines": {
+		"node": ">=20.19.0"
+	},
+	"sideEffects": false,
 	"exports": {
 		".": {
-			"import": "./dist/index.js",
-			"types": "./dist/index.d.ts"
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./recommended": {
+			"types": "./dist/configs/recommended.d.ts",
+			"default": "./dist/configs/recommended.js"
+		},
+		"./compatible": {
+			"types": "./dist/configs/compatible.d.ts",
+			"default": "./dist/configs/compatible.js"
 		}
 	},
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
 	"files": [
-		"dist"
+		"dist",
+		"README.md",
+		"LICENSE"
 	],
 	"scripts": {
-		"build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
-		"dev": "tsup --watch",
+		"build": "tsc -p tsconfig.build.json",
+		"dev": "tsc -p tsconfig.build.json --watch",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"lint": "eslint --max-warnings 0",
 		"check-types": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@statefulcss/config": "workspace:*",
+		"@statefulcss/core": "workspace:*"
 	},
 	"peerDependencies": {
 		"stylelint": "^17.0.0"
@@ -58,7 +72,6 @@
 		"@repo/tsconfig": "workspace:*",
 		"eslint": "catalog:",
 		"stylelint": "catalog:",
-		"tsup": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:"
 	}

@@ -3,23 +3,13 @@ node_modules
 
 # Build outputs
 dist
-build
-.next
-out
-.open-next
+*.tsbuildinfo
 
 # Turbo
 .turbo
 
 # Package manager
 pnpm-lock.yaml
-
-# Auto-generated
-next-env.d.ts
-*.tsbuildinfo
-
-# Vercel
-.vercel
 
 # Coverage
 coverage

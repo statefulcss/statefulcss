@@ -1,14 +1,9 @@
+import * as z from "zod";
+
+import { configSchema } from "./schema.js";
+
 /**
- * The JSON Schema for `statefulcss.config.json`, written to `schema.json` at build time.
- *
- * Written by hand until the schema exists; then it's generated from it.
+ * The JSON Schema for `statefulcss.config.json`, generated from the config schema and written to `schema.json` at
+ * build time. It describes what a file may contain, so settings with a default aren't required.
  */
-export const jsonSchema = {
-	$schema: "https://json-schema.org/draft/2020-12/schema",
-	title: "Stateful CSS config",
-	type: "object",
-	properties: {
-		$schema: { type: "string" },
-	},
-	additionalProperties: false,
-};
+export const jsonSchema = z.toJSONSchema(configSchema, { io: "input" });

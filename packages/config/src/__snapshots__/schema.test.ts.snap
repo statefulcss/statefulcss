@@ -1,0 +1,152 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`jsonSchema > matches the snapshot 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The settings the Stateful CSS tools share. Every key is optional.",
+  "properties": {
+    "$schema": {
+      "description": "The JSON Schema this file follows, so editors can check and complete it.",
+      "type": "string",
+    },
+    "baseTheme": {
+      "default": "base",
+      "description": "The folder name of the base theme, whose files declare the unnamed [data-theme] scope.",
+      "examples": [
+        "default",
+      ],
+      "minLength": 1,
+      "type": "string",
+    },
+    "blockingStates": {
+      "default": [
+        ":disabled",
+        "[aria-disabled="true"]",
+        "[data-loading]",
+        "[inert]",
+      ],
+      "description": "Selectors for states that block interaction. They come last and set back what interaction states change.",
+      "examples": [
+        [
+          ":disabled",
+          "[aria-disabled="true"]",
+        ],
+      ],
+      "items": {
+        "minLength": 1,
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "ignoreLayers": {
+      "default": [],
+      "description": "Layers that strict mode leaves alone, such as a third-party reset in base.",
+      "examples": [
+        [
+          "base",
+        ],
+      ],
+      "items": {
+        "minLength": 1,
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "interactionStates": {
+      "default": [
+        ":hover",
+        ":focus",
+        ":focus-visible",
+        ":focus-within",
+        ":active",
+      ],
+      "description": "Selectors for states the user causes by pointing or focusing. They come before the other states.",
+      "examples": [
+        [
+          ":hover",
+          ":focus-visible",
+          ":active",
+        ],
+      ],
+      "items": {
+        "minLength": 1,
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "layers": {
+      "default": [
+        "base",
+        "themes",
+        "components",
+        "utilities",
+      ],
+      "description": "The cascade layers, in the order of the project's @layer statement.",
+      "examples": [
+        [
+          "reset",
+          "base",
+          "themes",
+          "components",
+          "utilities",
+        ],
+      ],
+      "items": {
+        "minLength": 1,
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "stateAttributes": {
+      "default": [],
+      "description": "Attributes that have a value but are states, such as Radix's data-state.",
+      "examples": [
+        [
+          "data-state",
+        ],
+      ],
+      "items": {
+        "minLength": 1,
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "strict": {
+      "default": false,
+      "description": "bind-once's strict mode: anything that varies a property changes a variable, even a single hover.",
+      "examples": [
+        true,
+      ],
+      "type": "boolean",
+    },
+    "themeAttribute": {
+      "default": "data-theme",
+      "description": "The attribute that selects a theme, such as data-theme in [data-theme="espresso"].",
+      "examples": [
+        "data-theme",
+      ],
+      "minLength": 1,
+      "type": "string",
+    },
+    "themeFiles": {
+      "default": [
+        "**/styles/themes/**",
+      ],
+      "description": "Globs for the files that declare themes. Theme scopes and tokens are written only there.",
+      "examples": [
+        [
+          "src/styles/themes/**",
+        ],
+      ],
+      "items": {
+        "minLength": 1,
+        "type": "string",
+      },
+      "type": "array",
+    },
+  },
+  "title": "Stateful CSS config",
+  "type": "object",
+}
+`;

@@ -27,7 +27,7 @@ This project is a monorepo managed with [Turborepo](https://turborepo.dev/) and 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) 24.21 or newer — the exact version is in [`.nvmrc`](.nvmrc), so `nvm use` or `fnm use` picks it up
-- [pnpm](https://pnpm.io/) 12 — the version is pinned in the `packageManager` field of `package.json`; run `corepack enable` to use it automatically
+- [pnpm](https://pnpm.io/installation) — install it any way you like; pnpm downloads and runs the version pinned in the `packageManager` field of `package.json`
 
 These versions apply to working on this repository. The published packages support older Node.js versions; see each package's `engines` field.
 

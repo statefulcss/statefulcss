@@ -9,6 +9,8 @@ body:
       label: Area
       options:
         - "@statefulcss/stylelint-plugin"
+        - "@statefulcss/core"
+        - "@statefulcss/config"
         - "statefulcss (CLI)"
         - "The methodology"
         - "Website and docs (statefulcss.com)"

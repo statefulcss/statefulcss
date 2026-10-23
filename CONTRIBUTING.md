@@ -118,7 +118,7 @@ fix(web): fix typo in getting started page
 docs(repo): document npm release workflow
 ```
 
-6. If your change affects a published package (`statefulcss` or `@statefulcss/stylelint-plugin`), add a changeset describing it:
+6. If your change affects a published package (`statefulcss`, `@statefulcss/stylelint-plugin`, `@statefulcss/core` or `@statefulcss/config`), add a changeset describing it. The last three always share one version, so a changeset for any of them releases all three:
 
 ```bash
 pnpm changeset

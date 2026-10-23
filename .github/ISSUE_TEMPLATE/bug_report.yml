@@ -14,6 +14,8 @@ body:
       label: Package
       options:
         - "@statefulcss/stylelint-plugin"
+        - "@statefulcss/core"
+        - "@statefulcss/config"
         - "statefulcss (CLI)"
         - "Website and docs (statefulcss.com)"
     validations:

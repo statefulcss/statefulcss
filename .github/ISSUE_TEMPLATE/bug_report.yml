@@ -1,62 +1,62 @@
-name: Bug Report
-description: Report a bug or unexpected behavior
-title: "[Bug]: "
-labels: ["bug", "triage"]
-assignees: []
+name: Bug report
+description: Something in a package or on the website doesn't work as documented.
+labels: ["bug"]
 
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report a bug! Please fill out the information below to help us investigate.
+        Please search the [existing issues](https://github.com/statefulcss/statefulcss/issues) first. Report security issues [privately](https://github.com/statefulcss/statefulcss/security/advisories/new), not here.
 
   - type: dropdown
     id: package
     attributes:
       label: Package
-      description: Which package is affected?
       options:
         - "@statefulcss/stylelint-plugin"
-        - "Documentation Website (statefulcss.com)"
-        - "Other"
+        - "statefulcss (CLI)"
+        - "Website and docs (statefulcss.com)"
     validations:
       required: true
 
-  - type: textarea
-    id: description
+  - type: input
+    id: version
     attributes:
-      label: Bug description
-      description: A clear and concise description of the bug.
-      placeholder: Describe the bug...
-    validations:
-      required: true
-
-  - type: textarea
-    id: reproduction
-    attributes:
-      label: Steps to reproduce
-      description: Steps to reproduce the behavior.
-      placeholder: |
-        1. Install `@statefulcss/stylelint-plugin`
-        2. Create a CSS file with...
-        3. Run `stylelint`...
-        4. See error...
-    validations:
-      required: true
-
-  - type: textarea
-    id: expected
-    attributes:
-      label: Expected behavior
-      description: What did you expect to happen?
+      label: Version
+      description: The package version, from `npm ls <package>`. For the website, the page URL.
     validations:
       required: true
 
   - type: textarea
     id: actual
     attributes:
-      label: Actual behavior
-      description: What actually happened?
+      label: What happened
+      description: Include the full message or output, if there is one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: How to reproduce it
+      description: The smallest CSS and config that show the problem, and the command you ran. A link to a repository works too.
+      placeholder: |
+        ```css
+        .button { … }
+        ```
+
+        ```json
+        { "extends": ["@statefulcss/stylelint-plugin/recommended"] }
+        ```
+
+        npx stylelint "src/**/*.css"
     validations:
       required: true
 
@@ -64,20 +64,10 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: Please provide relevant version info.
       placeholder: |
-        - OS: macOS 15
-        - Node.js: 24.x
-        - pnpm: 9.x
-        - stylelint: 16.x
-        - Package version: x.x.x
-    validations:
-      required: false
-
-  - type: textarea
-    id: additional
-    attributes:
-      label: Additional context
-      description: Add any other context, logs, or screenshots.
+        - Node.js: 22.18.0
+        - Stylelint: 17.16.0
+        - OS: macOS 26
+        - Browser, for the website: Chrome 141
     validations:
       required: false

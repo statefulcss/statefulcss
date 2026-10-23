@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createProgram } from "../src/index.js";
+import { createProgram } from "./cli.js";
 
 describe("statefulcss CLI", () => {
 	it("prints help", () => {

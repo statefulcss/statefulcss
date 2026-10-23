@@ -7,6 +7,10 @@
 		"check-types": {
 			"description": "astro check and astro build both write Vite's dependency cache; running them at once can fail with ENOTEMPTY.",
 			"dependsOn": ["$TURBO_EXTENDS$", "build"]
+		},
+		"lint": {
+			"description": "The website lints with the workspace's packages (the Stylelint plugin), which load from their built dist.",
+			"dependsOn": ["^build"]
 		}
 	}
 }

@@ -9,13 +9,12 @@
 			"outputs": ["dist/**"]
 		},
 		"lint": {},
-		"transit": {
-			"dependsOn": ["^transit"]
-		},
 		"check-types": {
-			"dependsOn": ["transit"]
+			"dependsOn": ["^build"]
 		},
-		"test": {},
+		"test": {
+			"dependsOn": ["^build"]
+		},
 		"dev": {
 			"cache": false,
 			"persistent": true

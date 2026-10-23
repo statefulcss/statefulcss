@@ -6,7 +6,7 @@ allowBuilds:
 catalog:
   "@eslint/js": ^10.0.1
   # Node types match the lowest Node version the packages support (config, core, stylelint-plugin: 20.19).
-  "@types/node": ^20.19.0
+  "@types/node": ^20.19.43
   "@typescript-eslint/parser": ^8.72.0
   eslint: ^10.13.0
   stylelint: ^17.16.0

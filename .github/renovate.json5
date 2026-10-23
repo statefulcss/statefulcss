@@ -58,6 +58,15 @@
 			semanticCommitScope: "eslint-config",
 		},
 		{
+			description: "The preset types dependency updates as fix; only runtime dependencies of published packages reach users, so the website and private packages use chore.",
+			matchFileNames: [
+				"apps/web/package.json",
+				"packages/eslint-config/package.json",
+				"packages/tsconfig/package.json",
+			],
+			semanticCommitType: "chore",
+		},
+		{
 			description: "Auto-merge minor and patch updates once required checks pass.",
 			matchUpdateTypes: ["minor", "patch", "pin", "pinDigest", "digest", "lockFileMaintenance"],
 			automerge: true,
@@ -73,6 +82,11 @@
 			matchPackageNames: ["satori"],
 			automerge: false,
 			dependencyDashboardApproval: true,
+		},
+		{
+			description: "satori pins fflate 0.7.3, so the override in pnpm-workspace.yaml stays on the fixed 0.7 line. Remove the override once satori depends on a fixed fflate.",
+			matchPackageNames: ["fflate"],
+			allowedVersions: "<0.8",
 		},
 		{
 			description: "Runtime dependencies of published packages get reviewed and keep their ranges for consumers.",

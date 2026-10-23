@@ -5,8 +5,11 @@ allowBuilds:
   workerd: true
 catalog:
   "@eslint/js": ^10.0.1
+  # Node types match the lowest Node version the packages support (config, core, stylelint-plugin: 20.19).
+  "@types/node": ^20.19.0
   "@typescript-eslint/parser": ^8.72.0
   eslint: ^10.13.0
+  stylelint: ^17.16.0
   tsup: ^9.0.0
   typescript: ^6.0.3
   typescript-eslint: ^8.72.0
@@ -14,6 +17,9 @@ catalog:
 engineStrict: true
 minimumReleaseAge: 1440
 minimumReleaseAgeStrict: true
+overrides:
+  # satori pins fflate 0.7.3 (GHSA-px8p-9vwx-vf98); 0.7.5 is the fixed 0.7 release.
+  "fflate@<0.7.5": ^0.7.5
 packages:
   - apps/*
   - packages/*

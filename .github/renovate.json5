@@ -128,9 +128,21 @@
 			allowedVersions: "<7",
 		},
 		{
-			description: "Stay on the Node 24 line (.nvmrc, engines, @types/node) until a deliberate runtime upgrade.",
-			matchPackageNames: ["node", "@types/node"],
+			description: "Stay on the Node 24 line (.nvmrc) until a deliberate runtime upgrade.",
+			matchPackageNames: ["node"],
 			allowedVersions: "<25",
+		},
+		{
+			description: "Node types match the lowest Node version a package supports: 20.19 in the catalog (config, core, stylelint-plugin).",
+			matchPackageNames: ["@types/node"],
+			matchFileNames: ["pnpm-workspace.yaml"],
+			allowedVersions: "<21",
+		},
+		{
+			description: "The CLI supports Node 22.12 and newer.",
+			matchPackageNames: ["@types/node"],
+			matchFileNames: ["packages/cli/package.json"],
+			allowedVersions: "<23",
 		},
 	],
 }

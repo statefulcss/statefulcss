@@ -57,7 +57,7 @@
 		"@repo/eslint-config": "workspace:*",
 		"@repo/tsconfig": "workspace:*",
 		"eslint": "catalog:",
-		"stylelint": "^17.16.0",
+		"stylelint": "catalog:",
 		"tsup": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:"

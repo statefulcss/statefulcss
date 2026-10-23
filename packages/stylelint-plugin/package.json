@@ -43,7 +43,7 @@
 		"dist"
 	],
 	"scripts": {
-		"build": "tsup && tsc --emitDeclarationOnly",
+		"build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
 		"dev": "tsup --watch",
 		"test": "vitest run",
 		"test:watch": "vitest",

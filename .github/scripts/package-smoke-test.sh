@@ -30,12 +30,21 @@ echo "Config and core: ok"
 printf '.button {\n\tcolor: red;\n}\n' >fixture.css
 printf '{ "extends": ["@statefulcss/stylelint-plugin/recommended"] }\n' >.stylelintrc.json
 
-if ! output="$(npx --no-install stylelint fixture.css 2>&1)"; then
-	echo "Expected Stylelint to pass fixture.css with the recommended config, but it failed:"
-	echo "$output"
-	exit 1
-fi
-echo "Stylelint plugin: ok"
+check_plugin() {
+	local version
+	version="$(npx --no-install stylelint --version)"
+	if ! output="$(npx --no-install stylelint fixture.css 2>&1)"; then
+		echo "Expected Stylelint $version to pass fixture.css with the recommended config, but it failed:"
+		echo "$output"
+		exit 1
+	fi
+	echo "Stylelint plugin with Stylelint $version: ok"
+}
+
+# The latest Stylelint 17, then the lowest version the plugin's peer range allows.
+check_plugin
+npm install --no-audit --no-fund stylelint@17.0.0
+check_plugin
 
 # CLI (Commander 15 requires >=22.12.0)
 if [ "$node_major" -ge 22 ]; then

@@ -1,3 +1,11 @@
+Stateful CSS Repository License
+
+Unless otherwise noted in a subdirectory, the source code in this repository is licensed under the MIT License.
+
+Excluded directory:
+
+- apps/web, the statefulcss.com website, including its code, design and content, is source-available, all rights reserved, and is not licensed under the MIT License or any other permissive open source license. Code examples published on the website are CC0. See apps/web/LICENSE for details.
+
 MIT License
 
 Copyright (c) 2026 Ömer Balyalı and Human Interface Studio

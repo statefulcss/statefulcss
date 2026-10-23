@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Documentation
-    url: https://statefulcss.com
-    about: Check the documentation before opening an issue
+    url: https://statefulcss.com/docs/
+    about: How the methodology works and how to set up the tools.
   - name: Report a security vulnerability
     url: https://github.com/statefulcss/statefulcss/security/advisories/new
-    about: Please report security issues privately, not as public issues
+    about: Report security issues privately, not as public issues.

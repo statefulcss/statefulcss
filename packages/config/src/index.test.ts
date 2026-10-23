@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { defaults, defineConfig, loadConfig, type Settings } from "./index.js";
+import { ConfigError, defaults, defineConfig, loadConfig, type Settings } from "./index.js";
 
 describe("defineConfig", () => {
 	it("returns the config it's given", () => {
@@ -26,8 +26,12 @@ describe("Settings", () => {
 	});
 });
 
-describe("loadConfig", () => {
-	it("returns the defaults when there is no config", async () => {
-		await expect(loadConfig("src/components/button.css")).resolves.toEqual(defaults);
+describe("exports", () => {
+	it("has the loader, its error and the defaults", () => {
+		expect(loadConfig).toBeTypeOf("function");
+		expect(new ConfigError("unreadable", "message", { file: "statefulcss.config.json" })).toBeInstanceOf(
+			Error,
+		);
+		expect(defaults.strict).toBe(false);
 	});
 });

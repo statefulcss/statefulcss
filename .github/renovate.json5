@@ -37,6 +37,27 @@
 			semanticCommitScope: "web",
 		},
 		{
+			description: "Package dependencies use the package's scope; catalog updates in pnpm-workspace.yaml keep repo.",
+			matchFileNames: ["packages/cli/**"],
+			semanticCommitScope: "cli",
+		},
+		{
+			matchFileNames: ["packages/stylelint-plugin/**"],
+			semanticCommitScope: "stylelint",
+		},
+		{
+			matchFileNames: ["packages/config/**"],
+			semanticCommitScope: "config",
+		},
+		{
+			matchFileNames: ["packages/core/**"],
+			semanticCommitScope: "core",
+		},
+		{
+			matchFileNames: ["packages/eslint-config/**"],
+			semanticCommitScope: "eslint-config",
+		},
+		{
 			description: "Auto-merge minor and patch updates once required checks pass.",
 			matchUpdateTypes: ["minor", "patch", "pin", "pinDigest", "digest", "lockFileMaintenance"],
 			automerge: true,
@@ -55,7 +76,12 @@
 		},
 		{
 			description: "Runtime dependencies of published packages get reviewed and keep their ranges for consumers.",
-			matchFileNames: ["packages/cli/package.json", "packages/stylelint-plugin/package.json"],
+			matchFileNames: [
+				"packages/cli/package.json",
+				"packages/config/package.json",
+				"packages/core/package.json",
+				"packages/stylelint-plugin/package.json",
+			],
 			matchDepTypes: ["dependencies"],
 			rangeStrategy: "update-lockfile",
 			automerge: false,

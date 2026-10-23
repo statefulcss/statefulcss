@@ -104,6 +104,8 @@ Use the package or repo area as the scope:
 - `web` for `apps/web`
 - `cli` for `packages/cli`
 - `stylelint` for `packages/stylelint-plugin`
+- `config` for `packages/config`
+- `core` for `packages/core`
 - `eslint-config` for `packages/eslint-config`
 - `tsconfig` for `packages/tsconfig`
 - `repo` for repo-wide changes such as CI, release tooling, root config, docs, or housekeeping

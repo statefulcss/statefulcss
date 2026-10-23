@@ -1,0 +1,5 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`threwError > explains "Cannot use import statement outside a module" in a CommonJS package 1`] = `"Can't load statefulcss.config.ts, because it threw an error: Cannot use import statement outside a module. Node loaded it as CommonJS, where import and export don't work: set "type": "module" in package.json, or use statefulcss.config.json or statefulcss.config.mjs."`;
+
+exports[`threwError > explains "Unexpected token 'export'" in a CommonJS package 1`] = `"Can't load statefulcss.config.ts, because it threw an error: Unexpected token 'export'. Node loaded it as CommonJS, where import and export don't work: set "type": "module" in package.json, or use statefulcss.config.json or statefulcss.config.mjs."`;

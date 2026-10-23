@@ -54,7 +54,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Lowest supported versions of the published packages, plus the current LTS.
+        # The lowest Node each published package supports, plus the current LTS: 20.19.0 for config,
+        # core and the Stylelint plugin, 22.12.0 for the CLI. Add 22.18.0 once the config package loads
+        # .ts configs (Node strips types from there). The "Protect Main" ruleset requires these jobs by
+        # name, so a change here needs the same change there.
         node: ["20.19.0", "22.12.0", "24"]
 
     steps:

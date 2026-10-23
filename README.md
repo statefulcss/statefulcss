@@ -9,6 +9,8 @@ Read the documentation at [statefulcss.com](https://statefulcss.com/docs/).
 | Package                                                        | What it is                                                           | Status         |
 | -------------------------------------------------------------- | -------------------------------------------------------------------- | -------------- |
 | [`@statefulcss/stylelint-plugin`](./packages/stylelint-plugin) | The Stylelint rules, with the `recommended` and `compatible` configs | In development |
+| [`@statefulcss/core`](./packages/core)                         | The model of a stylesheet that the plugin and other tools read       | In development |
+| [`@statefulcss/config`](./packages/config)                     | Finds, loads and checks `statefulcss.config.json`                    | In development |
 | [`statefulcss`](./packages/cli)                                | Command line tools                                                   | Published      |
 
 The repository also holds the website and its documentation in [`apps/web`](./apps/web), and the shared ESLint and TypeScript configurations in [`packages/eslint-config`](./packages/eslint-config) and [`packages/tsconfig`](./packages/tsconfig).

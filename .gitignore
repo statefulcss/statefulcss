@@ -13,6 +13,7 @@ node_modules
 dist
 *.tsbuildinfo
 *.tgz
+packages/config/schema.json
 
 # Turbo
 .turbo

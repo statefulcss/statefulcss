@@ -22,6 +22,8 @@ This project is a monorepo managed with [Turborepo](https://turborepo.dev/) and 
 - `apps/web` — the [statefulcss.com](https://statefulcss.com) website and documentation
 - `packages/cli` — the `statefulcss` command line tool
 - `packages/stylelint-plugin` — the `@statefulcss/stylelint-plugin` Stylelint plugin
+- `packages/core` — `@statefulcss/core`, the model of a stylesheet the plugin and other tools read
+- `packages/config` — `@statefulcss/config`, which finds, loads and checks `statefulcss.config.json`
 - `packages/eslint-config`, `packages/tsconfig` — shared internal configuration
 
 ## Prerequisites

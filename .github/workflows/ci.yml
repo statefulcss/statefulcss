@@ -36,7 +36,7 @@ jobs:
         run: pnpm turbo run lint check-types test build
 
       - name: Pack publishable packages
-        run: pnpm --filter ./packages/cli --filter ./packages/stylelint-plugin pack --pack-destination "$RUNNER_TEMP/packs"
+        run: pnpm --filter ./packages/cli --filter ./packages/config --filter ./packages/core --filter ./packages/stylelint-plugin pack --pack-destination "$RUNNER_TEMP/packs"
 
       - name: Upload packages
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

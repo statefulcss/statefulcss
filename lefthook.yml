@@ -22,6 +22,16 @@ pre-commit:
             glob: "*.{js,ts}"
             run: pnpm exec eslint --no-warn-ignored --max-warnings 0 {staged_files}
 
+          - name: eslint (packages/config)
+            root: "packages/config/"
+            glob: "*.{js,ts}"
+            run: pnpm exec eslint --no-warn-ignored --max-warnings 0 {staged_files}
+
+          - name: eslint (packages/core)
+            root: "packages/core/"
+            glob: "*.{js,ts}"
+            run: pnpm exec eslint --no-warn-ignored --max-warnings 0 {staged_files}
+
           - name: eslint (packages/eslint-config)
             root: "packages/eslint-config/"
             glob: "*.js"

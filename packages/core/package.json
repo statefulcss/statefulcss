@@ -1,0 +1,65 @@
+{
+	"name": "@statefulcss/core",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"license": "MIT",
+	"description": "Reads a stylesheet into the Stateful CSS model, for tools",
+	"author": {
+		"name": "Ömer Balyalı",
+		"email": "git@omerbalyali.com",
+		"url": "https://omerbalyali.com"
+	},
+	"homepage": "https://statefulcss.com",
+	"keywords": [
+		"statefulcss",
+		"stateful-css",
+		"css",
+		"postcss"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/statefulcss/statefulcss.git",
+		"directory": "packages/core"
+	},
+	"bugs": {
+		"url": "https://github.com/statefulcss/statefulcss/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"engines": {
+		"node": ">=20.19.0"
+	},
+	"sideEffects": false,
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"dev": "tsc -p tsconfig.build.json --watch",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"lint": "eslint --max-warnings 0",
+		"check-types": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@statefulcss/config": "workspace:*"
+	},
+	"devDependencies": {
+		"@repo/eslint-config": "workspace:*",
+		"@repo/tsconfig": "workspace:*",
+		"eslint": "catalog:",
+		"postcss": "^8.5.31",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

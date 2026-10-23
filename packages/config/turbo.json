@@ -1,0 +1,9 @@
+{
+	"extends": ["//"],
+	"tasks": {
+		"build": {
+			"description": "The build also writes schema.json, the JSON Schema the package exports.",
+			"outputs": ["dist/**", "schema.json"]
+		}
+	}
+}

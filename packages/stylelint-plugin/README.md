@@ -1,6 +1,8 @@
 # Stateful CSS Stylelint Plugin
 
-This is a plugin for [Stylelint](https://stylelint.io/) that provides rules for enforcing best practices and consistency in stateful CSS.
+The [Stylelint](https://stylelint.io/) rules for Stateful CSS, with the `recommended` and `compatible` configs.
+
+**In development, not ready for use.** It has no rules yet, and its configs will change before the first release.
 
 ## License
 

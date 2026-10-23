@@ -1,13 +1,9 @@
 import type stylelint from "stylelint";
-import { noThemeTokenReassign, noThemeTokenReassignRuleName } from "./rules/no-theme-token-reassign/index.js";
 
-const namespace = "statefulcss";
+/** The rule plugins, in the form Stylelint accepts in `plugins`. No rules yet. */
+const plugins: stylelint.Plugin[] = [];
 
-const plugin: stylelint.Plugin[] = [
-	{
-		ruleName: `${namespace}/${noThemeTokenReassignRuleName}`,
-		rule: noThemeTokenReassign,
-	},
-];
+/** The name of every rule, for tools that list or document them. */
+export const ruleNames: readonly string[] = [];
 
-export default plugin;
+export default plugins;

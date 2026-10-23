@@ -1,0 +1,63 @@
+{
+	"name": "@statefulcss/config",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"license": "MIT",
+	"description": "Finds, loads and checks statefulcss.config.json for Stateful CSS tools",
+	"author": {
+		"name": "Ömer Balyalı",
+		"email": "git@omerbalyali.com",
+		"url": "https://omerbalyali.com"
+	},
+	"homepage": "https://statefulcss.com",
+	"keywords": [
+		"statefulcss",
+		"stateful-css",
+		"css",
+		"config"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/statefulcss/statefulcss.git",
+		"directory": "packages/config"
+	},
+	"bugs": {
+		"url": "https://github.com/statefulcss/statefulcss/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"engines": {
+		"node": ">=20.19.0"
+	},
+	"sideEffects": false,
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./schema.json": "./schema.json"
+	},
+	"files": [
+		"dist",
+		"schema.json",
+		"README.md",
+		"LICENSE"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json && node scripts/write-schema.js",
+		"dev": "tsc -p tsconfig.build.json --watch",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"lint": "eslint --max-warnings 0",
+		"check-types": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@repo/eslint-config": "workspace:*",
+		"@repo/tsconfig": "workspace:*",
+		"eslint": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

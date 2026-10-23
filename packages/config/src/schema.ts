@@ -3,8 +3,8 @@ import * as z from "zod";
 /**
  * Every setting a `statefulcss.config` file can have: its key, type, default and a one-line description.
  *
- * The single source for the runtime check, the types, `defaults` and `schema.json`. Each setting's `examples`
- * show a valid value, for editors and for the error a wrong value gets.
+ * The single source for the runtime check, the types, `defaults` and `schema.json`. Each setting's `expected` and
+ * `examples` say what a valid value is, for the error a wrong value gets; editors get the examples too.
  */
 export const configSchema = z
 	.strictObject({
@@ -17,6 +17,7 @@ export const configSchema = z
 			.default("data-theme")
 			.meta({
 				description: 'The attribute that selects a theme, such as data-theme in [data-theme="espresso"].',
+				expected: "an attribute name",
 				examples: ["data-theme"],
 			}),
 		themeFiles: z
@@ -25,6 +26,7 @@ export const configSchema = z
 			.meta({
 				description:
 					"Globs for the files that declare themes. Theme scopes and tokens are written only there.",
+				expected: "a list of globs",
 				examples: [["src/styles/themes/**"]],
 			}),
 		baseTheme: z
@@ -33,6 +35,7 @@ export const configSchema = z
 			.default("base")
 			.meta({
 				description: "The folder name of the base theme, whose files declare the unnamed [data-theme] scope.",
+				expected: "a folder name",
 				examples: ["default"],
 			}),
 		blockingStates: z
@@ -41,6 +44,7 @@ export const configSchema = z
 			.meta({
 				description:
 					"Selectors for states that block interaction. They come last and set back what interaction states change.",
+				expected: "a list of selectors",
 				examples: [[":disabled", '[aria-disabled="true"]']],
 			}),
 		interactionStates: z
@@ -49,6 +53,7 @@ export const configSchema = z
 			.meta({
 				description:
 					"Selectors for states the user causes by pointing or focusing. They come before the other states.",
+				expected: "a list of selectors",
 				examples: [[":hover", ":focus-visible", ":active"]],
 			}),
 		stateAttributes: z
@@ -56,6 +61,7 @@ export const configSchema = z
 			.default(() => [])
 			.meta({
 				description: "Attributes that have a value but are states, such as Radix's data-state.",
+				expected: "a list of attribute names",
 				examples: [["data-state"]],
 			}),
 		layers: z
@@ -63,6 +69,7 @@ export const configSchema = z
 			.default(() => ["base", "themes", "components", "utilities"])
 			.meta({
 				description: "The cascade layers, in the order of the project's @layer statement.",
+				expected: "a list of layer names",
 				examples: [["reset", "base", "themes", "components", "utilities"]],
 			}),
 		strict: z
@@ -71,6 +78,7 @@ export const configSchema = z
 			.meta({
 				description:
 					"bind-once's strict mode: anything that varies a property changes a variable, even a single hover.",
+				expected: "true or false",
 				examples: [true],
 			}),
 		ignoreLayers: z
@@ -78,6 +86,7 @@ export const configSchema = z
 			.default(() => [])
 			.meta({
 				description: "Layers that strict mode leaves alone, such as a third-party reset in base.",
+				expected: "a list of layer names",
 				examples: [["base"]],
 			}),
 	})

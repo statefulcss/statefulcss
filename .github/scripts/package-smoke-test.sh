@@ -47,6 +47,40 @@ if node_at_least 22.18; then
 	'
 	echo "Config and core: ok"
 
+	# The config as users write it: a .ts config that imports defineConfig, then configs that are wrong on purpose.
+	# Each is in its own folder, the nearest config for the file there.
+	mkdir config-ts config-commonjs config-broken
+	printf '{ "type": "module" }\n' >config-ts/package.json
+	printf 'import { defineConfig } from "@statefulcss/config";\n\nexport default defineConfig({ strict: true });\n' \
+		>config-ts/statefulcss.config.ts
+	printf '{ "type": "commonjs" }\n' >config-commonjs/package.json # what npm 11's npm init writes
+	cp config-ts/statefulcss.config.ts config-commonjs/
+	printf '{ "blockingState": [":disabled"] }\n' >config-broken/statefulcss.config.json
+	node --input-type=module -e '
+		import { ConfigError, loadConfig } from "@statefulcss/config";
+
+		const settings = await loadConfig("config-ts/fixture.css");
+		if (settings.strict !== true) {
+			throw new Error(`Expected strict: true from config-ts/statefulcss.config.ts, got ${JSON.stringify(settings)}`);
+		}
+		console.log("A .ts config with defineConfig: ok");
+
+		async function expectError(file, kind, text) {
+			try {
+				await loadConfig(file);
+			} catch (error) {
+				if (error instanceof ConfigError && error.kind === kind && error.message.includes(text)) {
+					console.log(`The ${kind} error: ok\n  ${error.message}`);
+					return;
+				}
+				throw error;
+			}
+			throw new Error(`Expected a ${kind} error for ${file}`);
+		}
+		await expectError("config-broken/fixture.css", "unknown-key", "Did you mean \"blockingStates\"?");
+		await expectError("config-commonjs/fixture.css", "unreadable", "set \"type\": \"module\" in package.json");
+	'
+
 	printf '.button {\n\tcolor: red;\n}\n' >fixture.css
 	printf '{ "extends": ["@statefulcss/stylelint-plugin/recommended"] }\n' >.stylelintrc.json
 

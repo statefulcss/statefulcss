@@ -3,9 +3,18 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import jsonc from "jsonc-parser";
-import type * as z from "zod";
 
 import { ConfigError } from "./config-error.js";
+import {
+	invalidJsonError,
+	invalidPackageJsonError,
+	multipleFilesError,
+	noDefaultExportError,
+	packageJsonKey,
+	readError,
+	schemaError,
+	threwError,
+} from "./messages.js";
 import { configSchema, defaults, toSettings, type Settings } from "./schema.js";
 
 /** The config files a folder can have, besides a `"statefulcss"` key in its `package.json`. */
@@ -15,8 +24,6 @@ const configFileNames = [
 	"statefulcss.config.mjs",
 	"statefulcss.config.ts",
 ] as const;
-
-const packageJsonKey = "statefulcss";
 
 interface Folder {
 	mtimeMs: number;
@@ -135,19 +142,9 @@ async function readConfig(
 			unknown
 		>;
 	} catch (error) {
-		const reason = error instanceof Error ? error.message : String(error);
-		throw new ConfigError("unreadable", `Can't load ${display(file)}, because it threw: ${reason}`, {
-			file,
-			cause: error,
-		});
+		throw threwError(file, error);
 	}
-	if (!("default" in module)) {
-		throw new ConfigError(
-			"unreadable",
-			`${display(file)} has no default export. Export the config as the default: export default defineConfig({ … }).`,
-			{ file },
-		);
-	}
+	if (!("default" in module)) throw noDefaultExportError(file);
 	return { value: module.default };
 }
 
@@ -157,8 +154,7 @@ async function readPackageJson(file: string): Promise<{ value: unknown } | undef
 	try {
 		manifest = JSON.parse(text);
 	} catch (error) {
-		const reason = error instanceof Error ? error.message : String(error);
-		throw new ConfigError("unreadable", `Can't read ${display(file)}: ${reason}`, { file, cause: error });
+		throw invalidPackageJsonError(file, error);
 	}
 	if (typeof manifest !== "object" || manifest === null || !(packageJsonKey in manifest)) return undefined;
 	return { value: (manifest as Record<string, unknown>)[packageJsonKey] };
@@ -168,8 +164,7 @@ async function readText(file: string): Promise<string> {
 	try {
 		return await readFile(file, "utf8");
 	} catch (error) {
-		const reason = error instanceof Error ? error.message : String(error);
-		throw new ConfigError("unreadable", `Can't read ${display(file)}: ${reason}`, { file, cause: error });
+		throw readError(file, error);
 	}
 }
 
@@ -177,74 +172,15 @@ function readJsonc(file: string, text: string): unknown {
 	const errors: jsonc.ParseError[] = [];
 	const value: unknown = jsonc.parse(text, errors, { allowTrailingComma: true });
 	const [error] = errors;
-	if (error) {
-		const before = text.slice(0, error.offset).split("\n");
-		const line = before.length;
-		const column = (before.at(-1)?.length ?? 0) + 1;
-		const problem = jsonc
-			.printParseErrorCode(error.error)
-			.replace(/(?<=[a-z])(?=[A-Z])/g, " ")
-			.toLowerCase();
-		throw new ConfigError(
-			"unreadable",
-			`Can't read ${display(file)}: ${problem} at line ${line}, column ${column}. Comments and trailing commas are allowed; anything else has to be JSON.`,
-			{ file },
-		);
-	}
+	if (error) throw invalidJsonError(file, text, error);
 	return value;
 }
 
 function check(file: string, config: unknown): Outcome {
 	const result = configSchema.safeParse(config);
-	if (result.success) return { settings: toSettings(result.data) };
-	const [issue] = result.error.issues;
-	return { error: issueError(file, issue as z.core.$ZodIssue) };
-}
-
-// The first problem, plainly. The errors step words each kind of problem with its fix.
-function issueError(file: string, issue: z.core.$ZodIssue): ConfigError {
-	const where =
-		path.basename(file) === "package.json"
-			? `the "${packageJsonKey}" key in ${display(file)}`
-			: display(file);
-	if (issue.code === "unrecognized_keys") {
-		const key = keyPath([...issue.path, issue.keys[0] ?? ""]);
-		return new ConfigError("unknown-key", `Unknown key "${key}" in ${where}.`, { file, key });
-	}
-	const key = keyPath(issue.path);
-	if (!key) return new ConfigError("invalid-value", `The config in ${where} has to be an object.`, { file });
-	return new ConfigError("invalid-value", `Invalid value for "${key}" in ${where}: ${issue.message}.`, {
-		file,
-		key,
-	});
-}
-
-function multipleFilesError(directory: string, found: string[]): ConfigError {
-	const names = found.map((file) =>
-		path.basename(file) === "package.json"
-			? `the "${packageJsonKey}" key in package.json`
-			: path.basename(file),
-	);
-	return new ConfigError(
-		"multiple-files",
-		`${display(directory) || "The current folder"} has more than one Stateful CSS config: ${names.join(", ")}. Keep one and remove the others.`,
-		{ file: found[0] ?? directory, files: found },
-	);
-}
-
-/** `blockingStates[2]`, from Zod's `["blockingStates", 2]`. */
-function keyPath(segments: readonly PropertyKey[]): string {
-	return segments
-		.map((segment, index) =>
-			typeof segment === "number" ? `[${segment}]` : `${index === 0 ? "" : "."}${String(segment)}`,
-		)
-		.join("");
-}
-
-/** The path as people see it in their terminal: relative to where the command runs, or absolute outside it. */
-function display(file: string): string {
-	const relative = path.relative(process.cwd(), file);
-	return relative.startsWith("..") || path.isAbsolute(relative) ? file : relative;
+	return result.success
+		? { settings: toSettings(result.data) }
+		: { error: schemaError(file, config, result.error.issues) };
 }
 
 async function modifiedAt(file: string): Promise<number> {

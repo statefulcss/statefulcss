@@ -166,96 +166,225 @@ describe("loadConfig", () => {
 	});
 
 	describe("errors", () => {
-		it("rejects two config files in one folder, naming both", async () => {
-			const root = await project({
-				"statefulcss.config.json": "{}",
-				"statefulcss.config.ts": "export default {};",
+		/** The message for a config file with these contents. */
+		async function messageFor(file: string, contents: string): Promise<string> {
+			const root = await project({ [file]: contents });
+			return (await errorFrom(root, "button.css")).message;
+		}
+
+		describe("multiple-files", () => {
+			it("names both files", async () => {
+				const root = await project({
+					"statefulcss.config.json": "{}",
+					"statefulcss.config.ts": "export default {};",
+				});
+				const error = await errorFrom(root, "button.css");
+				expect(error).toMatchObject({
+					kind: "multiple-files",
+					file: path.join(root, "statefulcss.config.json"),
+					files: [path.join(root, "statefulcss.config.json"), path.join(root, "statefulcss.config.ts")],
+				});
+				expect(error.message).toMatchInlineSnapshot(
+					`"<root> has more than one Stateful CSS config: statefulcss.config.json and statefulcss.config.ts. Keep one and remove the other, so it's clear which applies."`,
+				);
 			});
-			const error = await errorFrom(root, "button.css");
-			expect(error).toMatchObject({
-				kind: "multiple-files",
-				files: [path.join(root, "statefulcss.config.json"), path.join(root, "statefulcss.config.ts")],
+
+			it('names a "statefulcss" key in package.json', async () => {
+				const root = await project({
+					"statefulcss.config.json": "{}",
+					"statefulcss.config.mjs": "export default {};",
+					"package.json": '{ "statefulcss": {} }',
+				});
+				const error = await errorFrom(root, "button.css");
+				expect(error.kind).toBe("multiple-files");
+				expect(error.files).toHaveLength(3);
+				expect(error.message).toMatchInlineSnapshot(
+					`"<root> has more than one Stateful CSS config: statefulcss.config.json, statefulcss.config.mjs and the "statefulcss" key in package.json. Keep one and remove the others, so it's clear which applies."`,
+				);
 			});
-			expect(error.message).toMatchInlineSnapshot(
-				`"<root> has more than one Stateful CSS config: statefulcss.config.json, statefulcss.config.ts. Keep one and remove the others."`,
-			);
-		});
 
-		it('rejects a config file next to a "statefulcss" key in package.json', async () => {
-			const root = await project({
-				"statefulcss.config.json": "{}",
-				"package.json": '{ "statefulcss": {} }',
-			});
-			const error = await errorFrom(root, "button.css");
-			expect(error.kind).toBe("multiple-files");
-			expect(error.message).toMatchInlineSnapshot(
-				`"<root> has more than one Stateful CSS config: statefulcss.config.json, the "statefulcss" key in package.json. Keep one and remove the others."`,
-			);
-		});
-
-		it("rejects JSON it can't parse, with the line and column", async () => {
-			const root = await project({ "statefulcss.config.json": '{\n\t"strict": true\n\t"layers": []\n}' });
-			const error = await errorFrom(root, "button.css");
-			expect(error).toMatchObject({ kind: "unreadable", file: path.join(root, "statefulcss.config.json") });
-			expect(error.message).toMatchInlineSnapshot(
-				`"Can't read <root>/statefulcss.config.json: comma expected at line 3, column 2. Comments and trailing commas are allowed; anything else has to be JSON."`,
-			);
-		});
-
-		it("rejects an empty JSON file", async () => {
-			const root = await project({ "statefulcss.config.json": "" });
-			expect((await errorFrom(root, "button.css")).message).toMatchInlineSnapshot(
-				`"Can't read <root>/statefulcss.config.json: value expected at line 1, column 1. Comments and trailing commas are allowed; anything else has to be JSON."`,
-			);
-		});
-
-		it("rejects a package.json it can't parse", async () => {
-			const root = await project({ "package.json": "{ name: app }" });
-			const error = await errorFrom(root, "button.css");
-			expect(error.kind).toBe("unreadable");
-		});
-
-		it("rejects a JavaScript config that throws, keeping what it threw", async () => {
-			const root = await project({ "statefulcss.config.mjs": 'throw new Error("Missing THEME");' });
-			const error = await errorFrom(root, "button.css");
-			expect(error.kind).toBe("unreadable");
-			expect(error.cause).toBeInstanceOf(Error);
-			expect(error.message).toMatchInlineSnapshot(
-				`"Can't load <root>/statefulcss.config.mjs, because it threw: Missing THEME"`,
-			);
-		});
-
-		it("rejects a JavaScript config with no default export", async () => {
-			const root = await project({ "statefulcss.config.mjs": "export const strict = true;" });
-			const error = await errorFrom(root, "button.css");
-			expect(error.kind).toBe("unreadable");
-			expect(error.message).toMatchInlineSnapshot(
-				`"<root>/statefulcss.config.mjs has no default export. Export the config as the default: export default defineConfig({ … })."`,
-			);
-		});
-
-		it("rejects an unknown key", async () => {
-			const root = await project({ "statefulcss.config.json": '{ "blockingState": [] }' });
-			expect(await errorFrom(root, "button.css")).toMatchObject({
-				kind: "unknown-key",
-				key: "blockingState",
+			it("doesn't load either file", async () => {
+				const root = await project({
+					"statefulcss.config.json": "{ not json",
+					"statefulcss.config.mjs": 'throw new Error("loaded");',
+				});
+				expect((await errorFrom(root, "button.css")).kind).toBe("multiple-files");
 			});
 		});
 
-		it("rejects a value of the wrong kind, with its key path", async () => {
-			const root = await project({ "statefulcss.config.json": '{ "blockingStates": [":disabled", 1] }' });
-			expect(await errorFrom(root, "button.css")).toMatchObject({
-				kind: "invalid-value",
-				key: "blockingStates[1]",
+		describe("unreadable", () => {
+			it("gives the line and column of invalid JSON", async () => {
+				const root = await project({ "statefulcss.config.json": '{\n\t"strict": true\n\t"layers": []\n}' });
+				const error = await errorFrom(root, "button.css");
+				expect(error).toMatchObject({ kind: "unreadable", file: path.join(root, "statefulcss.config.json") });
+				expect(error.message).toMatchInlineSnapshot(
+					`"Can't read <root>/statefulcss.config.json: comma expected at line 3, column 2. Fix the JSON there; comments and trailing commas are allowed."`,
+				);
+			});
+
+			it("says what to write in an empty JSON file", async () => {
+				expect(await messageFor("statefulcss.config.json", "")).toMatchInlineSnapshot(
+					`"<root>/statefulcss.config.json is empty. Write {} in it to use the defaults, or delete it."`,
+				);
+				expect(await messageFor("statefulcss.config.json", "// nothing yet\n")).toMatchInlineSnapshot(
+					`"<root>/statefulcss.config.json is empty. Write {} in it to use the defaults, or delete it."`,
+				);
+			});
+
+			it("names a package.json that isn't JSON", async () => {
+				const root = await project({ "package.json": "{ name: app }" });
+				const error = await errorFrom(root, "button.css");
+				expect(error.kind).toBe("unreadable");
+				expect(error.message).toMatch(
+					/^Can't read <root>\/package\.json, which is checked for a "statefulcss" key: /,
+				);
+			});
+
+			it("keeps what a JavaScript config threw", async () => {
+				const root = await project({ "statefulcss.config.mjs": 'throw new Error("THEME is not set");' });
+				const error = await errorFrom(root, "button.css");
+				expect(error.kind).toBe("unreadable");
+				expect(error.cause).toBeInstanceOf(Error);
+				expect(error.message).toMatchInlineSnapshot(
+					`"Can't load <root>/statefulcss.config.mjs, because it threw an error: THEME is not set."`,
+				);
+			});
+
+			it("shows the default export a JavaScript config is missing", async () => {
+				const root = await project({ "statefulcss.config.mjs": "export const strict = true;" });
+				const error = await errorFrom(root, "button.css");
+				expect(error.kind).toBe("unreadable");
+				expect(error.message).toMatchInlineSnapshot(
+					`"<root>/statefulcss.config.mjs has no default export. Export the settings as its default, like export default { strict: true }."`,
+				);
 			});
 		});
 
-		it("rejects a config that isn't an object", async () => {
-			const root = await project({ "package.json": '{ "statefulcss": true }' });
-			expect(await errorFrom(root, "button.css")).toMatchObject({
-				kind: "invalid-value",
-				file: path.join(root, "package.json"),
-				key: undefined,
+		describe("unknown-key", () => {
+			it("suggests the setting a typo meant", async () => {
+				const root = await project({ "statefulcss.config.json": '{ "blockingState": [] }' });
+				const error = await errorFrom(root, "button.css");
+				expect(error).toMatchObject({ kind: "unknown-key", key: "blockingState" });
+				expect(error.message).toMatchInlineSnapshot(
+					`"Unknown setting "blockingState" in <root>/statefulcss.config.json. Did you mean "blockingStates"?"`,
+				);
+			});
+
+			it("suggests regardless of case", async () => {
+				expect(await messageFor("statefulcss.config.json", '{ "ignorelayers": [] }')).toMatchInlineSnapshot(
+					`"Unknown setting "ignorelayers" in <root>/statefulcss.config.json. Did you mean "ignoreLayers"?"`,
+				);
+			});
+
+			it("lists the settings when nothing is close", async () => {
+				expect(await messageFor("statefulcss.config.json", '{ "colors": {} }')).toMatchInlineSnapshot(
+					`"Unknown setting "colors" in <root>/statefulcss.config.json. The settings are themeAttribute, themeFiles, baseTheme, blockingStates, interactionStates, stateAttributes, layers, strict and ignoreLayers."`,
+				);
+			});
+
+			it("names every unknown key", async () => {
+				expect(
+					await messageFor("statefulcss.config.json", '{ "layer": [], "colors": {}, "strict": true }'),
+				).toMatchInlineSnapshot(
+					`"Unknown settings "layer" (did you mean "layers"?) and "colors" in <root>/statefulcss.config.json. The settings are themeAttribute, themeFiles, baseTheme, blockingStates, interactionStates, stateAttributes, layers, strict and ignoreLayers."`,
+				);
+			});
+
+			it("comes before a wrong value", async () => {
+				const root = await project({ "statefulcss.config.json": '{ "strict": "yes", "layer": [] }' });
+				expect((await errorFrom(root, "button.css")).kind).toBe("unknown-key");
+			});
+
+			it('names the "statefulcss" key in package.json', async () => {
+				expect(
+					await messageFor("package.json", '{ "statefulcss": { "baseThemes": "default" } }'),
+				).toMatchInlineSnapshot(
+					`"Unknown setting "baseThemes" in the "statefulcss" key in <root>/package.json. Did you mean "baseTheme"?"`,
+				);
+			});
+		});
+
+		describe("invalid-value", () => {
+			it("says what a setting must be, with an example", async () => {
+				const root = await project({ "statefulcss.config.json": '{ "blockingStates": ":disabled" }' });
+				const error = await errorFrom(root, "button.css");
+				expect(error).toMatchObject({ kind: "invalid-value", key: "blockingStates" });
+				expect(error.message).toMatchInlineSnapshot(
+					`""blockingStates" in <root>/statefulcss.config.json must be a list of selectors, like [":disabled", "[aria-disabled=\\"true\\"]"]. It's ":disabled"."`,
+				);
+			});
+
+			it("names the item in a list that's wrong", async () => {
+				const root = await project({ "statefulcss.config.json": '{ "blockingStates": [":disabled", 1] }' });
+				const error = await errorFrom(root, "button.css");
+				expect(error).toMatchObject({ kind: "invalid-value", key: "blockingStates[1]" });
+				expect(error.message).toMatchInlineSnapshot(
+					`""blockingStates" in <root>/statefulcss.config.json must be a list of selectors, like [":disabled", "[aria-disabled=\\"true\\"]"]. blockingStates[1] is 1."`,
+				);
+			});
+
+			it("rejects an empty name", async () => {
+				expect(await messageFor("statefulcss.config.json", '{ "baseTheme": "" }')).toMatchInlineSnapshot(
+					`""baseTheme" in <root>/statefulcss.config.json must be a folder name, like "default". It's ""."`,
+				);
+				expect(
+					await messageFor("statefulcss.config.json", '{ "layers": ["base", ""] }'),
+				).toMatchInlineSnapshot(
+					`""layers" in <root>/statefulcss.config.json must be a list of layer names, like ["reset", "base", "themes", "components", "utilities"]. layers[1] is ""."`,
+				);
+			});
+
+			it("gives every setting's expected value and example", async () => {
+				const messages = [];
+				for (const [key, value] of Object.entries({
+					themeAttribute: 1,
+					themeFiles: "src/themes/**",
+					baseTheme: ["default"],
+					blockingStates: ":disabled",
+					interactionStates: ":hover",
+					stateAttributes: "data-state",
+					layers: "base, components",
+					strict: "yes",
+					ignoreLayers: "base",
+				})) {
+					messages.push(await messageFor("statefulcss.config.json", JSON.stringify({ [key]: value })));
+				}
+				expect(messages).toMatchInlineSnapshot(`
+					[
+					  ""themeAttribute" in <root>/statefulcss.config.json must be an attribute name, like "data-theme". It's 1.",
+					  ""themeFiles" in <root>/statefulcss.config.json must be a list of globs, like ["src/styles/themes/**"]. It's "src/themes/**".",
+					  ""baseTheme" in <root>/statefulcss.config.json must be a folder name, like "default". It's ["default"].",
+					  ""blockingStates" in <root>/statefulcss.config.json must be a list of selectors, like [":disabled", "[aria-disabled=\\"true\\"]"]. It's ":disabled".",
+					  ""interactionStates" in <root>/statefulcss.config.json must be a list of selectors, like [":hover", ":focus-visible", ":active"]. It's ":hover".",
+					  ""stateAttributes" in <root>/statefulcss.config.json must be a list of attribute names, like ["data-state"]. It's "data-state".",
+					  ""layers" in <root>/statefulcss.config.json must be a list of layer names, like ["reset", "base", "themes", "components", "utilities"]. It's "base, components".",
+					  ""strict" in <root>/statefulcss.config.json must be true or false, like true. It's "yes".",
+					  ""ignoreLayers" in <root>/statefulcss.config.json must be a list of layer names, like ["base"]. It's "base".",
+					]
+				`);
+			});
+
+			it("rejects a JSON config that isn't an object", async () => {
+				const error = await errorFrom(await project({ "statefulcss.config.json": "[]" }), "button.css");
+				expect(error).toMatchObject({ kind: "invalid-value", key: undefined });
+				expect(error.message).toMatchInlineSnapshot(
+					`"<root>/statefulcss.config.json must contain an object of settings, like { "strict": true }. It's []."`,
+				);
+			});
+
+			it("rejects a JavaScript config that doesn't export an object", async () => {
+				expect(await messageFor("statefulcss.config.mjs", "export default null;")).toMatchInlineSnapshot(
+					`"<root>/statefulcss.config.mjs must export an object of settings as its default, like export default { strict: true }. It exports null."`,
+				);
+			});
+
+			it('rejects a "statefulcss" key in package.json that isn\'t an object', async () => {
+				const root = await project({ "package.json": '{ "statefulcss": true }' });
+				const error = await errorFrom(root, "button.css");
+				expect(error).toMatchObject({ kind: "invalid-value", file: path.join(root, "package.json") });
+				expect(error.message).toMatchInlineSnapshot(
+					`"The "statefulcss" key in <root>/package.json must be an object of settings, like { "strict": true }. It's true."`,
+				);
 			});
 		});
 	});

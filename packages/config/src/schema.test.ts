@@ -57,10 +57,11 @@ describe("configSchema", () => {
 		expect(configSchema.safeParse({ themeFiles: [""] }).success).toBe(false);
 	});
 
-	it.each(settingKeys)("describes %s with an example that's valid", (key) => {
+	it.each(settingKeys)("describes %s, with what it expects and a valid example", (key) => {
 		const setting = configSchema.shape[key as keyof typeof configSchema.shape];
 		const meta = setting.meta();
 		expect(meta?.description).toMatch(/^[^\n]+\.$/);
+		expect(meta?.expected).toMatch(/^(a|an|true) /);
 		expect(meta?.examples).toHaveLength(1);
 		for (const example of meta?.examples as unknown[]) {
 			expect(setting.safeParse(example).success).toBe(true);
@@ -75,6 +76,10 @@ describe("jsonSchema", () => {
 		for (const key of settingKeys) {
 			expect(properties[key]?.default).toEqual(defaults[key as keyof typeof defaults]);
 		}
+	});
+
+	it("leaves out what's only for error messages", () => {
+		expect(JSON.stringify(jsonSchema)).not.toContain('"expected"');
 	});
 
 	it("allows no other keys and requires none", () => {

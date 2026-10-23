@@ -3,6 +3,10 @@
 	"tasks": {
 		"build": {
 			"env": ["PUBLIC_SITE_URL"]
+		},
+		"check-types": {
+			"description": "astro check and astro build both write Vite's dependency cache; running them at once can fail with ENOTEMPTY.",
+			"dependsOn": ["$TURBO_EXTENDS$", "build"]
 		}
 	}
 }

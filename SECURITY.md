@@ -4,10 +4,12 @@
 
 Security fixes are released for the latest published version of each package:
 
-| Package                         | Supported                      |
-| ------------------------------- | ------------------------------ |
-| `statefulcss` (CLI)             | Latest minor release           |
-| `@statefulcss/stylelint-plugin` | Latest release, once published |
+| Package                         | Supported            |
+| ------------------------------- | -------------------- |
+| `statefulcss` (CLI)             | Latest minor release |
+| `@statefulcss/stylelint-plugin` | Latest release       |
+| `@statefulcss/core`             | Latest release       |
+| `@statefulcss/config`           | Latest release       |
 
 The [statefulcss.com](https://statefulcss.com) website and this repository's CI/CD workflows are also in scope.
 

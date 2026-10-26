@@ -375,7 +375,7 @@ importers:
         specifier: ^10.1.8
         version: 10.1.8(eslint@10.13.0(jiti@2.7.0)(supports-color@10.2.2))
       eslint-plugin-turbo:
-        specifier: ^2.11.9
+        specifier: ^2.11.10
         version: 2.11.10(eslint@10.13.0(jiti@2.7.0)(supports-color@10.2.2))(turbo@2.11.10)
       globals:
         specifier: ^17.13.0

@@ -168,7 +168,7 @@ catalogs:
       specifier: ^10.0.1
       version: 10.0.1
     '@types/node':
-      specifier: ^22.18.13
+      specifier: ^22.20.5
       version: 22.20.5
     '@typescript-eslint/parser':
       specifier: ^8.72.0

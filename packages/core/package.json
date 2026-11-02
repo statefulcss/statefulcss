@@ -1,6 +1,6 @@
 {
 	"name": "@statefulcss/core",
-	"version": "0.0.4",
+	"version": "0.0.5",
 	"type": "module",
 	"license": "MIT",
 	"description": "Reads a stylesheet into the Stateful CSS model, for tools",

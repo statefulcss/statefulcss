@@ -1,5 +1,12 @@
 # @statefulcss/config
 
+## 0.0.5
+
+### Patch Changes
+
+- 5156755: Every config error now says what's wrong and how to fix it. An unknown key suggests the setting it most likely meant ("Did you mean "blockingStates"?") or lists the settings. A wrong value says what the setting must be, with an example, and what it is now. An empty JSON file, a missing default export, and a `.js` or `.ts` config that uses `import` in a CommonJS package each get their own fix.
+- 35dca89: `loadConfig(fromPath)` finds and loads the nearest config: `statefulcss.config.json` (comments and trailing commas allowed), `.js`, `.mjs`, `.ts`, or a `"statefulcss"` key in `package.json`. It searches up from the file's folder to the repository root, checks the config against the schema and fills in the defaults; no config means the defaults. Configs are cached per folder and read again when they change. A config that can't be used throws a `ConfigError` with its `kind`, `file` and `key`, including `multiple-files` when a folder has more than one config.
+
 ## 0.0.4
 
 ### Patch Changes

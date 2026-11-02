@@ -1,5 +1,14 @@
 # @statefulcss/stylelint-plugin
 
+## 0.0.5
+
+### Patch Changes
+
+- Updated dependencies [5156755]
+- Updated dependencies [35dca89]
+  - @statefulcss/config@0.0.5
+  - @statefulcss/core@0.0.5
+
 ## 0.0.4
 
 ### Patch Changes

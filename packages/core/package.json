@@ -57,7 +57,7 @@
 		"@repo/eslint-config": "workspace:*",
 		"@repo/tsconfig": "workspace:*",
 		"eslint": "catalog:",
-		"postcss": "^8.5.31",
+		"postcss": "^8.5.32",
 		"typescript": "catalog:",
 		"vitest": "catalog:"
 	}

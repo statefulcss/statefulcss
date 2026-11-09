@@ -27,7 +27,7 @@
 		"lefthook": "^2.2.2",
 		"prettier": "^3.9.10",
 		"prettier-plugin-astro": "1.1.2",
-		"turbo": "^2.11.9",
+		"turbo": "^2.11.10",
 		"typescript": "catalog:"
 	}
 }

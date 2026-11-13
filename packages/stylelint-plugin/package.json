@@ -64,7 +64,7 @@
 		"@statefulcss/core": "workspace:*"
 	},
 	"peerDependencies": {
-		"stylelint": "^17.0.0"
+		"stylelint": "^17.0.0 || ^18.0.0"
 	},
 	"devDependencies": {
 		"@repo/eslint-config": "workspace:*",

@@ -1,0 +1,108 @@
+@layer components {
+	/**
+	 * Button
+	 * @component button
+	 * @description The most generic action.
+	 */
+	.button {
+		/* Defaults */
+		--_background-color: var(--t-color-background-raised);
+		--_background-color-hover: var(--t-color-background-raised-strong);
+		--_background-color-active: var(--t-color-background-raised-stronger);
+		--_background-color-pressed: var(--t-color-background-raised-stronger);
+		--s-display: inline-flex;
+		--s-block-size: var(--t-size-control);
+		--s-padding-inline: var(--t-space-3);
+		--s-background-color: var(--_background-color);
+		--s-color: var(--t-color-foreground-base);
+		--s-outline-width: 0;
+		--s-opacity: 1;
+		--s-cursor: pointer;
+
+		/* Bindings */
+		display: var(--s-display);
+		align-items: center;
+		gap: var(--t-space-2);
+		block-size: var(--s-block-size);
+		padding-inline: var(--s-padding-inline);
+		border: 0;
+		border-radius: var(--c-button-border-radius, var(--t-radius-medium));
+		background-color: var(--s-background-color);
+		color: var(--s-color);
+		outline: var(--s-outline-width) solid var(--t-color-ring-base);
+		opacity: var(--s-opacity);
+		cursor: var(--s-cursor);
+		transition: background-color var(--t-duration-fast);
+
+		/* Variants */
+		&[data-emphasis="primary"] {
+			--_background-color: var(--t-color-background-accent);
+			--_background-color-hover: var(--t-color-background-accent-strong);
+			--_background-color-active: var(--t-color-background-accent-stronger);
+			--_background-color-pressed: var(--t-color-background-accent-stronger);
+			--s-color: var(--t-color-foreground-on-accent);
+		}
+
+		&[data-emphasis="tertiary"] {
+			--_background-color: transparent;
+			--s-color: var(--t-color-foreground-accent);
+		}
+
+		&[data-intent="danger"] {
+			--s-color: var(--t-color-foreground-danger);
+		}
+
+		&[data-intent="danger"][data-emphasis="primary"] {
+			--_background-color: var(--t-color-background-danger);
+			--_background-color-hover: var(--t-color-background-danger-strong);
+			--_background-color-active: var(--t-color-background-danger-stronger);
+			--_background-color-pressed: var(--t-color-background-danger-stronger);
+			--s-color: var(--t-color-foreground-on-danger);
+		}
+
+		&[data-size="small"] {
+			--s-block-size: var(--t-size-control-small);
+			--s-padding-inline: var(--t-space-2);
+		}
+
+		&[data-size="large"] {
+			--s-block-size: var(--t-size-control-large);
+			--s-padding-inline: var(--t-space-4);
+		}
+
+		/* States */
+		&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])) {
+			@media (hover: hover) {
+				&:hover {
+					--s-background-color: var(--_background-color-hover);
+				}
+			}
+
+			&:active {
+				--s-background-color: var(--_background-color-active);
+			}
+		}
+
+		&:focus-visible {
+			--s-outline-width: var(--t-border-thick);
+		}
+
+		&[aria-pressed="true"] {
+			--s-background-color: var(--_background-color-pressed);
+		}
+
+		&[hidden]:where(:not([hidden="until-found" i])) {
+			--s-display: none;
+		}
+
+		&:disabled,
+		&[aria-disabled="true"] {
+			--s-opacity: var(--t-opacity-disabled);
+			--s-cursor: not-allowed;
+		}
+
+		&[data-loading] {
+			--s-cursor: progress;
+		}
+	}
+}

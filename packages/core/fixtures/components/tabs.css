@@ -1,0 +1,38 @@
+@layer components {
+	/**
+	 * Tabs
+	 * @component tabs
+	 * @description Panels shown one at a time, with the tab list that picks one.
+	 */
+	.tabs {
+		/* Defaults */
+		--_indicator-color: var(--c-tabs-indicator-color, var(--t-color-foreground-accent));
+		--s-grid-template-columns: none;
+		--s-opacity: 1;
+		--q-tabs-blocked: false;
+		--c-tab-indicator-color: var(--_indicator-color);
+
+		/* Bindings */
+		display: grid;
+		grid-template-columns: var(--s-grid-template-columns);
+		gap: var(--t-space-3);
+		opacity: var(--s-opacity);
+
+		/* Child elements */
+		& .tabs-panel {
+			padding-block: var(--t-space-2);
+		}
+
+		/* Variants */
+		&[data-orientation="vertical"] {
+			--s-grid-template-columns: auto 1fr;
+			--c-tab-list-flex-direction: column;
+		}
+
+		/* States */
+		&[aria-disabled="true"] {
+			--q-tabs-blocked: true;
+			--s-opacity: var(--t-opacity-disabled);
+		}
+	}
+}

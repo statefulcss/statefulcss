@@ -51,13 +51,17 @@
 		"check-types": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@statefulcss/config": "workspace:*"
+		"@statefulcss/config": "workspace:*",
+		"postcss-selector-parser": "^7.1.7"
 	},
 	"devDependencies": {
 		"@repo/eslint-config": "workspace:*",
 		"@repo/tsconfig": "workspace:*",
+		"@types/node": "catalog:",
 		"eslint": "catalog:",
 		"postcss": "^8.5.32",
+		"postcss-html": "^2.0.0",
+		"postcss-scss": "^4.0.9",
 		"typescript": "catalog:",
 		"vitest": "catalog:"
 	}

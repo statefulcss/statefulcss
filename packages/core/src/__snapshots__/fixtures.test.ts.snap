@@ -1,0 +1,69 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`fixture components > button.css reads the same in every syntax 1`] = `
+"component .button
+  #0 .button  [layer components]
+  #1 .button[data-emphasis="primary"]  [layer components]
+  #2 .button[data-emphasis="tertiary"]  [layer components]
+  #3 .button[data-intent="danger"]  [layer components]
+  #4 .button[data-intent="danger"][data-emphasis="primary"]  [layer components]
+  #5 .button[data-size="small"]  [layer components]
+  #6 .button[data-size="large"]  [layer components]
+  #7 .button:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])):hover  [@media (hover: hover); layer components]
+  #8 .button:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])):active  [layer components]
+  #9 .button:focus-visible  [layer components]
+  #10 .button[aria-pressed="true"]  [layer components]
+  #11 .button[hidden]:where(:not([hidden="until-found" i]))  [layer components]
+  #12 .button:disabled  [layer components]
+  #13 .button[aria-disabled="true"]  [layer components]
+  #14 .button[data-loading]  [layer components]"
+`;
+
+exports[`fixture components > field.css reads the same in every syntax 1`] = `
+"component .field
+  #0 .field  [layer components]
+  #12 .field:has(.field-input:user-invalid)  [layer components]
+  #13 .field:has(.field-input[aria-invalid="true"])  [layer components]
+  #14 .field:has(.field-input:disabled)  [layer components]
+component .field-label (in .field)
+  #1 .field .field-label  [layer components]
+  #2 .field .field-label  [@container --field (inline-size >= 30rem); layer components]
+component .field-input (in .field)
+  #3 .field .field-input  [layer components]
+  #4 .field .field-input  [@container --field (inline-size >= 30rem); layer components]
+  #5 .field .field-input:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])):hover  [layer components]
+  #6 .field .field-input:focus-visible  [layer components]
+component .field-hint (in .field)
+  #7 .field .field-hint  [layer components]
+  #8 .field .field-hint  [@container --field (inline-size >= 30rem); layer components]
+component .field-error (in .field)
+  #9 .field .field-error  [layer components]
+  #10 .field .field-error  [@container --field (inline-size >= 30rem); layer components]
+  #11 .field .field-error[hidden]:where(:not([hidden="until-found" i]))  [layer components]"
+`;
+
+exports[`fixture components > tab.css reads the same in every syntax 1`] = `
+"component .tab
+  #0 .tab  [layer components]
+  #2 .tab:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])):hover  [@container style(--q-tabs-blocked: false); @media (hover: hover); layer components]
+  #3 .tab:focus-visible  [layer components]
+  #4 .tab[aria-selected="true"]  [layer components]
+  #6 .tab:disabled  [layer components]
+pseudo-element .tab::after (on .tab)
+  #1 .tab::after  [layer components]
+  #5 .tab[aria-selected="true"]::after  [layer components]"
+`;
+
+exports[`fixture components > tab-list.css reads the same in every syntax 1`] = `
+"component .tab-list
+  #0 .tab-list  [layer components]"
+`;
+
+exports[`fixture components > tabs.css reads the same in every syntax 1`] = `
+"component .tabs
+  #0 .tabs  [layer components]
+  #2 .tabs[data-orientation="vertical"]  [layer components]
+  #3 .tabs[aria-disabled="true"]  [layer components]
+component .tabs-panel (in .tabs)
+  #1 .tabs .tabs-panel  [layer components]"
+`;

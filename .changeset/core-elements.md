@@ -1,0 +1,5 @@
+---
+"@statefulcss/core": patch
+---
+
+`analyze(root, settings)` reads a stylesheet's elements and the blocks that style them. Everything with a class is a component, known by its own class however its selectors reach it: `.icon`, `.button .icon` and `.button[data-intent] .icon` are one element. The classes a selector names before its element are its parent components, recorded on each block and gathered on the element (`parents`, `children`). A tag under a component (`.prose a`) is a descendant element, a pseudo-element is its own element on its host, and a selector with no class (`a`, `:root`) is a global element, with theme scopes and `[data-color-scheme]` selectors marked. Every block records its resolved selector (CSS nesting and SCSS `&-suffix`), its element, the at-rules around it and its layer. Syntax core can't read (SCSS interpolation and at-rules, template placeholders, unknown at-rules, selectors the parser rejects) is recorded in `unknowns`, never thrown on. Works the same on plain CSS, SCSS and Vue files, where all plain `<style>` blocks are read together as one stylesheet, all scoped blocks as another, and each `<style module>` on its own.

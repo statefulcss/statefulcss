@@ -147,7 +147,7 @@
 			allowedVersions: "<25",
 		},
 		{
-			description: "Node types match the lowest Node version a package supports: 22.18 in the catalog (config, core, stylelint-plugin).",
+			description: "Node types match the lowest Node version a package supports, on the 22 line in the catalog (config and core: 22.18; stylelint-plugin: 22.22.2).",
 			matchPackageNames: ["@types/node"],
 			matchFileNames: ["pnpm-workspace.yaml"],
 			allowedVersions: "<23",

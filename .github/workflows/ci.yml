@@ -55,10 +55,10 @@ jobs:
       fail-fast: false
       matrix:
         # The lowest Node each published package supports, plus the LTS lines: 22.12.0 for the CLI,
-        # 22.18.0 for config, core and the Stylelint plugin (the first Node 22 that strips types, so
-        # .ts configs load). The "Protect Main" ruleset requires these jobs by name, so a change here
-        # needs the same change there.
-        node: ["22.12.0", "22.18.0", "24", "26"]
+        # 22.18.0 for config and core (the first Node 22 that strips types, so .ts configs load), and
+        # 22.22.2 for the Stylelint plugin (the lowest Node 22 Stylelint 18 supports). The "Protect
+        # Main" ruleset requires these jobs by name, so a change here needs the same change there.
+        node: ["22.12.0", "22.18.0", "22.22.2", "24", "26"]
 
     steps:
       - name: Checkout

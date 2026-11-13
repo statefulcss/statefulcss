@@ -35,14 +35,18 @@ check_plugin() {
 	echo "Stylelint plugin with Stylelint $version: ok"
 }
 
-# Stylelint plugin, with core and config (>=22.18.0, the first Node 22 that strips types from .ts configs).
-# All three install together: the plugin's tarball depends on the exact versions of the other two.
+# Exits 0 when the current Node is one Stylelint 18, and so the plugin, supports: ^22.22.2 || ^24.15.0 || >=26.0.0.
+supports_stylelint_18() {
+	node_at_least 26.0.0 ||
+		{ node_at_least 24.15.0 && ! node_at_least 25.0.0; } ||
+		{ node_at_least 22.22.2 && ! node_at_least 23.0.0; }
+}
+
+# Config and core (>=22.18.0, the first Node 22 that strips types from .ts configs).
 if node_at_least 22.18; then
 	npm install --no-audit --no-fund \
 		"$packs"/statefulcss-config-*.tgz \
-		"$packs"/statefulcss-core-*.tgz \
-		"$packs"/statefulcss-stylelint-plugin-*.tgz \
-		stylelint@17
+		"$packs"/statefulcss-core-*.tgz
 
 	node --input-type=module -e '
 		await import("@statefulcss/config");
@@ -84,24 +88,28 @@ if node_at_least 22.18; then
 		await expectError("config-broken/fixture.css", "unknown-key", "Did you mean \"blockingStates\"?");
 		await expectError("config-commonjs/fixture.css", "unreadable", "set \"type\": \"module\" in package.json");
 	'
+else
+	echo "Config and core: skipped (require Node >=22.18.0)"
+fi
+
+# Stylelint plugin, on the Node versions Stylelint 18 supports.
+# It installs with config and core: the plugin's tarball depends on the exact versions of the other two.
+if supports_stylelint_18; then
+	npm install --no-audit --no-fund \
+		"$packs"/statefulcss-config-*.tgz \
+		"$packs"/statefulcss-core-*.tgz \
+		"$packs"/statefulcss-stylelint-plugin-*.tgz \
+		stylelint@18
 
 	printf '.button {\n\tcolor: red;\n}\n' >fixture.css
 	printf '{ "extends": ["@statefulcss/stylelint-plugin/recommended"] }\n' >.stylelintrc.json
 
-	# The latest Stylelint 17, then the lowest version the plugin's peer range allows.
+	# The latest Stylelint 18, then the lowest version the plugin's peer range allows.
 	check_plugin
-	npm install --no-audit --no-fund stylelint@17.0.0
+	npm install --no-audit --no-fund stylelint@18.0.0
 	check_plugin
-
-	# The latest Stylelint 18, on the Node versions it supports (^22.22.2 || ^24.15.0 || >=26).
-	if node_at_least 24.15.0 || { node_at_least 22.22.2 && ! node_at_least 23.0.0; }; then
-		npm install --no-audit --no-fund stylelint@18
-		check_plugin
-	else
-		echo "Stylelint plugin with Stylelint 18: skipped (requires Node ^22.22.2, ^24.15.0 or >=26)"
-	fi
 else
-	echo "Config, core and the Stylelint plugin: skipped (require Node >=22.18.0)"
+	echo "Stylelint plugin: skipped (requires Node ^22.22.2, ^24.15.0 or >=26)"
 fi
 
 # CLI (Commander 15 requires >=22.12.0, the lowest Node in the matrix)

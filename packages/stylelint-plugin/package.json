@@ -29,7 +29,7 @@
 		"access": "public"
 	},
 	"engines": {
-		"node": ">=22.18.0"
+		"node": "^22.22.2 || ^24.15.0 || >=26.0.0"
 	},
 	"sideEffects": false,
 	"exports": {
@@ -64,7 +64,7 @@
 		"@statefulcss/core": "workspace:*"
 	},
 	"peerDependencies": {
-		"stylelint": "^17.0.0 || ^18.0.0"
+		"stylelint": "^18.0.0"
 	},
 	"devDependencies": {
 		"@repo/eslint-config": "workspace:*",

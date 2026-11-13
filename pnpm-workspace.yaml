@@ -5,7 +5,7 @@ allowBuilds:
   workerd: true
 catalog:
   "@eslint/js": ^10.0.1
-  # Node types match the lowest Node version the packages support (config, core, stylelint-plugin: 22.18).
+  # Node types match the lowest Node version the packages support (config and core: 22.18; stylelint-plugin: 22.22.2).
   "@types/node": ^22.20.5
   "@typescript-eslint/parser": ^8.72.0
   eslint: ^10.13.0

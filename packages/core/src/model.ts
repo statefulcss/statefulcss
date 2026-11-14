@@ -202,13 +202,16 @@ export interface Step {
 	readonly names: "root" | "part" | "slot" | "other";
 	/** The part's or slot's name. */
 	readonly name: string | undefined;
+	/** What names the element at this step: `.card`, `[data-part="title"]`, `p`, `*`. */
+	readonly text: string;
+	readonly at: Position;
 }
 
 export interface Condition {
 	/** Normalized: `[data-size="small"]`, `:hover`, `:not(:disabled, [inert])`. */
 	readonly text: string;
 	readonly kind: "variant" | "state" | "guard" | "unknown";
-	/** For a state. */
+	/** For a state. For `:is()`, `:not()` and `:has()`, the group of the first state inside. */
 	readonly group: StateGroup | undefined;
 	/** `:focus`, `:focus-visible`, `:focus-within`. */
 	readonly focus: boolean;
@@ -222,7 +225,7 @@ export interface Condition {
 	readonly inWhere: boolean;
 	/** What `:not()` and `:is()` hold. `:where()` is transparent. */
 	readonly inner: readonly Condition[];
-	/** For `:has()`. */
+	/** For a `:has()` that holds one selector. With a list, what the selectors ask is in `inner`. */
 	readonly has: Has | undefined;
 	/** Set on the `:not()` that is a guard. */
 	readonly guard: Id | undefined;
@@ -238,14 +241,18 @@ export interface AttributeSelector {
 /** `:has(> :where([data-part="control"]) > :where([data-part="input"]):disabled)` */
 export interface Has {
 	readonly path: readonly HasStep[];
-	/** On the last compound: `:disabled`. */
+	/** What it asks of the elements on the path: `:disabled` on the input. */
 	readonly conditions: readonly Condition[];
 }
 
 export interface HasStep {
-	readonly combinator: " " | ">" | "+" | "~" | undefined;
+	/** A space when none is written: `:has()` looks at descendants. */
+	readonly combinator: " " | ">" | "+" | "~";
+	/** The part this step names, if it names one. */
 	readonly part: string | undefined;
+	/** The part is named inside `:where()`, so it adds no specificity. */
 	readonly inWhere: boolean;
+	readonly at: Position;
 }
 
 /** `@media`, `@container`, `@supports` or `@starting-style` around a block. */

@@ -221,11 +221,11 @@ function visitAtRule(atRule: AtRule, context: Context, found: Found): void {
 /**
  * `@scope (.card) to ([data-component])`: the rules inside it are under the scope's root, and `:scope` or `&` at their
  * start is the root itself. A scope with no root, a list of roots or a path as its root is recorded, and what's inside
- * it isn't read.
+ * it isn't read. A scope nested in a rule has that rule's element as its root only when it's written `@scope (&)`.
  */
 function visitScope(atRule: AtRule, context: Context, found: Found): void {
 	const prelude = scopePrelude(atRule.params);
-	const root = scopeRoot(prelude.root, atRule, context);
+	const root = scopeRoot(prelude, atRule, context);
 	const index = found.scopes.length;
 	found.scopes.push({
 		node: atRule,
@@ -300,21 +300,32 @@ function scopeRootForm(selector: parser.Selector): ScopeRootForm | undefined {
 	return selector.nodes.some((node) => node.type === "nesting") ? "&" : undefined;
 }
 
+interface ScopePrelude {
+	readonly root: string | undefined;
+	/** Where the root starts in the at-rule's parameters. */
+	readonly rootIndex: number;
+	readonly limit: string | undefined;
+}
+
 /** The root and the limit of `@scope (root) to (limit)`, each as written. */
-function scopePrelude(params: string): { root: string | undefined; limit: string | undefined } {
-	let rest = params.trim();
+function scopePrelude(params: string): ScopePrelude {
+	const start = params.length - params.trimStart().length;
+	let rest = params.slice(start);
 	let root: string | undefined;
+	let rootIndex = 0;
 	if (rest.startsWith("(")) {
 		const end = closingParenthesis(rest);
-		if (end === -1) return { root: undefined, limit: undefined };
-		root = rest.slice(1, end).trim() || undefined;
+		if (end === -1) return { root: undefined, rootIndex, limit: undefined };
+		const inside = rest.slice(1, end);
+		root = inside.trim() || undefined;
+		rootIndex = start + 1 + (inside.length - inside.trimStart().length);
 		rest = rest.slice(end + 1).trim();
 	}
 	const to = /^to\s*(?=\()/i.exec(rest);
-	if (!to) return { root, limit: undefined };
+	if (!to) return { root, rootIndex, limit: undefined };
 	const group = rest.slice(to[0].length);
 	const end = closingParenthesis(group);
-	return { root, limit: end === -1 ? undefined : group.slice(1, end).trim() || undefined };
+	return { root, rootIndex, limit: end === -1 ? undefined : group.slice(1, end).trim() || undefined };
 }
 
 /** The index of the parenthesis that closes the one a text starts with, or -1. */
@@ -327,24 +338,25 @@ function closingParenthesis(text: string): number {
 	return -1;
 }
 
-/** A scope's root as one compound, or why core doesn't read the scope. */
+/**
+ * A scope's root as one compound, or why core doesn't read the scope. Inside a rule or another scope, the root is
+ * relative to it, like a nested selector: `.card { @scope (.title) { … } }` scopes `.card .title`, which is a path.
+ */
 function scopeRoot(
-	text: string | undefined,
+	prelude: ScopePrelude,
 	atRule: AtRule,
 	context: Context,
 ): Compound | { reason: UnknownReason; detail: string } {
-	if (text === undefined) return { reason: "scope-root", detail: "@scope without a root" };
-	const parsed = parseSelectorList(text);
+	if (prelude.root === undefined) return { reason: "scope-root", detail: "@scope without a root" };
+	// Padded, so each part's offset is its place in the at-rule's parameters.
+	const parsed = parseSelectorList(" ".repeat(prelude.rootIndex) + prelude.root);
 	if ("reason" in parsed) return parsed;
 	const [selector, ...others] = parsed.selectors;
 	if (!selector || others.length > 0) return { reason: "scope-root", detail: "@scope with a list of roots" };
+	if (context.parents && context.parents.length > 1)
+		return { reason: "scope-root", detail: "@scope with a list of roots" };
 
-	const own = toCompounds(selector, atRule);
-	const usesNesting = own.some((compound) => compound.parts.some((part) => part.node.type === "nesting"));
-	// Only `&` ties a nested scope's root to the rule around it; any other root stands on its own.
-	const parents = usesNesting ? context.parents : undefined;
-	if (parents && parents.length > 1) return { reason: "scope-root", detail: "@scope with a list of roots" };
-	const complex = resolve(own, parents?.[0]?.selector);
+	const complex = resolve(toCompounds(selector, atRule), context.parents?.[0]?.selector);
 	if (!complex) return { reason: "unparsable-selector", detail: "& outside a rule" };
 	const [compound, ...path] = complex;
 	if (!compound || path.length > 0) return { reason: "scope-root", detail: "@scope with a path as its root" };

@@ -172,6 +172,11 @@ const legacyPseudoElements = new Set([":before", ":after", ":first-line", ":firs
 /** Pseudo-classes that wrap a selector: CSS Modules' `:global()`, Vue's `:deep()` and `:slotted()`. */
 const wrappers = new Set([":global", ":deep", ":slotted", "::v-deep", "::v-slotted", "::v-global"]);
 
+/** `:deep()`, `:slotted()`, `:global()` and their older spellings: what they select belongs to another stylesheet. */
+export function isWrapper(node: parser.Node): boolean {
+	return node.type === "pseudo" && wrappers.has(node.value.toLowerCase());
+}
+
 export function isPseudoElement(node: parser.Node): boolean {
 	if (node.type !== "pseudo") return false;
 	const value = node.value.toLowerCase();
@@ -247,7 +252,7 @@ export function splitCompound(
 }
 
 /** Whether every selector inside `:is()` or `:where()` only names elements (`:where(ul, ol)`), with no states. */
-function listsElements(node: parser.Pseudo): boolean {
+export function listsElements(node: parser.Pseudo): boolean {
 	return node.nodes.every((selector) =>
 		selector.nodes.every((child) =>
 			["tag", "class", "universal", "id", "combinator", "comment"].includes(child.type),

@@ -252,6 +252,33 @@ describe("scopes", () => {
 		expect(walked.blocks).toEqual([]);
 	});
 
+	inEverySyntax("a nested scope's root is relative to the rule around it, even without &", ({ parse }) => {
+		const walked = walk(
+			parse(`
+				.card { @scope (.title) to ([data-component]) { p { color: red; } } }
+				@scope (.card) { @scope (.title) { p { color: red; } } }
+			`),
+		);
+		expect(walked.scopes.map((scope) => [scope.root?.parts.length, scope.rootText, scope.nested])).toEqual([
+			[undefined, ".title", true],
+			[1, ".card", false],
+			[undefined, ".title", false],
+		]);
+		expect(reasons(walked)).toEqual([
+			["scope-root", "@scope with a path as its root"],
+			["scope-root", "@scope with a path as its root"],
+		]);
+		expect(walked.blocks).toEqual([]);
+	});
+
+	inEverySyntax("a scope root's parts know their place in the at-rule's parameters", ({ parse }) => {
+		const walked = walk(
+			parse('@scope (  [data-component="tabs"]) to ([data-component]) { p { margin: 0; } }'),
+		);
+		const part = walked.scopes[0]?.root?.parts[0];
+		expect([part?.source.type, part?.node.sourceIndex]).toEqual(["atrule", 3]);
+	});
+
 	inEverySyntax("a scope whose root is any one element", ({ parse }) => {
 		const walked = walk(parse("@scope (main) { a { color: red; } }"));
 		expect(walked.scopes.map((scope) => scope.rootText)).toEqual(["main"]);

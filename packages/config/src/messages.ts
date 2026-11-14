@@ -100,6 +100,12 @@ export function schemaError(file: string, config: unknown, issues: readonly z.co
 
 	const [setting, ...rest] = issue?.path ?? [];
 	if (typeof setting !== "string") return notAnObjectError(file, config);
+	if (issue?.code === "custom") {
+		return new ConfigError("invalid-value", `"${setting}" in ${where(file)} ${issue.message}`, {
+			file,
+			key: setting,
+		});
+	}
 
 	const schema = configSchema.shape[setting as keyof typeof configSchema.shape];
 	const meta = schema.meta();

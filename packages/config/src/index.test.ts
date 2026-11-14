@@ -10,7 +10,13 @@ describe("defineConfig", () => {
 
 	it("types every setting as optional", () => {
 		defineConfig({});
-		defineConfig({ $schema: "./node_modules/@statefulcss/config/schema.json", themeAttribute: "data-theme" });
+		defineConfig({
+			$schema: "./node_modules/@statefulcss/config/schema.json",
+			themeAttribute: "data-theme",
+			componentAttribute: "data-root",
+			partAttribute: "data-piece",
+			slotAttribute: "data-outlet",
+		});
 		// @ts-expect-error -- an unknown key
 		defineConfig({ blockingState: [":disabled"] });
 		// @ts-expect-error -- a list, not a string

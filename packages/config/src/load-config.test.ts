@@ -278,7 +278,7 @@ describe("loadConfig", () => {
 
 			it("lists the settings when nothing is close", async () => {
 				expect(await messageFor("statefulcss.config.json", '{ "colors": {} }')).toMatchInlineSnapshot(
-					`"Unknown setting "colors" in <root>/statefulcss.config.json. The settings are themeAttribute, themeFiles, baseTheme, blockingStates, interactionStates, stateAttributes, layers, strict and ignoreLayers."`,
+					`"Unknown setting "colors" in <root>/statefulcss.config.json. The settings are themeAttribute, componentAttribute, partAttribute, slotAttribute, themeFiles, baseTheme, blockingStates, interactionStates, stateAttributes, layers, strict and ignoreLayers."`,
 				);
 			});
 
@@ -286,7 +286,7 @@ describe("loadConfig", () => {
 				expect(
 					await messageFor("statefulcss.config.json", '{ "layer": [], "colors": {}, "strict": true }'),
 				).toMatchInlineSnapshot(
-					`"Unknown settings "layer" (did you mean "layers"?) and "colors" in <root>/statefulcss.config.json. The settings are themeAttribute, themeFiles, baseTheme, blockingStates, interactionStates, stateAttributes, layers, strict and ignoreLayers."`,
+					`"Unknown settings "layer" (did you mean "layers"?) and "colors" in <root>/statefulcss.config.json. The settings are themeAttribute, componentAttribute, partAttribute, slotAttribute, themeFiles, baseTheme, blockingStates, interactionStates, stateAttributes, layers, strict and ignoreLayers."`,
 				);
 			});
 
@@ -338,6 +338,9 @@ describe("loadConfig", () => {
 				const messages = [];
 				for (const [key, value] of Object.entries({
 					themeAttribute: 1,
+					componentAttribute: "Data-root",
+					partAttribute: "2part",
+					slotAttribute: "data_slot",
 					themeFiles: "src/themes/**",
 					baseTheme: ["default"],
 					blockingStates: ":disabled",
@@ -352,6 +355,9 @@ describe("loadConfig", () => {
 				expect(messages).toMatchInlineSnapshot(`
 					[
 					  ""themeAttribute" in <root>/statefulcss.config.json must be an attribute name, like "data-theme". It's 1.",
+					  ""componentAttribute" in <root>/statefulcss.config.json must be an attribute name, like "data-component". It's "Data-root".",
+					  ""partAttribute" in <root>/statefulcss.config.json must be an attribute name, like "data-part". It's "2part".",
+					  ""slotAttribute" in <root>/statefulcss.config.json must be an attribute name, like "data-slot". It's "data_slot".",
 					  ""themeFiles" in <root>/statefulcss.config.json must be a list of globs, like ["src/styles/themes/**"]. It's "src/themes/**".",
 					  ""baseTheme" in <root>/statefulcss.config.json must be a folder name, like "default". It's ["default"].",
 					  ""blockingStates" in <root>/statefulcss.config.json must be a list of selectors, like [":disabled", "[aria-disabled=\\"true\\"]"]. It's ":disabled".",
@@ -362,6 +368,39 @@ describe("loadConfig", () => {
 					  ""ignoreLayers" in <root>/statefulcss.config.json must be a list of layer names, like ["base"]. It's "base".",
 					]
 				`);
+			});
+
+			it.each([
+				["themeAttribute", "componentAttribute"],
+				["themeAttribute", "partAttribute"],
+				["themeAttribute", "slotAttribute"],
+				["componentAttribute", "partAttribute"],
+				["componentAttribute", "slotAttribute"],
+				["partAttribute", "slotAttribute"],
+			])("rejects a name shared by %s and %s", async (first, second) => {
+				const config = JSON.stringify({ [first]: "data-shared", [second]: "data-shared" });
+				const root = await project({ "statefulcss.config.json": config });
+				const error = await errorFrom(root, "button.css");
+				expect(error).toMatchObject({ kind: "invalid-value", key: second });
+				expect(error.message).toBe(
+					`"${second}" in <root>/statefulcss.config.json must differ from "${first}". Both use "data-shared". Give each setting its own attribute name.`,
+				);
+			});
+
+			it("rejects an attribute name shared with a default", async () => {
+				expect(
+					await messageFor("package.json", '{ "statefulcss": { "partAttribute": "data-component" } }'),
+				).toMatchInlineSnapshot(
+					`""partAttribute" in the "statefulcss" key in <root>/package.json must differ from "componentAttribute". Both use "data-component". Give each setting its own attribute name."`,
+				);
+			});
+
+			it("rejects a malformed theme attribute name", async () => {
+				expect(
+					await messageFor("statefulcss.config.json", '{ "themeAttribute": "data theme" }'),
+				).toMatchInlineSnapshot(
+					`""themeAttribute" in <root>/statefulcss.config.json must be an attribute name, like "data-theme". It's "data theme"."`,
+				);
 			});
 
 			it("rejects a JSON config that isn't an object", async () => {

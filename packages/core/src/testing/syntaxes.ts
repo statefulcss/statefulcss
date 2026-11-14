@@ -40,11 +40,21 @@ export function parseIn(syntax: Syntax, css: string, options: ReadOptions = {}):
 	}
 }
 
-export type Read = (css: string, options?: ReadOptions) => Model;
+/** One syntax, for a test: CSS in, and either the tree a pass reads or the whole model out. */
+export interface Source {
+	syntax: Syntax;
+	/** The PostCSS tree, for a test of one pass. */
+	parse: (css: string, options?: ReadOptions) => Root | Document;
+	/** The model, for a test of the whole analysis. */
+	read: (css: string, options?: ReadOptions) => Model;
+}
 
-/** A reader for one syntax: CSS in, model out. */
-export function readerFor(syntax: Syntax): Read {
-	return (css, options = {}) => analyze(parseIn(syntax, css, options), options.settings ?? defaults);
+export function sourceFor(syntax: Syntax): Source {
+	return {
+		syntax,
+		parse: (css, options = {}) => parseIn(syntax, css, options),
+		read: (css, options = {}) => analyze(parseIn(syntax, css, options), options.settings ?? defaults),
+	};
 }
 
 /**
@@ -52,14 +62,14 @@ export function readerFor(syntax: Syntax): Read {
  */
 export function inEverySyntax(
 	name: string,
-	test: (read: Read, syntax: Syntax) => void,
+	test: (source: Source) => void,
 	options: { skip?: Partial<Record<Syntax, string>> } = {},
 ): void {
 	describe(name, () => {
 		for (const syntax of syntaxes) {
 			const reason = options.skip?.[syntax];
 			if (reason) it.skip(`${syntax}: ${reason}`, () => {});
-			else it(syntax, () => test(readerFor(syntax), syntax));
+			else it(syntax, () => test(sourceFor(syntax)));
 		}
 	});
 }

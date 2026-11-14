@@ -116,6 +116,35 @@ const cases: { name: string; css: string; problems: string[] }[] = [
 		problems: ["condition-on-scope-root", "condition-on-scope-root", "condition-on-scope-root"],
 	},
 	{
+		name: "reported: the root written bare inside the scope, which beats a root block that comes later",
+		css: `
+			@scope (.card) to ([data-component]) {
+				:scope { color: red; }
+			}
+			.card { color: blue; }
+		`,
+		problems: ["scope-before-root-block", "root-styled-in-scope"],
+	},
+	{
+		name: "fixed: the root's declarations are in the root block",
+		css: `
+			.card { color: red; }
+			@scope (.card) to ([data-component]) { [data-part="title"] { font-weight: 600; } }
+		`,
+		problems: [],
+	},
+	{
+		name: "reported: the root's pseudo-element, and declarations written directly in the scope",
+		css: `
+			.card { color: blue; }
+			@scope (.card) to ([data-component]) {
+				:scope::after { content: ""; }
+				padding: 0;
+			}
+		`,
+		problems: ["root-styled-in-scope", "root-styled-in-scope"],
+	},
+	{
 		name: "not reported: a part with a state of its own, and a part's pseudo-element",
 		css: `
 			@scope (.tabs) to ([data-component]) {

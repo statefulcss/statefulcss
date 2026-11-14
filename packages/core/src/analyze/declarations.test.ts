@@ -266,13 +266,13 @@ describe("reads", () => {
 			[4],
 			[5],
 		]);
-		expect(model.reads.map((one) => [keyOf(model, one.element), one.block, one.via, one.source])).toEqual([
-			[".button", 0, "var", undefined],
-			[".button", 0, "var", undefined],
-			[".button", 0, "var", undefined],
-			[".button", 0, "var", undefined],
-			[".button", 0, "var", undefined],
-			[".button::after", 1, "var", undefined],
+		expect(model.reads.map((one) => [keyOf(model, one.element), one.block, one.via])).toEqual([
+			[".button", 0, "var"],
+			[".button", 0, "var"],
+			[".button", 0, "var"],
+			[".button", 0, "var"],
+			[".button", 0, "var"],
+			[".button::after", 1, "var"],
 		]);
 	});
 

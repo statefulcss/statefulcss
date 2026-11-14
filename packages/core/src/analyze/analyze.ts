@@ -7,14 +7,14 @@ import { components } from "./components.js";
 import { declarations } from "./declarations.js";
 import { namesFrom } from "./names.js";
 import { complexToString } from "./selectors.js";
+import { variables } from "./variables.js";
 import { walk, type WalkedBlock } from "./walk.js";
 
 /**
  * Reads one stylesheet and describes it. A `.vue` file arrives as a Document, with one root per `<style>`.
  *
  * The passes run in order, each a pure function over what the ones before it returned, and the model is put together
- * once, here. Four passes exist so far: the model has its components, scopes, elements, blocks, guards, part
- * references, doc comments, declarations, reads and registrations, and no variables yet.
+ * once, here.
  *
  * Never throws on syntax it doesn't understand, and never changes the tree.
  */
@@ -85,17 +85,23 @@ function read(root: Root | Document, settings: Settings): Model {
 		};
 	});
 
+	const linked = variables(declared.declarations, declared.reads, blocks, placed.elements);
+
 	return {
 		...empty(root, settings),
 		file: { path: root.source?.input.file, cssModule: walked.sheets.includes("module") },
 		sheets: walked.sheets.map((kind) => ({ kind })),
 		components: placed.components,
 		scopes: placed.scopes,
-		elements: placed.elements,
+		elements: placed.elements.map((element, id) => ({
+			...element,
+			variables: linked.elementVariables[id] ?? [],
+		})),
 		blocks,
 		guards: placed.guards,
 		declarations: declared.declarations,
-		reads: declared.reads,
+		variables: linked.variables,
+		reads: declared.reads.map((one, id) => ({ ...one, source: linked.sources[id] })),
 		registrations: declared.registrations,
 		partReferences: placed.partReferences,
 		docComments: placed.docComments,

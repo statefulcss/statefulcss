@@ -85,6 +85,11 @@ export interface Scope {
 	readonly component: Id | undefined;
 	/** As written: `.card`, `[data-component="tabs"]`, `&`. */
 	readonly root: string | undefined;
+	/**
+	 * How its root names the component. An attribute is how a file styles the parts of a component whose root block
+	 * is in another file.
+	 */
+	readonly rootKind: "class" | "attribute" | undefined;
 	/** As written: `[data-component]`. */
 	readonly limit: string | undefined;
 	/** The limit is exactly the component attribute. */

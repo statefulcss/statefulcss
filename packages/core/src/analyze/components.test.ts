@@ -141,6 +141,7 @@ describe("a whole component", () => {
 					id: 0,
 					component: 0,
 					root: ".card",
+					rootKind: "class",
 					limit: "[data-component]",
 					limitIsComponents: true,
 					nested: false,
@@ -332,9 +333,9 @@ describe("components", () => {
 			["class", "tabs", "tag", true],
 			["class", "menu", "class", true],
 		]);
-		expect(model.scopes.map((scope) => [scope.component, scope.root])).toEqual([
-			[0, '[data-component="tabs"]'],
-			[1, '[data-component="menu"]'],
+		expect(model.scopes.map((scope) => [scope.component, scope.root, scope.rootKind])).toEqual([
+			[0, '[data-component="tabs"]', "attribute"],
+			[1, '[data-component="menu"]', "attribute"],
 		]);
 		expect(elements(model)).toEqual([
 			["root", ".Tabs"],
@@ -676,7 +677,12 @@ describe("elements that belong to no component", () => {
 		const model = read("@scope (main) { a { color: red; } }");
 		expect(model.components).toEqual([]);
 		expect(elements(model)).toEqual([["global", "main a"]]);
-		expect(model.scopes[0]).toMatchObject({ component: undefined, root: "main", limitIsComponents: false });
+		expect(model.scopes[0]).toMatchObject({
+			component: undefined,
+			root: "main",
+			rootKind: undefined,
+			limitIsComponents: false,
+		});
 		expect(model.blocks[0]).toMatchObject({ reach: "scope", scope: 0 });
 	});
 });

@@ -372,6 +372,7 @@ export function components(
 			node: scope.node,
 			component,
 			root: scope.rootText,
+			rootKind: owner?.kind === "component" ? owner.identity.kind : undefined,
 			limit: scope.limit,
 			limitIsComponents: isComponentsLimit(scope.limit, names),
 			nested: scope.nested,

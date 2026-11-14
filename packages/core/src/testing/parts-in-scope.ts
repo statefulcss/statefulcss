@@ -21,7 +21,12 @@ export type Problem =
 	 * `:scope` with an attribute or a pseudo-class. With something after it, a variant or state selecting a part; on
 	 * its own, a root state written in the scope, where it beats the root block's blocking states.
 	 */
-	| "condition-on-scope-root";
+	| "condition-on-scope-root"
+	/**
+	 * The root written from inside its scope with no condition (`:scope { … }`): scope proximity beats the root block
+	 * even when the root block comes later, so the root's values are decided in two places.
+	 */
+	| "root-styled-in-scope";
 
 export interface Finding {
 	readonly problem: Problem;
@@ -61,6 +66,8 @@ export function partsInScope(model: Model): Finding[] {
 		const ownRoot = model.elements[block.element]?.kind === "pseudo-element" ? "host" : "subject";
 		if (block.conditions.some((condition) => condition.on === (subjectIsRoot ? ownRoot : "root")))
 			findings.push({ problem: "condition-on-scope-root", node: block.node });
+		// Inside a scope, `:scope` appears only as `:scope >`.
+		else if (subjectIsRoot) findings.push({ problem: "root-styled-in-scope", node: block.node });
 	}
 
 	return findings;

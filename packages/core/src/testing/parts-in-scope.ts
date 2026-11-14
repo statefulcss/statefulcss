@@ -26,7 +26,12 @@ export type Problem =
 	 * The root written from inside its scope with no condition (`:scope { … }`): scope proximity beats the root block
 	 * even when the root block comes later, so the root's values are decided in two places.
 	 */
-	| "root-styled-in-scope";
+	| "root-styled-in-scope"
+	/**
+	 * `:scope` followed by a space (`:scope [data-part="icon"]`): it matches what the selector alone matches and adds
+	 * (0,1,0), so a component's part rules end up at two specificities.
+	 */
+	| "scope-root-before-descendant";
 
 export interface Finding {
 	readonly problem: Problem;
@@ -68,6 +73,8 @@ export function partsInScope(model: Model): Finding[] {
 			findings.push({ problem: "condition-on-scope-root", node: block.node });
 		// Inside a scope, `:scope` appears only as `:scope >`.
 		else if (subjectIsRoot) findings.push({ problem: "root-styled-in-scope", node: block.node });
+		else if (block.scopeRoot === ":scope" && block.path[1]?.combinator === " ")
+			findings.push({ problem: "scope-root-before-descendant", node: block.node });
 	}
 
 	return findings;

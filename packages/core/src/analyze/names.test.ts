@@ -15,7 +15,24 @@ describe("the names core reads a stylesheet with", () => {
 		});
 	});
 
-	it("takes the theme attribute from the settings, in lower case", () => {
-		expect(namesFrom({ ...defaults, themeAttribute: "Data-Brand" }).themeAttribute).toBe("data-brand");
+	it("takes the four attributes from the settings, in lower case", () => {
+		const names = namesFrom({
+			...defaults,
+			componentAttribute: "data-widget",
+			partAttribute: "Data-Area",
+			slotAttribute: "data-place",
+			themeAttribute: "Data-Brand",
+		});
+		expect(names).toMatchObject({
+			componentAttribute: "data-widget",
+			partAttribute: "data-area",
+			slotAttribute: "data-place",
+			themeAttribute: "data-brand",
+		});
+	});
+
+	it("keeps the color-scheme attribute and the utilities layer as core's own", () => {
+		const names = namesFrom({ ...defaults, componentAttribute: "data-widget" });
+		expect([names.colorSchemeAttribute, names.utilitiesLayer]).toEqual(["data-color-scheme", "utilities"]);
 	});
 });

@@ -1,0 +1,47 @@
+/* From the parts page's "One example": a Card with a title, a body of Markdown, and an action Button in its footer. */
+
+/**
+ * Card
+ * @component card
+ */
+.card {
+	/* The Card's own state variable */
+	--s-background-color: var(--t-color-surface);
+	background-color: var(--s-background-color);
+
+	/* What the Card prepares for its title (rule 4) */
+	--p-title-color: var(--t-color-text);
+
+	/* Rule 5: whatever sits in the action slot, placed from the root block */
+	& > [data-part="footer"] > [data-slot="action"] {
+		justify-self: end;
+	}
+
+	/* The Card's variants and states write on the Card, never on a part */
+	&[data-tone="muted"] {
+		--p-title-color: var(--t-color-text-muted);
+	}
+	&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])) {
+		&:hover {
+			--s-background-color: var(--t-color-surface-raised);
+		}
+	}
+}
+
+/* Rule 3: the parts and the content, stopping at any component inside */
+@scope (.card) to ([data-component]) {
+	[data-part="title"] {
+		font-weight: 600; /* static: stays on the part */
+		color: var(--p-title-color); /* changed by the Card: declared on the Card */
+	}
+	[data-part="footer"] {
+		display: grid;
+	}
+
+	[data-part="body"] p {
+		margin-block: var(--t-space-3);
+	}
+	[data-part="body"] a {
+		color: var(--t-color-link);
+	}
+}

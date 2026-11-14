@@ -145,6 +145,32 @@ const cases: { name: string; css: string; problems: string[] }[] = [
 		problems: ["root-styled-in-scope", "root-styled-in-scope"],
 	},
 	{
+		name: "reported: :scope with a space before a part, and before content",
+		css: `
+			@scope (.button) to ([data-component]) {
+				:scope [data-part="icon"] { inline-size: 1em; }
+				:scope [data-part="label"]:hover { color: red; }
+				:scope p { margin: 0; }
+			}
+		`,
+		problems: [
+			"scope-root-before-descendant",
+			"scope-root-before-descendant",
+			"scope-root-before-descendant",
+		],
+	},
+	{
+		name: "fixed: the part alone, or :scope > for a direct child",
+		css: `
+			@scope (.button) to ([data-component]) {
+				[data-part="icon"] { inline-size: 1em; }
+				:scope > [data-part="label"] { color: red; }
+				:scope > [data-part="label"] span { color: blue; }
+			}
+		`,
+		problems: [],
+	},
+	{
 		name: "not reported: a part with a state of its own, and a part's pseudo-element",
 		css: `
 			@scope (.tabs) to ([data-component]) {

@@ -138,14 +138,26 @@ function appendSuffix(compound: Compound, suffix: Part): void {
 export const isSibling = (combinator: string | undefined): boolean =>
 	combinator === "+" || combinator === "~";
 
+/** A resolved selector as text, on one line however it was written. */
 export function complexToString(complex: Complex): string {
 	return complex
 		.map((compound, index) => {
-			const parts = compound.parts.map((part) => String(part.node).trim()).join("");
+			const parts = compound.parts.map((part) => onOneLine(String(part.node))).join("");
 			if (index === 0) return parts;
 			return compound.combinator === " " ? ` ${parts}` : ` ${compound.combinator ?? ""} ${parts}`;
 		})
 		.join("");
+}
+
+const quotedOrSpace = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\s+/g;
+
+/** Runs of whitespace become one space, and none is left inside parentheses; quoted strings stay as written. */
+function onOneLine(text: string): string {
+	return text
+		.replace(quotedOrSpace, (match) => (/^\s/.test(match) ? " " : match))
+		.replace(/\( /g, "(")
+		.replace(/ \)/g, ")")
+		.trim();
 }
 
 const legacyPseudoElements = new Set([":before", ":after", ":first-line", ":first-letter"]);

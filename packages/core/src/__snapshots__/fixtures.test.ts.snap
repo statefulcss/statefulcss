@@ -1,0 +1,121 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`whole components > button.css reads the same in every syntax 1`] = `
+"component button (.button; name from its tag)
+  scope (.button) to ([data-component])
+  doc comment "Button"
+
+root .button
+  #0 own: .button
+  #2 variant: .button[data-intent="danger"]
+  #3 variant: .button[data-size="small"]
+  #4 state interaction, guarded: .button:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])):hover
+  #5 state blocking: .button:disabled
+  #6 state blocking: .button[aria-disabled="true"]
+  #7 state blocking: .button[data-loading]
+  --_background-color: private, changing, read by .button
+  --_background-color-hover: private, changing, read by .button
+  --s-background-color: state, changing, read by .button
+  --s-opacity: state, changing, read by .button
+  --p-icon-inline-size: part, changing, for .button [data-part="icon"], read by .button [data-part="icon"]
+
+slot .button [data-slot="badge"]
+  #1 own, reached from the root block: .button > [data-slot="badge"]
+
+part .button [data-part="icon"]
+  #8 own: .button [data-part="icon"]
+
+guard on .button: :disabled, [aria-disabled="true"], [data-loading], [inert]; around #4
+
+part icon named in #8: scope"
+`;
+
+exports[`whole components > card.css reads the same in every syntax 1`] = `
+"component card (.card; name from its tag)
+  scope (.card) to ([data-component])
+  doc comment "Card"
+
+root .card
+  #0 own: .card
+  #2 variant: .card[data-tone="muted"]
+  #3 state interaction, guarded: .card:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])):hover
+  --s-background-color: state, changing, read by .card
+  --p-title-color: part, changing, for .card [data-part="title"], read by .card [data-part="title"]
+
+part .card [data-part="footer"]
+  #5 own: .card [data-part="footer"]
+
+slot .card [data-slot="action"]
+  #1 own, reached from the root block: .card > [data-part="footer"] > [data-slot="action"]
+
+part .card [data-part="title"]
+  #4 own: .card [data-part="title"]
+
+part .card [data-part="body"]
+
+content .card [data-part="body"] p
+  #6 own: .card [data-part="body"] p
+
+content .card [data-part="body"] a
+  #7 own: .card [data-part="body"] a
+
+guard on .card: :disabled, [aria-disabled="true"], [data-loading], [inert]; around #3
+
+part footer named in #1: placement-path
+part title named in #4: scope
+part footer named in #5: scope
+part body named in #6: scope
+part body named in #7: scope"
+`;
+
+exports[`whole components > field.css reads the same in every syntax 1`] = `
+"component field (.field; name from its class)
+  scope (.field) to ([data-component])
+
+root .field
+  #0 own: .field
+  #1 state interaction, guarded: .field:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert], :has(:where([data-part="input"]):disabled))):hover
+  #2 state semantic: .field:has(:where([data-part="input"])[aria-invalid="true"])
+  #3 state blocking: .field:has(:where([data-part="input"]):disabled)
+  --p-label-color: part, changing, for .field [data-part="label"], read by .field [data-part="label"]
+  --s-opacity: state, changing, read by .field
+  --q-field-blocked: query, changing
+
+part .field [data-part="input"]
+
+part .field [data-part="label"]
+  #4 own: .field [data-part="label"]
+
+guard on .field: :disabled, [aria-disabled="true"], [data-loading], [inert] and 1 state through :has(); around #1
+
+part input named in #1: has
+part input named in #2: has
+part input named in #3: has
+part label named in #4: scope"
+`;
+
+exports[`whole components > tabs.css reads the same in every syntax 1`] = `
+"component tabs (.tabs; name from its tag)
+  scope (.tabs) to ([data-component])
+  doc comment "Tabs"
+
+root .tabs
+  #0 own: .tabs
+  #1 state blocking: .tabs[aria-disabled="true"]
+  --q-tabs-blocked: query, changing, read by .tabs [data-part="tab"]
+  --p-tab-color: part, changing, for .tabs [data-part="tab"], read by .tabs [data-part="tab"]
+
+part .tabs [data-part="tab"]
+  #2 own: .tabs [data-part="tab"]
+  #3 state context interaction, guarded: .tabs [data-part="tab"]:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])):hover  [@container style(--q-tabs-blocked: false)]
+  #4 state semantic: .tabs [data-part="tab"][aria-selected="true"]
+  --s-color: state, changing, read by .tabs [data-part="tab"]
+  --p-after-block-size: part, changing, for .tabs [data-part="tab"]::after, read by .tabs [data-part="tab"]::after
+
+pseudo-element .tabs [data-part="tab"]::after
+  #5 own: .tabs [data-part="tab"]::after
+
+guard on .tabs [data-part="tab"]: :disabled, [aria-disabled="true"], [data-loading], [inert]; around #3
+
+part tab named in #2: scope"
+`;

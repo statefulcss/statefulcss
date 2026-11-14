@@ -16,19 +16,22 @@ export interface Names {
 	readonly utilitiesLayer: string;
 }
 
-/** The names the settings don't hold yet. They live here and nowhere else. */
+/** The names the settings don't hold. They live here and nowhere else. */
 const defaultNames = {
-	componentAttribute: "data-component",
-	partAttribute: "data-part",
-	slotAttribute: "data-slot",
 	colorSchemeAttribute: "data-color-scheme",
 	utilitiesLayer: "utilities",
 } as const;
 
 /**
- * The names for one project. Every pass takes its names from here, never from the settings, so when the settings
- * gain the component, part and slot attributes, in whatever shape, only this function changes.
+ * The names for one project. Every pass takes its names from here, never from the settings, so if the settings'
+ * shape changes, only this function does. Attribute names compare in lower case, as HTML's do.
  */
 export function namesFrom(settings: Settings): Names {
-	return { ...defaultNames, themeAttribute: settings.themeAttribute.toLowerCase() };
+	return {
+		...defaultNames,
+		componentAttribute: settings.componentAttribute.toLowerCase(),
+		partAttribute: settings.partAttribute.toLowerCase(),
+		slotAttribute: settings.slotAttribute.toLowerCase(),
+		themeAttribute: settings.themeAttribute.toLowerCase(),
+	};
 }

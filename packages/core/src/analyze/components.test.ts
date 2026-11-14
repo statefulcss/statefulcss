@@ -395,6 +395,50 @@ describe("components", () => {
 	});
 });
 
+describe("the settings' attribute names", () => {
+	// Source: the shared-settings decision.
+	inEverySyntax("name the component, its parts and its slots through the whole model", ({ read }) => {
+		const settings = {
+			...defaults,
+			componentAttribute: "data-widget",
+			partAttribute: "data-area",
+			slotAttribute: "data-place",
+		};
+		const model = read(
+			`
+				[data-widget="card"] {
+					--p-title-color: black;
+					& > [data-area="footer"] > [data-place="action"] { justify-self: end; }
+					&[data-tone="muted"] { --p-title-color: gray; }
+				}
+				@scope ([data-widget="card"]) to ([data-widget]) {
+					[data-area="title"] { color: var(--p-title-color); }
+					[data-part="title"] { color: red; }
+				}
+				[data-component="button"] { color: red; }
+			`,
+			{ settings },
+		);
+		expect(components(model)).toEqual([["attribute", "card", "attribute", true]]);
+		expect(elements(model)).toEqual([
+			["root", '[data-widget="card"]'],
+			["part", '[data-widget="card"] [data-area="footer"]'],
+			["slot", '[data-widget="card"] [data-place="action"]'],
+			["part", '[data-widget="card"] [data-area="title"]'],
+			["content", '[data-widget="card"] *'],
+			["global", "*"],
+		]);
+		expect(model.scopes[0]).toMatchObject({ component: 0, limitIsComponents: true, rootKind: "attribute" });
+		expect(model.variables.map((one) => [one.name, one.namedFor.map((id) => keyOf(model, id))])).toEqual([
+			["--p-title-color", ['[data-widget="card"] [data-area="title"]']],
+		]);
+		expect(references(model)).toEqual([
+			["footer", "placement-path", '[data-widget="card"] > [data-area="footer"] > [data-place="action"]'],
+			["title", "scope", '[data-widget="card"] [data-area="title"]'],
+		]);
+	});
+});
+
 describe("parts, slots and content", () => {
 	// Sources: the methodology's "Composition and placement"; the slotted-placement-per-state decision.
 	inEverySyntax("slots, reached from the root block", ({ read }) => {

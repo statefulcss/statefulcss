@@ -1,0 +1,41 @@
+/* From the parts page's "A part with states of its own": a tab is a part of Tabs with a state of its own. */
+
+/**
+ * Tabs
+ * @component tabs
+ */
+.tabs {
+	--q-tabs-blocked: false;
+	--p-tab-color: var(--c-tabs-tab-color, var(--t-color-text-muted));
+	&[aria-disabled="true"] {
+		--q-tabs-blocked: true;
+		--p-tab-color: var(--t-color-text-disabled);
+	}
+}
+
+@scope (.tabs) to ([data-component]) {
+	[data-part="tab"] {
+		--s-color: var(--p-tab-color); /* the tab's own, starting from what Tabs prepared */
+		--p-after-block-size: 0; /* the tab feeds its own ::after */
+		color: var(--s-color);
+
+		&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])) {
+			@container style(--q-tabs-blocked: false) {
+				&:hover {
+					--s-color: var(--t-color-text);
+				}
+			}
+		}
+		&[aria-selected="true"] {
+			--s-color: var(--t-color-accent);
+			--p-after-block-size: 2px;
+		}
+
+		&::after {
+			content: "";
+			display: block;
+			block-size: var(--p-after-block-size);
+			background-color: currentColor;
+		}
+	}
+}

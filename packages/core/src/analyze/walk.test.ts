@@ -103,6 +103,24 @@ describe("nesting", () => {
 		]);
 	});
 
+	inEverySyntax("a selector written across lines reads on one, with its strings untouched", ({ parse }) => {
+		const walked = walk(
+			parse(`
+				.field {
+					&:where(
+						:not(
+							:disabled,
+							[inert]
+						)
+					) {
+						&:hover   >   [title="a  b"] { color: red; }
+					}
+				}
+			`),
+		);
+		expect(selectors(walked)).toEqual(['.field:where(:not(:disabled, [inert])):hover > [title="a  b"]']);
+	});
+
 	inEverySyntax("a nesting selector that puts context first", ({ parse }) => {
 		const walked = walk(parse('.button { [dir="rtl"] & { padding-inline-start: 0; } }'));
 		expect(selectors(walked)).toEqual(['[dir="rtl"] .button']);

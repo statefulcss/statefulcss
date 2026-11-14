@@ -10,6 +10,8 @@ import { type Complex, type Compound, parseSelectorList, resolve, toCompounds } 
 export interface Walked {
 	/** One per stylesheet. Outside Vue there's one. */
 	readonly sheets: readonly SheetKind[];
+	/** Every style rule, with or without declarations, in document order. */
+	readonly rules: readonly WalkedRule[];
 	/** In document order. */
 	readonly blocks: readonly WalkedBlock[];
 	readonly scopes: readonly WalkedScope[];
@@ -18,6 +20,18 @@ export interface Walked {
 	readonly registrations: readonly AtRule[];
 	readonly atRules: readonly OtherAtRule[];
 	readonly unknowns: readonly WalkedUnknown[];
+}
+
+/** A style rule. A root block with nothing in it but nested rules is still the component's root block. */
+export interface WalkedRule {
+	readonly node: Rule;
+	/** Resolved against its parent rules and its scope's root. */
+	readonly selectors: readonly Complex[];
+	readonly layer: string | undefined;
+	readonly scope: number | undefined;
+	readonly sheet: number;
+	/** Its place among the file's rules and scopes, for "written after". */
+	readonly order: number;
 }
 
 /** One resolved selector of one rule that has declarations. */
@@ -46,7 +60,10 @@ export interface WalkedScope {
 	readonly limit: string | undefined;
 	/** Written inside a rule. */
 	readonly nested: boolean;
+	readonly layer: string | undefined;
 	readonly sheet: number;
+	/** Its place among the file's rules and scopes, for "written after". */
+	readonly order: number;
 }
 
 /** A doc comment outside any rule or scope. */
@@ -63,6 +80,7 @@ export interface WalkedUnknown {
 	readonly detail: string | undefined;
 	/** The resolved selectors of the rule it sits in; empty at the top level. */
 	readonly selectors: readonly Complex[];
+	readonly layer: string | undefined;
 	readonly scope: number | undefined;
 	readonly sheet: number;
 }
@@ -110,6 +128,7 @@ interface Context {
 
 /** What one walk gathers. Local to `walk`: nothing outside it sees these arrays change. */
 interface Found {
+	readonly rules: WalkedRule[];
 	readonly blocks: WalkedBlock[];
 	readonly scopes: WalkedScope[];
 	readonly docComments: WalkedDocComment[];
@@ -128,6 +147,7 @@ export function walk(root: Root | Document): Walked {
 	const sheets: SheetKind[] = [];
 	const shared = new Map<SheetKind, number>();
 	const found: Found = {
+		rules: [],
 		blocks: [],
 		scopes: [],
 		docComments: [],
@@ -191,6 +211,14 @@ function visitRule(rule: Rule, context: Context, found: Found): void {
 			resolved.push({ selector: complex, scopeRoot: written ?? parent?.scopeRoot });
 		}
 	}
+	found.rules.push({
+		node: rule,
+		selectors: resolved.map((parent) => parent.selector),
+		layer: layerOf(context),
+		scope: context.scope,
+		sheet: context.sheet,
+		order: found.rules.length + found.scopes.length,
+	});
 	if (hasDeclarations(rule)) {
 		for (const parent of resolved) found.blocks.push(blockOf(rule, parent, context));
 	}
@@ -233,7 +261,9 @@ function visitScope(atRule: AtRule, context: Context, found: Found): void {
 		rootText: prelude.root,
 		limit: prelude.limit,
 		nested: context.inRule,
+		layer: layerOf(context),
 		sheet: context.sheet,
+		order: found.rules.length + found.scopes.length,
 	});
 	if ("reason" in root) {
 		unknown(found, context, atRule, root.reason, root.detail);
@@ -258,11 +288,15 @@ function blockOf(node: Rule | AtRule, parent: Parent, context: Context): WalkedB
 		node,
 		selector: parent.selector,
 		atRules: context.atRules,
-		layer: context.layers.length > 0 ? context.layers.join(".") : undefined,
+		layer: layerOf(context),
 		scope: context.scope,
 		scopeRoot: parent.scopeRoot,
 		sheet: context.sheet,
 	};
+}
+
+function layerOf(context: Context): string | undefined {
+	return context.layers.length > 0 ? context.layers.join(".") : undefined;
 }
 
 function unknown(
@@ -277,6 +311,7 @@ function unknown(
 		reason,
 		detail,
 		selectors: context.parents?.map((parent) => parent.selector) ?? [],
+		layer: layerOf(context),
 		scope: context.scope,
 		sheet: context.sheet,
 	});

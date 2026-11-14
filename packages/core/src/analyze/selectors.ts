@@ -138,25 +138,6 @@ function appendSuffix(compound: Compound, suffix: Part): void {
 export const isSibling = (combinator: string | undefined): boolean =>
 	combinator === "+" || combinator === "~";
 
-/**
- * The class that names a compound's element: its first class, or the one `:deep()`, `:global()` or `:slotted()` wraps
- * (`:deep(.button)` → `button`).
- */
-export function classOf(compound: Compound): string | undefined {
-	for (const { node } of compound.parts) {
-		if (isPseudoElement(node)) return undefined;
-		if (node.type === "class") return node.value;
-		if (node.type === "pseudo" && wrappers.has(node.value.toLowerCase())) {
-			let found: string | undefined;
-			node.walk((child) => {
-				if (found === undefined && child.type === "class") found = child.value;
-			});
-			if (found !== undefined) return found;
-		}
-	}
-	return undefined;
-}
-
 export function complexToString(complex: Complex): string {
 	return complex
 		.map((compound, index) => {
@@ -183,74 +164,6 @@ export function isPseudoElement(node: parser.Node): boolean {
 	return (value.startsWith("::") && !wrappers.has(value)) || legacyPseudoElements.has(value);
 }
 
-/** A compound split into what names the element and what narrows it. */
-export interface CompoundParts {
-	/** Tag, the first class, id, `*`, `:root`, `:scope`, `:host`, and `:is()`/`:where()` that list elements. */
-	identity: Part[];
-	/** Everything else before a pseudo-element: attributes, pseudo-classes, extra classes. */
-	conditions: Part[];
-	pseudoElement: Part | undefined;
-	/** Parts after the pseudo-element (`::after:hover`). */
-	afterPseudoElement: Part[];
-}
-
-/** Splits a compound. `keepAttributes` keeps attributes that are part of a global element's identity (the theme attribute). */
-export function splitCompound(
-	compound: Compound,
-	keepAttributes: ReadonlySet<string> = new Set(),
-): CompoundParts {
-	const result: CompoundParts = {
-		identity: [],
-		conditions: [],
-		pseudoElement: undefined,
-		afterPseudoElement: [],
-	};
-	let hasClass = false;
-	for (const [index, part] of compound.parts.entries()) {
-		const { node } = part;
-		if (result.pseudoElement) {
-			result.afterPseudoElement.push(part);
-			continue;
-		}
-		if (isPseudoElement(node)) {
-			result.pseudoElement = part;
-			continue;
-		}
-		switch (node.type) {
-			case "class":
-				if (hasClass) result.conditions.push(part);
-				else result.identity.push(part);
-				hasClass = true;
-				break;
-			case "tag":
-			case "id":
-			case "universal":
-				result.identity.push(part);
-				break;
-			case "attribute":
-				if (keepAttributes.has(node.attribute.toLowerCase())) result.identity.push(part);
-				else result.conditions.push(part);
-				break;
-			case "pseudo": {
-				const value = node.value.toLowerCase();
-				if (wrappers.has(value)) {
-					result.identity.push(part);
-				} else if (value === ":root" || value === ":scope" || value === ":host" || value === ":local") {
-					result.identity.push(part);
-				} else if ((value === ":is" || value === ":where") && index === 0 && listsElements(node)) {
-					result.identity.push(part);
-				} else {
-					result.conditions.push(part);
-				}
-				break;
-			}
-			default:
-				result.conditions.push(part);
-		}
-	}
-	return result;
-}
-
 /** Whether every selector inside `:is()` or `:where()` only names elements (`:where(ul, ol)`), with no states. */
 export function listsElements(node: parser.Pseudo): boolean {
 	return node.nodes.every((selector) =>
@@ -258,17 +171,4 @@ export function listsElements(node: parser.Pseudo): boolean {
 			["tag", "class", "universal", "id", "combinator", "comment"].includes(child.type),
 		),
 	);
-}
-
-/** An identity part as text, with attributes normalized to `[name="value"]`. */
-export function partText(part: Part): string {
-	const { node } = part;
-	if (node.type === "attribute") {
-		const name = node.attribute.toLowerCase();
-		if (node.value === undefined) return `[${name}]`;
-		const flag = node.insensitive ? " i" : "";
-		return `[${name}${node.operator ?? "="}"${node.value}"${flag}]`;
-	}
-	if (node.type === "tag") return node.value.toLowerCase();
-	return String(node).trim();
 }

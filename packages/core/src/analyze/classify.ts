@@ -49,9 +49,25 @@ export interface Classified {
 	readonly colorScheme: boolean;
 	readonly conditions: readonly Condition[];
 	readonly queries: readonly Query[];
+	/** Every place the selector names a part. */
+	readonly partMentions: readonly PartMention[];
 	readonly kind: BlockKind;
 	/** For a state: its groups, in the order states win. */
 	readonly groups: readonly StateGroup[];
+}
+
+/** One place where a selector names a part. */
+export interface PartMention {
+	/** Undefined when it names no one part: `[data-part]`. */
+	readonly name: string | undefined;
+	/**
+	 * Where it's written: on the subject; on a step before it; on the root compound itself, which makes one element
+	 * both a component and a part; before the root; inside `:has()`; or inside `:not()` or `:is()`.
+	 */
+	readonly where: "subject" | "step" | "root" | "context" | "has" | "condition";
+	/** For `has` and `condition`: the compound the condition is written on. */
+	readonly on: Condition["on"] | undefined;
+	readonly at: Position;
 }
 
 /** The settings' lists, ready to compare a condition with. */
@@ -121,11 +137,14 @@ interface Reading {
 }
 
 /** Reads one block's selector and at-rules. Pure: it reads nothing but its arguments. */
-export function classify(block: WalkedBlock, vocabulary: Vocabulary): Classified {
+export function classify(
+	block: Pick<WalkedBlock, "node" | "selector" | "atRules" | "scope">,
+	vocabulary: Vocabulary,
+): Classified {
 	const { names } = vocabulary;
 	const inScope = block.scope !== undefined;
 	const chain = foldSiblings(block.selector, inScope);
-	const rootIndex = inScope ? 0 : chain.findIndex((link) => rootOf(link.compound, names) !== undefined);
+	const rootIndex = inScope ? 0 : chain.findIndex((link) => identityOf(link.compound, names) !== undefined);
 	const subjectIndex = chain.length - 1;
 	const global = rootIndex === -1;
 	const rootCompound = chain[rootIndex]?.compound;
@@ -133,6 +152,7 @@ export function classify(block: WalkedBlock, vocabulary: Vocabulary): Classified
 	const context: Step[] = [];
 	const path: Step[] = [];
 	const conditions: Condition[] = [];
+	const partMentions: PartMention[] = [];
 	let pseudoElement: string | undefined;
 	let themeScope: ThemeScope | undefined;
 	let colorScheme = false;
@@ -150,6 +170,11 @@ export function classify(block: WalkedBlock, vocabulary: Vocabulary): Classified
 			conditions.push(...conditionsOf(part.node, { source: part.source, on: before, vocabulary }, false));
 		for (const part of split.after)
 			conditions.push(...conditionsOf(part.node, { source: part.source, on, vocabulary }, false));
+
+		const where =
+			index < rootIndex ? "context" : index === rootIndex ? "root" : isSubject ? "subject" : "step";
+		for (const part of split.partAttributes)
+			partMentions.push({ name: namedValue(part.node), where, on: undefined, at: positionOf(part) });
 
 		const steps = index < rootIndex ? context : path;
 		steps.push({
@@ -170,7 +195,7 @@ export function classify(block: WalkedBlock, vocabulary: Vocabulary): Classified
 
 	const queries = block.atRules.map(queryOf);
 	return {
-		root: rootCompound ? rootOf(rootCompound, names) : undefined,
+		root: rootCompound ? identityOf(rootCompound, names) : undefined,
 		context,
 		path,
 		pseudoElement,
@@ -179,8 +204,29 @@ export function classify(block: WalkedBlock, vocabulary: Vocabulary): Classified
 		colorScheme,
 		conditions,
 		queries,
+		partMentions: [...partMentions, ...conditions.flatMap((condition) => mentionsIn(condition, names))],
 		...kindOf(conditions, queries),
 	};
+}
+
+/** The parts a condition names: in a `:has()` path, or as an attribute inside `:not()` or `:is()`. */
+function mentionsIn(condition: Condition, names: Names): PartMention[] {
+	const own: PartMention[] =
+		condition.attribute?.name === names.partAttribute
+			? [
+					{
+						name: condition.attribute.value || undefined,
+						where: "condition",
+						on: condition.on,
+						at: condition.at,
+					},
+				]
+			: [];
+	const inHas = (condition.has?.path ?? [])
+		.filter((step) => step.part !== undefined)
+		.map((step): PartMention => ({ name: step.part, where: "has", on: condition.on, at: step.at }));
+	const held = [...condition.inner, ...(condition.has?.conditions ?? [])];
+	return [...own, ...inHas, ...held.flatMap((inner) => mentionsIn(inner, names))];
 }
 
 // The chain of compounds
@@ -235,7 +281,7 @@ function startOf(compound: Compound, fallback: Rule | AtRule): Position {
 }
 
 /** What names a component in a compound: its first class, else its component attribute's value. */
-function rootOf(compound: Compound, names: Names): Identity | undefined {
+export function identityOf(compound: Compound, names: Names): Identity | undefined {
 	let className: Part | undefined;
 	let attribute: Part | undefined;
 	for (const part of compound.parts) {
@@ -271,6 +317,8 @@ interface SplitCompound {
 	readonly pseudoElement: Part | undefined;
 	/** What's written after the pseudo-element (`::after:hover`). */
 	readonly after: readonly Part[];
+	/** Every part attribute on it, named or not. */
+	readonly partAttributes: readonly Part[];
 }
 
 function splitCompound(
@@ -281,6 +329,7 @@ function splitCompound(
 	const identity: Part[] = [];
 	const conditions: Part[] = [];
 	const after: Part[] = [];
+	const partAttributes: Part[] = [];
 	let pseudoElement: Part | undefined;
 	let className: Part | undefined;
 	let component: Part | undefined;
@@ -301,8 +350,11 @@ function splitCompound(
 		} else if (node.type === "attribute") {
 			const name = node.attribute.toLowerCase();
 			if (name === names.componentAttribute) identity.push((component ??= current));
-			else if (!role.isRoot && name === names.partAttribute) identity.push((part ??= current));
-			else if (!role.isRoot && name === names.slotAttribute) identity.push((slot ??= current));
+			else if (name === names.partAttribute) {
+				partAttributes.push(current);
+				// On a root's own compound it names nothing and is no variant: an element is a component or a part.
+				if (!role.isRoot) identity.push((part ??= current));
+			} else if (!role.isRoot && name === names.slotAttribute) identity.push((slot ??= current));
 			else if (role.global && (name === names.themeAttribute || name === names.colorSchemeAttribute))
 				identity.push(current);
 			else conditions.push(current);
@@ -327,6 +379,7 @@ function splitCompound(
 		conditions,
 		pseudoElement,
 		after,
+		partAttributes,
 	};
 }
 

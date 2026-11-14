@@ -284,12 +284,14 @@ export interface Guard {
 
 /** One place where a selector names a part. */
 export interface PartReference {
-	readonly name: string;
+	/** Undefined when the selector names no one part: `[data-part]`. */
+	readonly name: string | undefined;
 	readonly component: Id | undefined;
 	readonly block: Id;
 	/**
 	 * Inside the component's scope; a step on the way to a slot, from the root block; inside `:has()` on the root
-	 * compound, the guard's `:not()` included; or anywhere else.
+	 * compound, the guard's `:not()` included; or anywhere else, a root's own compound included
+	 * (`.tab[data-part="tab"]`): an element is a component or a part, never both.
 	 */
 	readonly place: "scope" | "placement-path" | "has" | "outside";
 	readonly at: Position;

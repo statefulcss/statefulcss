@@ -725,6 +725,58 @@ describe("selectors that name no component", () => {
 	});
 });
 
+describe("where a selector names a part", () => {
+	// Sources: the rules page, rule 9; the correction that an element is a component or a part, never both.
+	inEverySyntax("on the subject, a step, the root, before the root, in :has() or in :not()", ({ parse }) => {
+		const blocks = classifyAll(
+			parse(`
+				.card > [data-part="footer"] > [data-slot="action"] { justify-self: end; }
+				.card [data-part="title"] { color: red; }
+				.tab[data-part="tab"] { color: red; }
+				[data-part="panel"] .card { margin: 0; }
+				.field:has(:where([data-part="input"]):disabled) { opacity: 0.6; }
+				.field:where(:not(:disabled, :has(:where([data-part="input"]):disabled))):hover { color: red; }
+				.menu:not([data-part="item"]) { color: red; }
+				.menu [data-part] { margin: 0; }
+				.card { color: red; }
+			`),
+		);
+		expect(
+			blocks.map((block) => block.partMentions.map((mention) => [mention.name, mention.where, mention.on])),
+		).toEqual([
+			[["footer", "step", undefined]],
+			[["title", "subject", undefined]],
+			[["tab", "root", undefined]],
+			[["panel", "context", undefined]],
+			[["input", "has", "subject"]],
+			[["input", "has", "subject"]],
+			[["item", "condition", "subject"]],
+			[[undefined, "subject", undefined]],
+			[],
+		]);
+	});
+
+	inEverySyntax(
+		"on a root's own compound it is no condition, so the kind comes from the rest",
+		({ parse }) => {
+			const blocks = classifyAll(
+				parse(
+					'.tab[data-part="tab"] { color: red; } .tab[data-part="tab"][aria-selected="true"] { color: blue; }',
+				),
+			);
+			expect(blocks.map(conditions)).toEqual([
+				[],
+				[['[aria-selected="true"]', "state", "semantic", "subject"]],
+			]);
+			expect(kinds(blocks)).toEqual([
+				["own", []],
+				["state", ["semantic"]],
+			]);
+			expect(steps(blocks[0])).toEqual([[undefined, "root", ".tab"]]);
+		},
+	);
+});
+
 describe("never throws", () => {
 	const samples = [
 		".a::after::before { color: red; }",

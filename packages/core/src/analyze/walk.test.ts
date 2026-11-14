@@ -65,6 +65,28 @@ describe("blocks", () => {
 	});
 });
 
+describe("rules", () => {
+	inEverySyntax("every rule is listed, with or without declarations, in the file's order", ({ parse }) => {
+		const walked = walk(
+			parse(`
+				.button { }
+				@scope (.button) to ([data-component]) { [data-part="icon"] { inline-size: 1em; } }
+				@layer components { .card { &:hover { color: red; } } }
+			`),
+		);
+		expect(
+			walked.rules.map((rule) => [rule.selectors.map(complexToString), rule.order, rule.scope, rule.layer]),
+		).toEqual([
+			[[".button"], 0, undefined, undefined],
+			[['.button [data-part="icon"]'], 2, 0, undefined],
+			[[".card"], 3, undefined, "components"],
+			[[".card:hover"], 4, undefined, "components"],
+		]);
+		expect(walked.scopes.map((scope) => [scope.order, scope.layer])).toEqual([[1, undefined]]);
+		expect(selectors(walked)).toEqual(['.button [data-part="icon"]', ".card:hover"]);
+	});
+});
+
 describe("nesting", () => {
 	inEverySyntax("a guard around interaction states", ({ parse }) => {
 		const walked = walk(

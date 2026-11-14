@@ -1,5 +1,19 @@
 import * as z from "zod";
 
+const attributeSettings = ["themeAttribute", "componentAttribute", "partAttribute", "slotAttribute"] as const;
+
+function attributeName(defaultName: string, description: string) {
+	return z
+		.string()
+		.regex(/^[a-z][a-z0-9-]*$/)
+		.default(defaultName)
+		.meta({
+			description,
+			expected: "an attribute name",
+			examples: [defaultName],
+		});
+}
+
 /**
  * Every setting a `statefulcss.config` file can have: its key, type, default and a one-line description.
  *
@@ -11,15 +25,22 @@ export const configSchema = z
 		$schema: z.string().optional().meta({
 			description: "The JSON Schema this file follows, so editors can check and complete it.",
 		}),
-		themeAttribute: z
-			.string()
-			.min(1)
-			.default("data-theme")
-			.meta({
-				description: 'The attribute that selects a theme, such as data-theme in [data-theme="espresso"].',
-				expected: "an attribute name",
-				examples: ["data-theme"],
-			}),
+		themeAttribute: attributeName(
+			"data-theme",
+			'The attribute that selects a theme, such as data-theme in [data-theme="espresso"].',
+		),
+		componentAttribute: attributeName(
+			"data-component",
+			`The attribute every component's root carries, such as data-component in [data-component="button"]. A component's @scope stops at it.`,
+		),
+		partAttribute: attributeName(
+			"data-part",
+			`The attribute that marks a component's parts, such as data-part in [data-part="icon"].`,
+		),
+		slotAttribute: attributeName(
+			"data-slot",
+			'The attribute that marks where another component is placed, such as data-slot in [data-slot="action"].',
+		),
 		themeFiles: z
 			.array(z.string().min(1))
 			.default(() => ["**/styles/themes/**"])
@@ -43,7 +64,7 @@ export const configSchema = z
 			.default(() => [":disabled", '[aria-disabled="true"]', "[data-loading]", "[inert]"])
 			.meta({
 				description:
-					"Selectors for states that block interaction. They come last and set back what interaction states change.",
+					"Selectors for states that block interaction. They come last and set only their own look; a guard keeps interaction states off blocked elements.",
 				expected: "a list of selectors",
 				examples: [[":disabled", '[aria-disabled="true"]']],
 			}),
@@ -89,6 +110,22 @@ export const configSchema = z
 				expected: "a list of layer names",
 				examples: [["base"]],
 			}),
+	})
+	.superRefine((settings, context) => {
+		const seen = new Map<string, (typeof attributeSettings)[number]>();
+		for (const key of attributeSettings) {
+			const name = settings[key];
+			const previous = seen.get(name);
+			if (previous) {
+				context.addIssue({
+					code: "custom",
+					path: [key],
+					message: `must differ from "${previous}". Both use "${name}". Give each setting its own attribute name.`,
+				});
+			} else {
+				seen.set(name, key);
+			}
+		}
 	})
 	.meta({
 		title: "Stateful CSS config",

@@ -4,6 +4,7 @@ import type { Document, Root } from "postcss";
 import type { Block, Model, Unknown } from "../model.js";
 import { type Classified, classify, vocabularyFrom } from "./classify.js";
 import { components } from "./components.js";
+import { declarations } from "./declarations.js";
 import { namesFrom } from "./names.js";
 import { complexToString } from "./selectors.js";
 import { walk, type WalkedBlock } from "./walk.js";
@@ -12,8 +13,8 @@ import { walk, type WalkedBlock } from "./walk.js";
  * Reads one stylesheet and describes it. A `.vue` file arrives as a Document, with one root per `<style>`.
  *
  * The passes run in order, each a pure function over what the ones before it returned, and the model is put together
- * once, here. Three passes exist so far: the model has its components, scopes, elements, blocks, guards, part
- * references and doc comments, and no declarations or variables yet.
+ * once, here. Four passes exist so far: the model has its components, scopes, elements, blocks, guards, part
+ * references, doc comments, declarations, reads and registrations, and no variables yet.
  *
  * Never throws on syntax it doesn't understand, and never changes the tree.
  */
@@ -52,6 +53,17 @@ function read(root: Root | Document, settings: Settings): Model {
 		vocabulary,
 	);
 
+	const declared = declarations(
+		classified.map(({ block, read }, id) => ({
+			node: block.node,
+			element: placed.blocks[id]?.element ?? 0,
+			queries: read.queries,
+		})),
+		placed.elements,
+		placed.docComments,
+		walked.registrations,
+	);
+
 	const blocks = classified.map(({ block, read }, id): Block => {
 		const place = placed.blocks[id];
 		if (!place) throw new Error(`block ${id} has no element`);
@@ -68,7 +80,7 @@ function read(root: Root | Document, settings: Settings): Model {
 			queries: read.queries,
 			guard: place.guard,
 			layer: block.layer,
-			declarations: [],
+			declarations: declared.blockDeclarations[id] ?? [],
 			...(read.kind === "state" ? { kind: "state", groups: read.groups } : { kind: read.kind }),
 		};
 	});
@@ -82,6 +94,9 @@ function read(root: Root | Document, settings: Settings): Model {
 		elements: placed.elements,
 		blocks,
 		guards: placed.guards,
+		declarations: declared.declarations,
+		reads: declared.reads,
+		registrations: declared.registrations,
 		partReferences: placed.partReferences,
 		docComments: placed.docComments,
 		atRules: walked.atRules,
@@ -92,6 +107,7 @@ function read(root: Root | Document, settings: Settings): Model {
 				detail,
 				elements: placed.unknownElements[index] ?? [],
 			})),
+			...declared.unknowns,
 			...failed,
 		],
 	};

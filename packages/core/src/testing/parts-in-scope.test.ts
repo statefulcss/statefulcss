@@ -83,6 +83,49 @@ const cases: { name: string; css: string; problems: string[] }[] = [
 		problems: [],
 	},
 	{
+		name: "reported: a root state written inside the scope",
+		css: `
+			.button { --s-opacity: 1; opacity: var(--s-opacity); &:disabled { --s-opacity: 0.5; } }
+			@scope (.button) to ([data-component]) {
+				:scope:hover { --s-opacity: 0.9; }
+			}
+		`,
+		problems: ["condition-on-scope-root"],
+	},
+	{
+		name: "fixed: the root's states stay in the root block",
+		css: `
+			.button {
+				--s-opacity: 1;
+				opacity: var(--s-opacity);
+				&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])) { &:hover { --s-opacity: 0.9; } }
+				&:disabled { --s-opacity: 0.5; }
+			}
+		`,
+		problems: [],
+	},
+	{
+		name: "reported: a root variant, and a state of the root's pseudo-element, written inside the scope",
+		css: `
+			@scope (.button) to ([data-component]) {
+				:scope[data-size="small"] { gap: 0; }
+				:scope:hover::after { opacity: 1; }
+				:scope { @media (width > 40rem) { &:focus-visible { outline: 0; } } }
+			}
+		`,
+		problems: ["condition-on-scope-root", "condition-on-scope-root", "condition-on-scope-root"],
+	},
+	{
+		name: "not reported: a part with a state of its own, and a part's pseudo-element",
+		css: `
+			@scope (.tabs) to ([data-component]) {
+				[data-part="tab"] { &[aria-selected="true"] { color: blue; } &::after:hover { opacity: 1; } }
+				:scope > [data-part="tab"]:hover { color: red; }
+			}
+		`,
+		problems: [],
+	},
+	{
 		name: "reported: the scope is written before the root block",
 		css: '@scope (.card) to ([data-component]) { [data-part="title"] { font-weight: 600; } } .card { color: red; }',
 		problems: ["scope-before-root-block"],

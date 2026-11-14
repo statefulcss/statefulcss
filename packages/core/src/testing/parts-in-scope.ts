@@ -17,7 +17,10 @@ export type Problem =
 	| "scope-before-root-block"
 	/** `& >` inside a scope, where a build writes `:scope >`. */
 	| "nesting-selector-in-scope"
-	/** `:scope` with an attribute or a pseudo-class, selecting something else: a variant or state selecting a part. */
+	/**
+	 * `:scope` with an attribute or a pseudo-class. With something after it, a variant or state selecting a part; on
+	 * its own, a root state written in the scope, where it beats the root block's blocking states.
+	 */
 	| "condition-on-scope-root";
 
 export interface Finding {
@@ -53,7 +56,10 @@ export function partsInScope(model: Model): Finding[] {
 		if (scope?.component === undefined) continue;
 		seen.add(block.node);
 		if (block.scopeRoot === "&") findings.push({ problem: "nesting-selector-in-scope", node: block.node });
-		if (block.conditions.some((condition) => condition.on === "root"))
+		// The scope's root is the subject itself, the host of a pseudo-element, or a compound before the subject.
+		const subjectIsRoot = block.path.length === 1;
+		const ownRoot = model.elements[block.element]?.kind === "pseudo-element" ? "host" : "subject";
+		if (block.conditions.some((condition) => condition.on === (subjectIsRoot ? ownRoot : "root")))
 			findings.push({ problem: "condition-on-scope-root", node: block.node });
 	}
 

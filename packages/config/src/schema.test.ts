@@ -9,6 +9,9 @@ describe("defaults", () => {
 	it("has the default of every setting", () => {
 		expect(defaults).toEqual({
 			themeAttribute: "data-theme",
+			componentAttribute: "data-component",
+			partAttribute: "data-part",
+			slotAttribute: "data-slot",
 			themeFiles: ["**/styles/themes/**"],
 			baseTheme: "base",
 			blockingStates: [":disabled", '[aria-disabled="true"]', "[data-loading]", "[inert]"],
@@ -46,6 +49,16 @@ describe("configSchema", () => {
 		const first = configSchema.parse({});
 		first.layers.push("reset");
 		expect(configSchema.parse({}).layers).toEqual(defaults.layers);
+	});
+
+	it("keeps distinct attribute names, including names without a data- prefix", () => {
+		const attributes = {
+			themeAttribute: "theme2",
+			componentAttribute: "c",
+			partAttribute: "part-1",
+			slotAttribute: "slot2",
+		};
+		expect(configSchema.parse(attributes)).toEqual({ ...defaults, ...attributes });
 	});
 
 	it("rejects an unknown key", () => {

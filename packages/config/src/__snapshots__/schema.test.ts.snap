@@ -26,7 +26,7 @@ exports[`jsonSchema > matches the snapshot 1`] = `
         "[data-loading]",
         "[inert]",
       ],
-      "description": "Selectors for states that block interaction. They come last and set back what interaction states change.",
+      "description": "Selectors for states that block interaction. They come last and set only their own look; a guard keeps interaction states off blocked elements.",
       "examples": [
         [
           ":disabled",
@@ -38,6 +38,15 @@ exports[`jsonSchema > matches the snapshot 1`] = `
         "type": "string",
       },
       "type": "array",
+    },
+    "componentAttribute": {
+      "default": "data-component",
+      "description": "The attribute every component's root carries, such as data-component in [data-component="button"]. A component's @scope stops at it.",
+      "examples": [
+        "data-component",
+      ],
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "type": "string",
     },
     "ignoreLayers": {
       "default": [],
@@ -98,6 +107,24 @@ exports[`jsonSchema > matches the snapshot 1`] = `
       },
       "type": "array",
     },
+    "partAttribute": {
+      "default": "data-part",
+      "description": "The attribute that marks a component's parts, such as data-part in [data-part="icon"].",
+      "examples": [
+        "data-part",
+      ],
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "type": "string",
+    },
+    "slotAttribute": {
+      "default": "data-slot",
+      "description": "The attribute that marks where another component is placed, such as data-slot in [data-slot="action"].",
+      "examples": [
+        "data-slot",
+      ],
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "type": "string",
+    },
     "stateAttributes": {
       "default": [],
       "description": "Attributes that have a value but are states, such as Radix's data-state.",
@@ -126,7 +153,7 @@ exports[`jsonSchema > matches the snapshot 1`] = `
       "examples": [
         "data-theme",
       ],
-      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9-]*$",
       "type": "string",
     },
     "themeFiles": {

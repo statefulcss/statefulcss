@@ -1,6 +1,6 @@
 // Pass 4. Reads what each block declares: every declaration with its role, the variables its value reads, the reads
 // a style query makes, and the `@property` registrations.
-import type { AtRule, Node, Rule } from "postcss";
+import type { AtRule, Declaration as PostCSSDeclaration, Node } from "postcss";
 
 import type {
 	Declaration,
@@ -14,12 +14,12 @@ import type {
 	UnknownReason,
 } from "../model.js";
 import { roleOf } from "./roles.js";
-import { isUnreadValue, readsOf } from "./values.js";
+import { isUnreadValue, type Language, readsOf } from "./values.js";
 
 /** What this pass needs to know of a block. */
 export interface DeclaringBlock {
-	/** The rule, or the at-rule, whose own declarations are the block's. */
-	readonly node: Rule | AtRule;
+	/** The block's declarations, as written. */
+	readonly declarations: readonly PostCSSDeclaration[];
 	readonly element: Id;
 	readonly queries: readonly Query[];
 }
@@ -66,6 +66,8 @@ export function declarations(
 	};
 
 	const declared: Declaration[] = [];
+	// The first declaration made from each written one: a selector list makes several from the same node.
+	const firstOf = new Map<PostCSSDeclaration, Id>();
 	const reads: Read[] = [];
 	const unknowns: DeclaredUnknown[] = [];
 
@@ -89,9 +91,7 @@ export function declarations(
 				});
 
 		const ids: Id[] = [];
-		for (const node of block.node.nodes ?? []) {
-			// SCSS variables (`$gap: …`) aren't CSS declarations.
-			if (node.type !== "decl" || node.prop.startsWith("$")) continue;
+		for (const node of block.declarations) {
 			const unreadable = /#\{[^}]*\}?|@\{[^}]*\}?|\$\{[^}]*\}?|\{\{[^}]*(\}\})?/.exec(node.prop);
 			if (unreadable) {
 				unknowns.push({ node, reason: "interpolation", detail: unreadable[0], elements: [element] });
@@ -99,7 +99,8 @@ export function declarations(
 			}
 			const custom = node.prop.startsWith("--");
 			const id = declared.length;
-			const valueUnread = isUnreadValue(node.value);
+			const valueUnread = isUnreadValue(node.value, languageOf(node));
+			if (!firstOf.has(node)) firstOf.set(node, id);
 			const own = valueUnread ? [] : readsOf(node.value);
 			const firstRead = reads.length;
 			for (const one of own)
@@ -115,6 +116,7 @@ export function declarations(
 				id,
 				node,
 				block: blockId,
+				written: firstOf.get(node) ?? id,
 				property: custom ? node.prop : node.prop.toLowerCase(),
 				role: custom ? roleIn(node.prop, element) : undefined,
 				value: node.value,
@@ -134,6 +136,16 @@ export function declarations(
 		blockDeclarations,
 		unknowns,
 	};
+}
+
+/**
+ * The language a declaration is written in, which decides what a quoted string holds: SCSS and Less interpolate
+ * inside one, and plain CSS doesn't. A Vue `<style lang>` says so on its root; elsewhere the file's extension does.
+ */
+function languageOf(node: PostCSSDeclaration): Language {
+	const source = node.root().source as { lang?: string; input?: { file?: string } } | undefined;
+	const name = (source?.lang ?? /\.([a-z]+)$/i.exec(source?.input?.file ?? "")?.[1] ?? "").toLowerCase();
+	return name === "scss" || name === "sass" ? "scss" : name === "less" ? "less" : "css";
 }
 
 /** `@property --t-space-2 { syntax: "<length>"; inherits: true; initial-value: 0.5rem; }` */

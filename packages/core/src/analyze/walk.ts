@@ -1,6 +1,6 @@
 // Pass 1. Walks the tree once and lists what the later passes read: every place declarations sit, with its selector
 // resolved and what's around it; the scopes as written; doc comments; and what core can't read.
-import type { AtRule, ChildNode, Comment, Container, Document, Node, Root, Rule } from "postcss";
+import type { AtRule, ChildNode, Comment, Container, Declaration, Document, Node, Root, Rule } from "postcss";
 import type parser from "postcss-selector-parser";
 
 import type { OtherAtRule, ScopeRootForm, UnknownReason } from "../model.js";
@@ -41,10 +41,15 @@ export interface WalkedRule {
 	readonly order: number;
 }
 
-/** One resolved selector of one rule that has declarations. */
+/**
+ * One resolved selector of one run of declarations. A rule's declarations are one run, unless a nested rule that
+ * declares something is written among them: then each run is a block of its own, in the order they're written.
+ */
 export interface WalkedBlock {
 	/** The rule, or the at-rule when declarations sit directly in a nested `@media` or in an `@scope`. */
 	readonly node: Rule | AtRule;
+	/** The declarations of this run, as written; SCSS variables aside. */
+	readonly declarations: readonly Declaration[];
 	/** Resolved against its parent rules and its scope's root. */
 	readonly selector: Complex;
 	/** `@media`, `@container`, `@supports` and `@starting-style` around it, outermost first. */
@@ -187,16 +192,39 @@ export function walk(root: Root | Document): Walked {
 	return { sheets, ...found };
 }
 
-function walkContainer(container: Container, context: Context, found: Found): void {
+/**
+ * Walks what a sheet, a rule, a query, a layer or a scope holds. With `declares`, the declarations written directly
+ * inside belong to the elements of `context.parents`. They become blocks in the order they're written: a nested rule
+ * that declares something ends the run before it, so `.card { & { --s-v: 1 } --s-v: 2 }` writes 1 before 2.
+ */
+function walkContainer(container: Container, context: Context, found: Found, declares?: Rule | AtRule): void {
+	let run: Declaration[] = [];
+	const blocksOf = (declarations: readonly Declaration[]): WalkedBlock[] =>
+		declares && declarations.length > 0
+			? (context.parents ?? []).map((parent) => blockOf(declares, parent, context, declarations))
+			: [];
+
 	for (const node of container.nodes ?? []) {
 		try {
-			if (node.type === "rule") visitRule(node, context, found);
-			else if (node.type === "atrule") visitAtRule(node, context, found);
-			else if (node.type === "comment") visitComment(node, context, found);
+			if (node.type === "decl") {
+				// SCSS variables (`$gap: …`) aren't CSS declarations.
+				if (!node.prop.startsWith("$")) run.push(node);
+			} else if (node.type === "comment") visitComment(node, context, found);
+			else {
+				const before = found.blocks.length;
+				if (node.type === "rule") visitRule(node, context, found);
+				else visitAtRule(node, context, found);
+				// Only what declares something splits a run: the run goes before the blocks it made.
+				if (found.blocks.length > before && run.length > 0) {
+					found.blocks.splice(before, 0, ...blocksOf(run));
+					run = [];
+				}
+			}
 		} catch (error) {
 			unknown(found, context, node, "internal", error instanceof Error ? error.message : String(error));
 		}
 	}
+	found.blocks.push(...blocksOf(run));
 }
 
 function visitRule(rule: Rule, context: Context, found: Found): void {
@@ -233,22 +261,18 @@ function visitRule(rule: Rule, context: Context, found: Found): void {
 		sheet: context.sheet,
 		order: found.rules.length + found.scopes.length,
 	});
-	if (hasDeclarations(rule)) {
-		for (const parent of resolved) found.blocks.push(blockOf(rule, parent, context));
-	}
-	walkContainer(rule, { ...context, parents: resolved, inRule: true, scopeTop: false }, found);
+	walkContainer(rule, { ...context, parents: resolved, inRule: true, scopeTop: false }, found, rule);
 }
 
 function visitAtRule(atRule: AtRule, context: Context, found: Found): void {
 	const name = atRule.name.toLowerCase();
 	if (conditionalAtRules.has(name)) {
 		const inner = { ...context, atRules: [...context.atRules, atRule] };
-		if (context.parents && hasDeclarations(atRule)) {
-			for (const parent of context.parents) found.blocks.push(blockOf(atRule, parent, inner));
-		}
-		walkContainer(atRule, inner, found);
+		walkContainer(atRule, inner, found, atRule);
 	} else if (name === "layer" && atRule.nodes) {
-		walkContainer(atRule, { ...context, layers: [...context.layers, atRule.params.trim()] }, found);
+		// Inside a rule, a layer's own declarations are that rule's element's, in that layer.
+		const inner = { ...context, layers: [...context.layers, atRule.params.trim()] };
+		walkContainer(atRule, inner, found, atRule);
 	} else if (name === "scope") {
 		visitScope(atRule, context, found);
 	} else if (name === "property") {
@@ -285,8 +309,7 @@ function visitScope(atRule: AtRule, context: Context, found: Found): void {
 	}
 	const parent: Parent = { selector: [root], scopeRoot: undefined };
 	const inner = { ...context, parents: [parent], inRule: false, scope: index, scopeTop: true };
-	if (hasDeclarations(atRule)) found.blocks.push(blockOf(atRule, parent, inner));
-	walkContainer(atRule, inner, found);
+	walkContainer(atRule, inner, found, atRule);
 }
 
 /** A doc comment (`/** … *\/`) outside any rule or scope, with the node it's written above. */
@@ -297,9 +320,15 @@ function visitComment(comment: Comment, context: Context, found: Found): void {
 	found.docComments.push({ node: comment, next, sheet: context.sheet });
 }
 
-function blockOf(node: Rule | AtRule, parent: Parent, context: Context): WalkedBlock {
+function blockOf(
+	node: Rule | AtRule,
+	parent: Parent,
+	context: Context,
+	declarations: readonly Declaration[],
+): WalkedBlock {
 	return {
 		node,
+		declarations,
 		selector: parent.selector,
 		atRules: context.atRules,
 		layer: layerOf(context),
@@ -329,11 +358,6 @@ function unknown(
 		scope: context.scope,
 		sheet: context.sheet,
 	});
-}
-
-function hasDeclarations(container: Container): boolean {
-	// SCSS variables (`$gap: …`) aren't CSS declarations.
-	return (container.nodes ?? []).some((node) => node.type === "decl" && !node.prop.startsWith("$"));
 }
 
 function isDocComment(comment: Comment): boolean {

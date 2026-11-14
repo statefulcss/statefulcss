@@ -55,7 +55,7 @@ function read(root: Root | Document, settings: Settings): Model {
 
 	const declared = declarations(
 		classified.map(({ block, read }, id) => ({
-			node: block.node,
+			declarations: block.declarations,
 			element: placed.blocks[id]?.element ?? 0,
 			queries: read.queries,
 		})),

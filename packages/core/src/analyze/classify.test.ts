@@ -205,12 +205,12 @@ describe("queries", () => {
 			`),
 		);
 		expect(blocks.map((block) => block.queries.flatMap((query) => query.styleQueries))).toEqual([
-			[{ name: "--q-tabs-blocked", value: "false", negated: false }],
-			[{ name: "--q-tabs-dense", value: undefined, negated: false }],
-			[{ name: "--q-tabs-blocked", value: "true", negated: true }],
+			[{ name: "--q-tabs-blocked", value: "false", negated: false, optional: false }],
+			[{ name: "--q-tabs-dense", value: undefined, negated: false, optional: false }],
+			[{ name: "--q-tabs-blocked", value: "true", negated: true, optional: false }],
 			[
-				{ name: "--q-a", value: "1", negated: false },
-				{ name: "--q-b", value: "calc(1px + 2px)", negated: true },
+				{ name: "--q-a", value: "1", negated: false, optional: false },
+				{ name: "--q-b", value: "calc(1px + 2px)", negated: true, optional: false },
 			],
 			[],
 		]);

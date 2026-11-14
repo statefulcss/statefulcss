@@ -58,18 +58,27 @@ export function variables(
 		if (element.kind === "part" || element.kind === "slot") return roots.get(element.component);
 		return undefined;
 	};
+	/** The nearest variable of a name, from an element up through its owners. */
+	const nearest = (name: string, from: Id | undefined): Id | undefined => {
+		const seen = new Set<Id>();
+		for (let id = from; id !== undefined && !seen.has(id);) {
+			seen.add(id);
+			const found = ids.get(`${id} ${name}`);
+			if (found !== undefined) return found;
+			id = ownerOfId(id);
+		}
+		return undefined;
+	};
+	const ownerOfId = (id: Id): Id | undefined => {
+		const element = elements[id];
+		return element && ownerOf(element);
+	};
 	const sources = reads.map((read): Id | undefined => {
 		// Tokens and component variables come from outside the component.
 		if (read.role === "token" || read.role === "component") return undefined;
-		const seen = new Set<Id>();
-		for (let id: Id | undefined = read.element; id !== undefined && !seen.has(id);) {
-			seen.add(id);
-			const found = ids.get(`${id} ${read.name}`);
-			if (found !== undefined) return found;
-			const element: Element | undefined = elements[id];
-			id = element && ownerOf(element);
-		}
-		return undefined;
+		// A style query asks a container around the element, never the element itself: the search starts at its
+		// owner, and a root's own query asks something outside the component.
+		return nearest(read.name, read.via === "style-query" ? ownerOfId(read.element) : read.element);
 	});
 	const readsOf = drafts.map((): Id[] => []);
 	for (const [read, source] of sources.entries()) if (source !== undefined) readsOf[source]?.push(read);
@@ -79,6 +88,12 @@ export function variables(
 		draft.writes.filter((write) => kindOf(write) === "variant" || kindOf(write) === "state"),
 	);
 	const changing = changes.map((own) => own.length > 0);
+	// A private taken with `inherit` holds its owner's value, so it changes when the owner's does.
+	const inheritsFrom = drafts.map((draft) =>
+		draft.writes.some((write) => declarations[write]?.inherits)
+			? nearest(draft.name, ownerOfId(draft.element))
+			: undefined,
+	);
 	for (let grew = true; grew;) {
 		grew = false;
 		for (const [id, draft] of drafts.entries()) {
@@ -89,7 +104,9 @@ export function variables(
 					return source !== undefined && changing[source] === true;
 				}),
 			);
-			if (readsChanging) grew = changing[id] = true;
+			const inherited = inheritsFrom[id];
+			if (readsChanging || (inherited !== undefined && changing[inherited] === true))
+				grew = changing[id] = true;
 		}
 	}
 

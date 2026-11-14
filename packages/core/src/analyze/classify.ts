@@ -683,47 +683,105 @@ function queryOf(node: AtRule): Query {
 	};
 }
 
-/** Every `style(--name: value)` in a container query, with whether a `not` turns it around. */
+/**
+ * Every style feature a container query asks about, with how it stands in the query's logic: turned around by a
+ * `not`, and one side of an `or`.
+ */
 export function styleQueriesOf(params: string): StyleQuery[] {
 	const found: StyleQuery[] = [];
-	const pattern = /\bstyle\(/gi;
-	for (let match = pattern.exec(params); match; match = pattern.exec(params)) {
-		const open = match.index + match[0].length - 1;
-		const end = closingParenthesis(params, open);
-		if (end === -1) break;
-		const negated = /\bnot\s*$/i.test(params.slice(0, match.index));
-		readStyleCondition(params.slice(open + 1, end), negated, found);
-		pattern.lastIndex = end + 1;
-	}
+	readQuery(params, { negated: false, optional: false, inStyle: false }, found);
 	return found;
 }
 
-/** `--q-a: 1`, or groups joined by `and` and `or`, each of which a `not` may turn around. */
-function readStyleCondition(text: string, negated: boolean, found: StyleQuery[]): void {
-	const rest = text.trim();
-	if (!rest.startsWith("(") && !/^not\b/i.test(rest)) {
-		const feature = /^(--[^\s:()<>=]+)\s*(?::\s*([\s\S]*))?/.exec(rest);
-		if (feature?.[1]) found.push({ name: feature[1], value: feature[2]?.trim() || undefined, negated });
+/** Where a part of a query stands: under an odd number of `not`s, on one side of an `or`, inside `style()`. */
+interface Standing {
+	readonly negated: boolean;
+	readonly optional: boolean;
+	readonly inStyle: boolean;
+}
+
+/** A query, or a group of one: a name, `not`, and groups joined by `and` or by `or`. */
+function readQuery(text: string, standing: Standing, found: StyleQuery[]): void {
+	const query = text.trim();
+	if (standing.inStyle && query.startsWith("--")) {
+		const feature = /^(--[^\s:()<>=]+)\s*(?::\s*([\s\S]*))?/.exec(query);
+		if (feature?.[1]) {
+			const value = feature[2]?.trim() || undefined;
+			found.push({ name: feature[1], value, negated: standing.negated, optional: standing.optional });
+		}
 		return;
 	}
-	let index = 0;
-	while (index < rest.length) {
-		const lead = /^\s*(?:(?:and|or)\b\s*)?(not\b\s*)?/i.exec(rest.slice(index));
-		index += lead?.[0].length ?? 0;
-		if (rest[index] !== "(") return;
-		const end = closingParenthesis(rest, index);
-		if (end === -1) return;
-		readStyleCondition(rest.slice(index + 1, end), negated !== (lead?.[1] !== undefined), found);
-		index = end + 1;
+	const items = queryItems(query);
+	const groups = items.filter((item) => item.inner !== undefined);
+	const joinedBy = (word: string): boolean =>
+		items.some((item) => item.inner === undefined && item.text.toLowerCase() === word);
+	// Under a `not`, `and` and `or` trade places: `not (a and b)` holds as soon as one of them doesn't.
+	const alternatives = groups.length > 1 && joinedBy(standing.negated ? "and" : "or");
+
+	let turned = false;
+	for (const item of items) {
+		if (item.inner === undefined) {
+			turned = item.text.toLowerCase() === "not";
+			continue;
+		}
+		const name = item.text.toLowerCase();
+		if (name === "" || name === "style")
+			readQuery(
+				item.inner,
+				{
+					negated: standing.negated !== turned,
+					optional: standing.optional || alternatives,
+					inStyle: standing.inStyle || name === "style",
+				},
+				found,
+			);
+		turned = false;
 	}
 }
 
-/** The index of the parenthesis that closes the one at `open`, or -1. */
+/** A word of a query (`not`, `and`, a container's name), or a group: `(…)` with no name, or `style(…)`. */
+interface QueryItem {
+	readonly text: string;
+	/** What a group holds; undefined for a word. */
+	readonly inner: string | undefined;
+}
+
+function queryItems(text: string): QueryItem[] {
+	const items: QueryItem[] = [];
+	let index = 0;
+	while (index < text.length) {
+		if (/\s/.test(text[index] ?? "")) {
+			index++;
+			continue;
+		}
+		let end = index;
+		while (end < text.length && !/[\s(]/.test(text[end] ?? "")) end++;
+		const word = text.slice(index, end);
+		if (text[end] !== "(") {
+			items.push({ text: word, inner: undefined });
+			index = end;
+			continue;
+		}
+		const close = closingParenthesis(text, end);
+		if (close === -1) break;
+		items.push({ text: word, inner: text.slice(end + 1, close) });
+		index = close + 1;
+	}
+	return items;
+}
+
+/** The index of the parenthesis that closes the one at `open`, or -1. A parenthesis in a quoted string isn't one. */
 function closingParenthesis(text: string, open: number): number {
 	let depth = 0;
+	let quote: string | undefined;
 	for (let index = open; index < text.length; index++) {
-		if (text[index] === "(") depth++;
-		else if (text[index] === ")" && --depth === 0) return index;
+		const character = text[index];
+		if (quote !== undefined) {
+			if (character === "\\") index++;
+			else if (character === quote) quote = undefined;
+		} else if (character === '"' || character === "'") quote = character;
+		else if (character === "(") depth++;
+		else if (character === ")" && --depth === 0) return index;
 	}
 	return -1;
 }

@@ -207,7 +207,7 @@ describe("a whole component", () => {
 		const hover = model.blocks[3];
 		expect(hover).toMatchObject({ kind: "state", groups: ["context", "interaction"], guard: 0 });
 		expect(hover?.queries[0]?.styleQueries).toEqual([
-			{ name: "--q-tabs-blocked", value: "false", negated: false },
+			{ name: "--q-tabs-blocked", value: "false", negated: false, optional: false },
 		]);
 		expect(keyOf(model, model.guards[0]?.element)).toBe('.tabs [data-part="tab"]');
 		const after = find(model, '.tabs [data-part="tab"]::after');

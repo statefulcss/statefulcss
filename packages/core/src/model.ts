@@ -188,7 +188,11 @@ interface BlockBase {
 	readonly declarations: readonly Id[];
 }
 
-/** Where declarations sit: one resolved selector of one rule, inside its at-rules. */
+/**
+ * Where declarations sit: one resolved selector of one rule, inside its at-rules. A rule whose declarations are
+ * written around a nested rule that declares something makes one block for each run, so blocks, declarations and
+ * a variable's writes are all in the order the file writes them.
+ */
 export type Block = BlockBase &
 	(
 		| { readonly kind: "own" } // no condition and no query; `& { }` included
@@ -287,7 +291,13 @@ export interface Query {
 export interface StyleQuery {
 	readonly name: string;
 	readonly value: string | undefined;
+	/** A `not` turns it around: the block applies when it doesn't hold. */
 	readonly negated: boolean;
+	/**
+	 * It's one side of an `or`, or of an `and` under a `not`: the block can apply whether it holds or not, so it
+	 * proves nothing on its own.
+	 */
+	readonly optional: boolean;
 }
 
 /** One `:not()` that lists at least one blocking state. An element can have several. */
@@ -340,6 +350,12 @@ export interface Declaration {
 	readonly id: Id;
 	readonly node: PostCSSDeclaration;
 	readonly block: Id;
+	/**
+	 * The written declaration it comes from: the id of the first declaration made from the same node, its own when
+	 * it's the first. A selector list makes one declaration for each of its blocks, and `.card:hover, .card:focus`
+	 * writes on the Card once: count the distinct values among an element's declarations.
+	 */
+	readonly written: Id;
 	/** Lowercased; a custom property keeps its case. */
 	readonly property: string;
 	/** For a custom property. */
@@ -365,7 +381,10 @@ export interface Variable {
 	readonly default: Id | undefined;
 	/** Its writes in variant and state blocks. */
 	readonly changes: readonly Id[];
-	/** A variant or a state writes it, or its value reads a variable that is changing. */
+	/**
+	 * A variant or a state writes it, its value reads a variable that is changing, or it's taken with `inherit` from
+	 * an owner's variable of the same name that is.
+	 */
 	readonly changing: boolean;
 	/**
 	 * For `--p-*` and `--_*`: the elements whose name starts the variable's name; the longest name wins. A component

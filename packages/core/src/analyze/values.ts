@@ -48,14 +48,22 @@ function collect(
 	}
 }
 
+/** What decides how a quoted string is read: SCSS and Less interpolate inside one, plain CSS doesn't. */
+export type Language = "css" | "scss" | "less";
+
 const interpolation = /#\{|@\{|\$\{|\{\{|<%/;
 const quoted = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g;
 
 /**
  * Whether a value holds syntax core can't read: SCSS or Less interpolation, a SCSS variable, Vue's `v-bind()`, or a
  * template placeholder. Its declaration is kept, since its property is readable, and nothing is read from it.
+ *
+ * Inside a quoted string, only the sheet's own language interpolates: `"{{label}}"` is literal text in plain CSS,
+ * and `"#{$label}"` is literal anywhere but SCSS.
  */
-export function isUnreadValue(value: string): boolean {
+export function isUnreadValue(value: string, language: Language = "css"): boolean {
 	const outside = value.replace(quoted, '""');
-	return interpolation.test(value) || /\$[\w-]/.test(outside) || /\bv-bind\(/i.test(outside);
+	if (interpolation.test(outside) || /\$[\w-]/.test(outside) || /\bv-bind\(/i.test(outside)) return true;
+	const strings = (value.match(quoted) ?? []).join("");
+	return language === "scss" ? strings.includes("#{") : language === "less" && strings.includes("@{");
 }

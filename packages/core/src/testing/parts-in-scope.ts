@@ -42,12 +42,14 @@ export function partsInScope(model: Model): Finding[] {
 	const findings: Finding[] = [];
 
 	for (const reference of model.partReferences) {
-		const block = model.blocks[reference.block];
-		if (!block) continue;
 		if (reference.place === "outside")
 			findings.push({ problem: "part-outside-scope", node: reference.at.node });
-		// A placement path reaches the slot through `>` steps only.
-		if (reference.place === "placement-path" && block.path.slice(1).some((step) => step.combinator !== ">"))
+		// A placement path reaches the slot through `>` steps only, in every block that takes it.
+		const paths = reference.blocks.flatMap((id) => model.blocks[id]?.path ?? []);
+		if (
+			reference.place === "placement-path" &&
+			paths.some((step, index) => index > 0 && step.combinator === " ")
+		)
 			findings.push({ problem: "placement-path-not-direct", node: reference.at.node });
 	}
 

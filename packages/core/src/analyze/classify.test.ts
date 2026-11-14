@@ -362,12 +362,17 @@ describe(":has()", () => {
 		expect([at?.index, at?.endIndex]).toEqual([18, 37]);
 	});
 
-	inEverySyntax("with a list, what the selectors ask is in inner", ({ parse }) => {
+	inEverySyntax("with a list, each selector is a condition in inner with its own path", ({ parse }) => {
 		const [block] = classifyAll(parse(".field:has(:disabled, [aria-invalid='true']) { opacity: 0.6; }"));
 		expect(block?.conditions[0]?.has).toBeUndefined();
-		expect(block?.conditions[0]?.inner.map((inner) => [inner.text, inner.group])).toEqual([
-			[":disabled", "blocking"],
-			['[aria-invalid="true"]', "semantic"],
+		expect(
+			block?.conditions[0]?.inner.map((inner) => [
+				inner.has?.conditions.map((asked) => asked.text),
+				inner.group,
+			]),
+		).toEqual([
+			[[":disabled"], "blocking"],
+			[['[aria-invalid="true"]'], "semantic"],
 		]);
 		expect(kinds([block as Classified])).toEqual([["state", ["semantic", "blocking"]]]);
 	});

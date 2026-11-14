@@ -24,7 +24,7 @@ const references = (model: Model) =>
 	model.partReferences.map((reference) => [
 		reference.name,
 		reference.place,
-		model.blocks[reference.block]?.selector,
+		model.blocks[reference.blocks[0] ?? -1]?.selector,
 	]);
 
 // The parts page, "One example".
@@ -844,7 +844,7 @@ describe("unknown syntax", () => {
 			[".button"],
 			[".button"],
 			['.button [data-part="icon"]'],
-			[],
+			['.button [data-part="label"]'],
 		]);
 	});
 

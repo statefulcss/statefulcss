@@ -124,15 +124,18 @@ export function components(
 		const next = comment.next;
 		const rule = next === undefined ? undefined : ruleIndex.get(next);
 		const scope = next === undefined ? undefined : scopeIndex.get(next);
-		const owner =
-			rule !== undefined
-				? rules[rule]?.selectors[0]?.owner
-				: scope !== undefined
-					? scopeOwners[scope]
-					: undefined;
-		const key = owner?.kind === "component" ? draftKey(comment.sheet, owner.identity) : undefined;
-		if (key) drafts.get(key)?.docComments.push(index);
-		return { comment, key, read: readDocComment(comment.node.text) };
+		// Above a selector list, the comment belongs to the one component the list names; with several, to none.
+		const owners = rule !== undefined ? (rules[rule]?.selectors.map((one) => one.owner) ?? []) : [];
+		if (scope !== undefined) owners.push(scopeOwners[scope] ?? { kind: "global" });
+		const keys = new Set(
+			owners.flatMap((owner) =>
+				owner.kind === "component" ? [draftKey(comment.sheet, owner.identity)] : [],
+			),
+		);
+		const [key, ...others] = [...keys];
+		const only = others.length === 0 ? key : undefined;
+		if (only) drafts.get(only)?.docComments.push(index);
+		return { comment, key: only, read: readDocComment(comment.node.text) };
 	});
 
 	// Names, and a class root joined with an attribute scope of the same name
@@ -148,10 +151,12 @@ export function components(
 	for (const [key, draft] of drafts) {
 		if (draft.identity.kind !== "attribute") continue;
 		const { name } = nameOf(draft);
-		const sameName = classRoots.find(
+		const sameName = classRoots.filter(
 			([, other]) => other.sheet === draft.sheet && nameOf(other).name === name,
 		);
-		if (sameName) joined.set(key, sameName[0]);
+		// With two class roots of that name, joining either would invent a relationship: the scope stays its own.
+		const [only, ...others] = sameName;
+		if (only && others.length === 0) joined.set(key, only[0]);
 	}
 	const componentKeys = [...drafts.keys()]
 		.filter((key) => !joined.has(key))
@@ -282,18 +287,34 @@ export function components(
 		}));
 	};
 
-	// Blocks, guards and part references
-	const guards: { element: Id; condition: Condition; blocking: string[]; blocks: Id[] }[] = [];
-	const guardIds = new Map<Rule | AtRule, Map<number, Id>>();
-	const references: PartReference[] = [];
-	const referenced = new Map<Rule | AtRule, Set<string>>();
+	// Every element a rule names is one the file has, whether or not the rule declares anything
+	for (const { rule, selectors } of rules)
+		for (const { read, owner } of selectors) elementOf(read, owner, rule.sheet, true);
 
-	/** The element a guard is written on: the block's own, its host for a pseudo-element, or the component root. */
-	const guardedElement = (condition: Condition, element: Id, component: Id | undefined): Id => {
+	// Blocks, guards and part references
+	const guards: { element: Id | undefined; condition: Condition; blocking: string[]; blocks: Id[] }[] = [];
+	const guardIds = new Map<Rule | AtRule, Map<string, Id>>();
+	const references: (Omit<PartReference, "blocks"> & { readonly blocks: Id[] })[] = [];
+	const referenced = new Map<Rule | AtRule, Map<string, number>>();
+
+	/**
+	 * The element a guard is written on: the block's own, its host for a pseudo-element, the component root, or the
+	 * part or slot of a step in between. Undefined when that compound is no element of the model.
+	 */
+	const guardedElement = (
+		condition: Condition,
+		read: Classified,
+		element: Id,
+		component: Id | undefined,
+	): Id | undefined => {
 		const draft = elements[element];
-		if (condition.on === "host" && draft?.kind === "pseudo-element") return draft.host;
-		if (condition.on === "root" && component !== undefined) return rootOf(component, false) ?? element;
-		return element;
+		if (condition.on === "subject") return element;
+		if (condition.on === "host") return draft?.kind === "pseudo-element" ? draft.host : element;
+		if (component === undefined || condition.on === "context") return undefined;
+		if (condition.on === "root") return rootOf(component, false);
+		const step = condition.step === undefined ? undefined : read.path[condition.step];
+		if (step?.name === undefined || (step.names !== "part" && step.names !== "slot")) return undefined;
+		return namedElement(component, step.names, step.name, false);
 	};
 
 	const blocks = walked.blocks.map((block, id): PlacedBlock => {
@@ -307,18 +328,19 @@ export function components(
 
 		const conditions = read.conditions.map((condition): Condition => {
 			if (condition.kind !== "guard") return condition;
-			const written = guardIds.get(condition.at.node) ?? new Map<number, Id>();
+			// One guard for each element it's written on: a selector list makes one for each of its elements.
+			const guarded = guardedElement(condition, read, element, component);
+			const written = guardIds.get(condition.at.node) ?? new Map<string, Id>();
 			guardIds.set(condition.at.node, written);
-			let guard = written.get(condition.at.index);
+			const key = `${condition.at.index} ${guarded ?? `around ${element}`}`;
+			let guard = written.get(key);
 			if (guard === undefined) {
 				guard = guards.length;
-				written.set(condition.at.index, guard);
+				written.set(key, guard);
 				guards.push({
-					element: guardedElement(condition, element, component),
+					element: guarded,
 					condition: { ...condition, guard },
-					blocking: condition.inner
-						.filter((inner) => inner.kind === "state" && inner.group === "blocking" && !inner.has)
-						.map((inner) => inner.text),
+					blocking: condition.inner.flatMap(excludedBlockingStates),
 					blocks: [],
 				});
 			}
@@ -328,12 +350,17 @@ export function components(
 
 		for (const mention of read.partMentions) {
 			const place = placeOf(mention, read, owner, block.scope !== undefined);
-			const seen = referenced.get(mention.at.node) ?? new Set<string>();
-			referenced.set(mention.at.node, seen);
-			const once = `${mention.at.index} ${place}`;
-			if (seen.has(once)) continue;
-			seen.add(once);
-			references.push({ name: mention.name, component, block: id, place, at: mention.at });
+			const inHas = mention.where === "has";
+			const written = referenced.get(mention.at.node) ?? new Map<string, number>();
+			referenced.set(mention.at.node, written);
+			const key = `${mention.at.index} ${place} ${inHas}`;
+			const existing = written.get(key);
+			// Written once, a part is named by every block the rule resolves to.
+			if (existing !== undefined) references[existing]?.blocks.push(id);
+			else {
+				written.set(key, references.length);
+				references.push({ name: mention.name, component, blocks: [id], place, inHas, at: mention.at });
+			}
 		}
 
 		return {
@@ -345,7 +372,10 @@ export function components(
 						? "descendant"
 						: "direct",
 			conditions,
-			guard: conditions.find((condition) => condition.kind === "guard")?.guard,
+			// A guard on another compound limits the block without guarding its own element.
+			guard: conditions.find(
+				(condition) => condition.kind === "guard" && (condition.on === "subject" || condition.on === "host"),
+			)?.guard,
 		};
 	});
 
@@ -475,6 +505,21 @@ function placeOf(
 	if (owner.kind !== "component" || mention.where === "root" || mention.where === "context") return "outside";
 	if (inScope) return "scope";
 	if (mention.where === "step" && read.path.at(-1)?.names === "slot") return "placement-path";
-	if (mention.where === "has" && (mention.on === "root" || read.path.length === 1)) return "has";
+	// The exception is for a state the root itself shows: the block has to write on the root.
+	const writesOnRoot = read.path.length === 1 && read.pseudoElement === undefined;
+	if (mention.where === "has" && mention.on === "subject" && writesOnRoot) return "has";
 	return "outside";
+}
+
+/**
+ * The blocking states a guard's entry excludes on its own. A compound excludes none of its states alone, and a
+ * `:has()` state isn't one of the settings'. `:is()` inside the exclusion excludes each of its alternatives.
+ */
+function excludedBlockingStates(entry: Condition): string[] {
+	if (entry.compound || entry.has) return [];
+	if (entry.inner.length === 0)
+		return entry.kind === "state" && entry.group === "blocking" ? [entry.text] : [];
+	return entry.text.startsWith(":not(") || entry.text.startsWith(":has(")
+		? []
+		: entry.inner.flatMap(excludedBlockingStates);
 }

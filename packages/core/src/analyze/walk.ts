@@ -5,7 +5,14 @@ import type parser from "postcss-selector-parser";
 
 import type { OtherAtRule, ScopeRootForm, UnknownReason } from "../model.js";
 import { type SheetKind, sheetKind } from "./files.js";
-import { type Complex, type Compound, parseSelectorList, resolve, toCompounds } from "./selectors.js";
+import {
+	type Complex,
+	type Compound,
+	nestingInsideFunction,
+	parseSelectorList,
+	resolve,
+	toCompounds,
+} from "./selectors.js";
 
 export interface Walked {
 	/** One per stylesheet. Outside Vue there's one. */
@@ -200,7 +207,14 @@ function visitRule(rule: Rule, context: Context, found: Found): void {
 	}
 	const resolved: Parent[] = [];
 	for (const selector of parsed.selectors) {
-		const own = toCompounds(selector, rule, context.scopeTop);
+		// What the outermost rule writes is where its component is named; a nested rule only adds to it.
+		const outer = context.parents === undefined;
+		const own = toCompounds(selector, rule, context.scopeTop).map((compound) => ({ ...compound, outer }));
+		const inside = nestingInsideFunction(own);
+		if (inside) {
+			unknown(found, context, rule, "unparsable-selector", `& inside ${inside}()`);
+			return;
+		}
 		const written = context.scopeTop ? scopeRootForm(selector) : undefined;
 		for (const parent of context.parents ?? [undefined]) {
 			const complex = resolve(own, parent?.selector);

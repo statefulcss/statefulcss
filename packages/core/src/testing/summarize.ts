@@ -54,13 +54,15 @@ export function summarize(model: Model): string {
 		const joined = guard.condition.inner.filter((inner) => inner.has).length;
 		const has = joined > 0 ? ` and ${joined} state through :has()` : "";
 		lines.push(
-			`guard on ${keyOf(guard.element)}: ${guard.blocking.join(", ")}${has}; around ${guard.blocks.map((id) => `#${id}`).join(" ")}`,
+			`guard on ${guard.element === undefined ? "no element of the model" : keyOf(guard.element)}: ${guard.blocking.join(", ")}${has}; around ${guard.blocks.map((id) => `#${id}`).join(" ")}`,
 		);
 	}
 
 	if (model.partReferences.length > 0) lines.push("");
 	for (const reference of model.partReferences)
-		lines.push(`part ${reference.name ?? "(unnamed)"} named in #${reference.block}: ${reference.place}`);
+		lines.push(
+			`part ${reference.name ?? "(unnamed)"} named in ${reference.blocks.map((id) => `#${id}`).join(" ")}: ${reference.place}`,
+		);
 
 	if (model.unknowns.length > 0) lines.push("");
 	for (const unknown of model.unknowns) lines.push(`unknown ${unknown.reason}: ${unknown.detail ?? ""}`);

@@ -7,6 +7,10 @@ import type { UnknownReason } from "../model.js";
 export interface Part {
 	node: parser.Node;
 	source: Rule | AtRule;
+	/** Written inside a `:where()` that holds one compound, so it adds no specificity. */
+	inWhere?: boolean;
+	/** The `:is()` or `:where()` it was written in, when that holds one compound and no `&`. */
+	wrapper?: parser.Pseudo;
 }
 
 /** A compound selector: the parts between two combinators. */
@@ -14,6 +18,8 @@ export interface Compound {
 	/** The combinator before it (" ", ">", "+", "~"); undefined for the first compound. */
 	combinator: string | undefined;
 	parts: Part[];
+	/** Written in the outermost rule, as opposed to added by a rule nested in it (`.dark` in `.card { .dark & { } }`). */
+	outer?: boolean;
 }
 
 /** A complex selector, resolved against its parents. */
@@ -61,14 +67,55 @@ export function toCompounds(
 			current = { combinator: pending, parts: [] };
 			continue;
 		}
-		const isScope = scopeIsNesting && node.type === "pseudo" && node.value.toLowerCase() === ":scope";
-		current.parts.push({ node: isScope ? parser.nesting({ value: "&" }) : node, source });
+		current.parts.push(...partsOf(node, source, scopeIsNesting));
 	}
 	if (current.parts.length > 0) compounds.push(current);
 	return compounds;
 }
 
+/** `:is()` and `:where()` with one compound inside select what that compound selects. */
+const transparent = new Set([":is", ":where", ":matches", ":-webkit-any", ":-moz-any"]);
+
+/**
+ * The parts one simple selector makes. `:is()` or `:where()` around one compound makes that compound's parts, so
+ * `:where([data-part="icon"])` names the icon and `:is(&):hover` is the parent's hover. Around a list or a path, it
+ * stays one part.
+ */
+function partsOf(node: parser.Node, source: Rule | AtRule, scopeIsNesting: boolean): Part[] {
+	if (scopeIsNesting && node.type === "pseudo" && node.value.toLowerCase() === ":scope")
+		return [{ node: parser.nesting({ value: "&" }), source }];
+	if (node.type !== "pseudo" || !transparent.has(node.value.toLowerCase())) return [{ node, source }];
+	const [only, ...others] = node.nodes;
+	const inner = only?.nodes.filter((child) => child.type !== "comment") ?? [];
+	const simple = inner.every((child) => child.type !== "combinator" && !isPseudoElement(child));
+	if (!only || others.length > 0 || inner.length === 0 || !simple) return [{ node, source }];
+
+	const inWhere = node.value.toLowerCase() === ":where";
+	const parts = inner.flatMap((child) => partsOf(child, source, scopeIsNesting));
+	// With `&` inside, the wrapper is gone once nesting is resolved, so its parts are written one by one.
+	const keepsWrapper = !parts.some(isNesting);
+	return parts.map((part) => ({
+		...part,
+		inWhere: part.inWhere || inWhere,
+		wrapper: keepsWrapper ? node : undefined,
+	}));
+}
+
 const isNesting = (part: Part): boolean => part.node.type === "nesting";
+
+/** Whether `&` is written inside a selector function that isn't transparent: `:not(&)`, `:has(&)`, `:is(&, .x)`. */
+export function nestingInsideFunction(compounds: readonly Compound[]): string | undefined {
+	for (const compound of compounds)
+		for (const { node } of compound.parts) {
+			if (node.type !== "pseudo") continue;
+			let found = false;
+			node.walkNesting(() => {
+				found = true;
+			});
+			if (found) return node.value.toLowerCase();
+		}
+	return undefined;
+}
 
 /**
  * Resolves a nested selector against one of its parent's selectors, the way CSS nesting does: `&` is the parent, and a
@@ -142,7 +189,16 @@ export const isSibling = (combinator: string | undefined): boolean =>
 export function complexToString(complex: Complex): string {
 	return complex
 		.map((compound, index) => {
-			const parts = compound.parts.map((part) => onOneLine(String(part.node))).join("");
+			const written = new Set<parser.Pseudo>();
+			const parts = compound.parts
+				.map((part) => {
+					if (!part.wrapper) return onOneLine(String(part.node));
+					// A wrapper is written once, for all the parts it holds.
+					if (written.has(part.wrapper)) return "";
+					written.add(part.wrapper);
+					return onOneLine(String(part.wrapper));
+				})
+				.join("");
 			if (index === 0) return parts;
 			return compound.combinator === " " ? ` ${parts}` : ` ${compound.combinator ?? ""} ${parts}`;
 		})

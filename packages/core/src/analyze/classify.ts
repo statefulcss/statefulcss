@@ -62,10 +62,11 @@ export interface PartMention {
 	readonly name: string | undefined;
 	/**
 	 * Where it's written: on the subject; on a step before it; on the root compound itself, which makes one element
-	 * both a component and a part; before the root; inside `:has()`; or inside `:not()` or `:is()`.
+	 * both a component and a part; before the root; on a sibling before a compound; inside `:has()`; or inside
+	 * another selector function, such as `:not()` or `:nth-child(… of …)`.
 	 */
-	readonly where: "subject" | "step" | "root" | "context" | "has" | "condition";
-	/** For `has` and `condition`: the compound the condition is written on. */
+	readonly where: "subject" | "step" | "root" | "context" | "position" | "has" | "condition";
+	/** For `position`, `has` and `condition`: the compound it's written on. */
 	readonly on: Condition["on"] | undefined;
 	readonly at: Position;
 }
@@ -121,8 +122,8 @@ const variantPseudoClasses = new Set([
 /** Pseudo-classes that name the element itself, so they're no condition. */
 const identityPseudoClasses = new Set([":root", ":scope", ":host", ":local"]);
 
-/** Pseudo-classes that take the kind of what's inside them. `:where()` is transparent and `:has()` has its own reading. */
-const matchesAny = new Set([":is", ":matches", ":-webkit-any", ":-moz-any", ":not"]);
+/** Pseudo-classes that match any one of the selectors they list. `:not()` and `:has()` have their own reading. */
+const matchesAny = new Set([":is", ":where", ":matches", ":-webkit-any", ":-moz-any"]);
 
 /** The order states win in, which is the order a block lists its groups in. */
 const groupOrder: readonly StateGroup[] = ["context", "interaction", "semantic", "blocking", "visited"];
@@ -133,6 +134,8 @@ type On = Condition["on"];
 interface Reading {
 	readonly source: Rule | AtRule;
 	readonly on: On;
+	/** The compound's place in the block's path; undefined for what comes before the root. */
+	readonly step: number | undefined;
 	readonly vocabulary: Vocabulary;
 }
 
@@ -144,7 +147,7 @@ export function classify(
 	const { names } = vocabulary;
 	const inScope = block.scope !== undefined;
 	const chain = foldSiblings(block.selector, inScope);
-	const rootIndex = inScope ? 0 : chain.findIndex((link) => identityOf(link.compound, names) !== undefined);
+	const rootIndex = inScope ? 0 : rootIndexOf(chain, names);
 	const subjectIndex = chain.length - 1;
 	const global = rootIndex === -1;
 	const rootCompound = chain[rootIndex]?.compound;
@@ -159,29 +162,48 @@ export function classify(
 
 	for (const [index, link] of chain.entries()) {
 		const isSubject = index === subjectIndex;
-		const split = splitCompound(link.compound, names, { isRoot: index === rootIndex, global });
-		const on: On =
-			index < rootIndex ? "context" : isSubject ? "subject" : index === rootIndex ? "root" : "path";
-		const hasPseudoElement = isSubject && split.pseudoElement !== undefined;
-		const before: On = hasPseudoElement ? "host" : on;
+		const isContext = index < rootIndex;
+		const split = splitCompound(link.compound, names, { isRoot: index === rootIndex, isContext, global });
+		const on: On = isContext ? "context" : isSubject ? "subject" : index === rootIndex ? "root" : "path";
+		const before: On = isSubject && split.pseudoElement !== undefined ? "host" : on;
+		const step = isContext ? undefined : path.length;
+		const reading = (source: Rule | AtRule, where: On): Reading => ({ source, on: where, step, vocabulary });
 
-		for (const position of link.positions) conditions.push(positionCondition(position, before, block.node));
-		for (const part of split.conditions)
-			conditions.push(...conditionsOf(part.node, { source: part.source, on: before, vocabulary }, false));
-		for (const part of split.after)
-			conditions.push(...conditionsOf(part.node, { source: part.source, on, vocabulary }, false));
+		// The siblings before it say where it is. A part among them is named outside any placement path.
+		for (const position of link.positions) {
+			conditions.push(positionCondition(position, before, step, block.node));
+			for (const part of position.compound.parts) {
+				if (attributeName(part.node) === names.partAttribute)
+					partMentions.push({
+						name: namedValue(part.node),
+						where: "position",
+						on: before,
+						at: positionOf(part),
+					});
+				partMentions.push(...mentionsWithin(part, before, names));
+			}
+		}
 
-		const where =
-			index < rootIndex ? "context" : index === rootIndex ? "root" : isSubject ? "subject" : "step";
+		const where = isContext ? "context" : index === rootIndex ? "root" : isSubject ? "subject" : "step";
 		for (const part of split.partAttributes)
 			partMentions.push({ name: namedValue(part.node), where, on: undefined, at: positionOf(part) });
 
-		const steps = index < rootIndex ? context : path;
+		for (const part of split.conditions) {
+			conditions.push(...conditionsOf(part.node, reading(part.source, before), part.inWhere ?? false));
+			partMentions.push(...mentionsWithin(part, before, names));
+		}
+		for (const part of split.after) {
+			conditions.push(...conditionsOf(part.node, reading(part.source, on), part.inWhere ?? false));
+			partMentions.push(...mentionsWithin(part, on, names));
+		}
+
+		const steps = isContext ? context : path;
 		steps.push({
 			combinator: steps.length === 0 ? undefined : link.combinator === ">" ? ">" : " ",
 			names: split.names,
 			name: split.name,
 			text: split.text,
+			inWhere: split.naming?.inWhere ?? false,
 			at: split.naming ? positionOf(split.naming) : startOf(link.compound, block.node),
 		});
 		if (!isSubject) continue;
@@ -199,34 +221,67 @@ export function classify(
 		context,
 		path,
 		pseudoElement,
-		foreign: chain.some((link) => link.compound.parts.some((part) => isWrapper(part.node))),
+		foreign: chain.some((link) => link.compound.parts.some((part) => holdsWrapper(part.node))),
 		themeScope,
 		colorScheme,
 		conditions,
 		queries,
-		partMentions: [...partMentions, ...conditions.flatMap((condition) => mentionsIn(condition, names))],
+		partMentions,
 		...kindOf(conditions, queries),
 	};
 }
 
-/** The parts a condition names: in a `:has()` path, or as an attribute inside `:not()` or `:is()`. */
-function mentionsIn(condition: Condition, names: Names): PartMention[] {
-	const own: PartMention[] =
-		condition.attribute?.name === names.partAttribute
-			? [
-					{
-						name: condition.attribute.value || undefined,
-						where: "condition",
-						on: condition.on,
-						at: condition.at,
-					},
-				]
-			: [];
-	const inHas = (condition.has?.path ?? [])
-		.filter((step) => step.part !== undefined)
-		.map((step): PartMention => ({ name: step.part, where: "has", on: condition.on, at: step.at }));
-	const held = [...condition.inner, ...(condition.has?.conditions ?? [])];
-	return [...own, ...inHas, ...held.flatMap((inner) => mentionsIn(inner, names))];
+/**
+ * The compound that names the component. A rule is part of the component its outermost rule starts from, so what a
+ * nested rule writes before `&` is context: `.dark` in `.card { .dark & { } }`. Written flat, `.dark .card` starts
+ * from `.dark`.
+ */
+function rootIndexOf(chain: readonly Link[], names: Names): number {
+	const named = (link: Link): boolean => identityOf(link.compound, names) !== undefined;
+	const outer = chain.findIndex((link) => link.compound.outer === true && named(link));
+	return outer === -1 ? chain.findIndex(named) : outer;
+}
+
+/** `:deep()`, `:slotted()` or `:global()`, alone or anywhere inside a selector function. */
+function holdsWrapper(node: parser.Node): boolean {
+	if (isWrapper(node)) return true;
+	if (node.type !== "pseudo") return false;
+	let found = false;
+	node.walkPseudos((inner) => {
+		if (isWrapper(inner)) found = true;
+	});
+	return found;
+}
+
+/**
+ * The parts named inside a selector function, at any depth: in a `:has()` path, in `:not()` or `:is()`, in
+ * `:nth-child(… of …)`. Only `=` with a value names one part; any other part attribute is a reference with no name.
+ */
+function mentionsWithin(part: Part, on: On, names: Names): PartMention[] {
+	const { node } = part;
+	if (node.type !== "pseudo") return [];
+	const found: PartMention[] = [];
+	node.walkAttributes((attribute) => {
+		if (attribute.attribute.toLowerCase() !== names.partAttribute) return;
+		const inHas = isInsideHas(attribute, node);
+		found.push({
+			name: namedValue(attribute),
+			where: inHas ? "has" : "condition",
+			on,
+			at: positionOf({ node: attribute, source: part.source }),
+		});
+	});
+	return found;
+}
+
+/** Whether a node sits in a `:has()` somewhere between itself and the selector function it was found in. */
+function isInsideHas(inner: parser.Node, top: parser.Node): boolean {
+	for (let current = inner.parent as parser.Node | undefined; current;) {
+		if (current.type === "pseudo" && current.value.toLowerCase() === ":has") return true;
+		if (current === top) break;
+		current = current.parent as parser.Node | undefined;
+	}
+	return false;
 }
 
 // The chain of compounds
@@ -263,13 +318,19 @@ function foldSiblings(complex: Complex, inScope: boolean): Link[] {
 	return chain;
 }
 
-function positionCondition(position: SiblingPosition, on: On, fallback: Rule | AtRule): Condition {
+function positionCondition(
+	position: SiblingPosition,
+	on: On,
+	step: number | undefined,
+	fallback: Rule | AtRule,
+): Condition {
 	const text = position.compound.parts.map((part) => textOf(part.node)).join("");
 	return {
 		...plain,
 		text: `${text} ${position.combinator}`,
 		kind: "variant",
 		on,
+		step,
 		at: startOf(position.compound, fallback),
 	};
 }
@@ -324,7 +385,7 @@ interface SplitCompound {
 function splitCompound(
 	compound: Compound,
 	names: Names,
-	role: { readonly isRoot: boolean; readonly global: boolean },
+	role: { readonly isRoot: boolean; readonly isContext: boolean; readonly global: boolean },
 ): SplitCompound {
 	const identity: Part[] = [];
 	const conditions: Part[] = [];
@@ -344,8 +405,9 @@ function splitCompound(
 		else if (isPseudoElement(node)) pseudoElement = current;
 		else if (node.type === "tag" || node.type === "id" || node.type === "universal") identity.push(current);
 		else if (node.type === "class") {
-			// An extra class on the same element is a condition core can't classify.
-			if (className) conditions.push(current);
+			// An extra class on the same element, or a class on what comes before the root, is a condition core
+			// can't classify.
+			if (className || role.isContext) conditions.push(current);
 			else identity.push((className = current));
 		} else if (node.type === "attribute") {
 			const name = node.attribute.toLowerCase();
@@ -405,33 +467,43 @@ const plain = {
 	focus: false,
 	attribute: undefined,
 	inWhere: false,
+	compound: false,
 	inner: [],
 	has: undefined,
 	guard: undefined,
 } satisfies Partial<Condition>;
 
-/** The conditions one simple selector makes. `:where()` makes those of what it holds; an identity makes none. */
+/** The conditions one simple selector makes. An identity makes none. */
 function conditionsOf(node: parser.Node, reading: Reading, inWhere: boolean): Condition[] {
-	const base = { ...plain, inWhere, on: reading.on, at: positionOf({ node, source: reading.source }) };
-	const text = textOf(node);
+	const base = { ...baseOf(node, reading, inWhere), text: textOf(node) };
 	switch (node.type) {
 		case "attribute":
 			return [
-				{ ...base, text, attribute: attributeOf(node), ...attributeKind(node, text, reading.vocabulary) },
+				{ ...base, attribute: attributeOf(node), ...attributeKind(node, base.text, reading.vocabulary) },
 			];
 		case "pseudo":
 			return pseudoConditions(node, reading, inWhere);
 		// An extra class, wherever it's written, is a state or a variant core can't tell apart.
 		case "class":
-			return [{ ...base, text, kind: "unknown" }];
+			return [{ ...base, kind: "unknown" }];
 		// Reached only inside `:is()` or `:not()`: which element it is.
 		case "tag":
 		case "universal":
 		case "id":
-			return [{ ...base, text, kind: "variant" }];
+			return [{ ...base, kind: "variant" }];
 		default:
 			return [];
 	}
+}
+
+function baseOf(node: parser.Node, reading: Reading, inWhere: boolean) {
+	return {
+		...plain,
+		inWhere,
+		on: reading.on,
+		step: reading.step,
+		at: positionOf({ node, source: reading.source }),
+	};
 }
 
 function attributeOf(node: parser.Attribute): AttributeSelector {
@@ -452,50 +524,74 @@ function attributeKind(node: parser.Attribute, text: string, vocabulary: Vocabul
 
 function pseudoConditions(node: parser.Pseudo, reading: Reading, inWhere: boolean): Condition[] {
 	const name = node.value.toLowerCase();
-	const text = textOf(node);
-	const base = { ...plain, inWhere, on: reading.on, at: positionOf({ node, source: reading.source }), text };
+	const base = { ...baseOf(node, reading, inWhere), text: textOf(node) };
 
 	// A pseudo-element can't be inside `:is()` or `:not()`; Stylelint reports it.
 	if (isPseudoElement(node)) return [{ ...base, kind: "unknown" }];
 	if (isWrapper(node) || identityPseudoClasses.has(name)) return [];
-	if (name === ":where") return innerConditions(node.nodes, reading, true);
+	if (name === ":not") {
+		const inner = branchConditions(node.nodes, reading, inWhere);
+		// A `:not()` that excludes a blocking state is a guard, even when it excludes it only with something else.
+		return [{ ...base, ...(inner.some(holdsBlocking) ? { kind: "guard" } : summarize(inner)), inner }];
+	}
 	if (matchesAny.has(name)) {
-		const inner = innerConditions(node.nodes, reading, inWhere);
-		const guards = name === ":not" && inner.some((one) => one.kind === "state" && one.group === "blocking");
-		return [{ ...base, ...(guards ? { kind: "guard" } : summarize(inner)), inner }];
+		const zero = inWhere || name === ":where";
+		const inner = branchConditions(node.nodes, reading, zero);
+		const [only, ...others] = inner;
+		// Around one alternative, `:is()` and `:where()` change nothing but specificity. Around several, any one
+		// of them can match, so what one alternative excludes isn't excluded for the block.
+		if (others.length === 0) return only ? (only.compound ? [...only.inner] : [only]) : [];
+		return [{ ...base, inWhere: zero, ...summarize(inner), inner }];
 	}
 	if (name === ":has") {
-		const read = node.nodes.map((selector) => readHas(selector, reading, inWhere));
-		const asked = read.flatMap((has) => has.conditions);
+		const read = node.nodes.map((selector) => ({ selector, has: readHas(selector, reading, inWhere) }));
 		const [only, ...others] = read;
-		const single = others.length === 0 ? only : undefined;
-		return [{ ...base, ...summarize(asked), inner: single ? [] : asked, has: single }];
+		if (only && others.length === 0) return [{ ...base, ...summarize(only.has.conditions), has: only.has }];
+		// With a list, each selector is an alternative with its own path.
+		const inner = read.map(({ selector, has }) => ({
+			...baseOf(selector, reading, inWhere),
+			text: String(selector).trim(),
+			...summarize(has.conditions),
+			has,
+		}));
+		return [{ ...base, ...summarize(inner), inner }];
 	}
 
 	const focus = name.startsWith(":focus");
 	const { vocabulary } = reading;
-	if (vocabulary.blocking.has(text)) return [{ ...base, kind: "state", group: "blocking", focus }];
-	if (vocabulary.interaction.has(text)) return [{ ...base, kind: "state", group: "interaction", focus }];
+	if (vocabulary.blocking.has(base.text)) return [{ ...base, kind: "state", group: "blocking", focus }];
+	if (vocabulary.interaction.has(base.text)) return [{ ...base, kind: "state", group: "interaction", focus }];
 	if (name === ":visited") return [{ ...base, kind: "state", group: "visited" }];
 	if (variantPseudoClasses.has(name)) return [{ ...base, kind: "variant" }];
 	// A state the settings don't list is semantic.
 	return [{ ...base, kind: "state", group: "semantic", focus }];
 }
 
-/** The conditions inside `:is()`, `:not()` or `:where()`. A selector with a combinator there can't be classified. */
-function innerConditions(
+/**
+ * What `:is()`, `:not()` or `:where()` holds: one condition for each selector in its list. A selector that is one
+ * simple selector is that condition; a compound is one condition whose `inner` must all hold together; a selector
+ * with a combinator can't be classified.
+ */
+function branchConditions(
 	selectors: readonly parser.Selector[],
 	reading: Reading,
 	inWhere: boolean,
 ): Condition[] {
-	return selectors.flatMap((selector) => {
+	return selectors.flatMap((selector): Condition[] => {
 		const nodes = selector.nodes.filter((node) => node.type !== "comment");
-		if (nodes.some((node) => node.type === "combinator")) {
-			const at = positionOf({ node: selector, source: reading.source });
-			return [{ ...plain, inWhere, on: reading.on, at, text: String(selector).trim(), kind: "unknown" }];
-		}
-		return nodes.flatMap((node) => conditionsOf(node, reading, inWhere));
+		const base = { ...baseOf(selector, reading, inWhere), text: String(selector).trim() };
+		if (nodes.some((node) => node.type === "combinator")) return [{ ...base, kind: "unknown" }];
+		const held = nodes.flatMap((node) => conditionsOf(node, reading, inWhere));
+		const [only, ...others] = held;
+		if (!only) return [];
+		return others.length === 0 ? [only] : [{ ...base, ...summarize(held), compound: true, inner: held }];
 	});
+}
+
+/** Whether a condition is a blocking state, or a compound that holds one. */
+function holdsBlocking(condition: Condition): boolean {
+	if (condition.compound) return condition.inner.some(holdsBlocking);
+	return condition.kind === "state" && condition.group === "blocking";
 }
 
 /** The kind of what's inside: unknown if anything is, a state if anything is, a variant otherwise. */
@@ -678,7 +774,7 @@ function textOf(node: parser.Node): string {
 	if (node.type !== "pseudo") return text;
 	const name = node.value.toLowerCase();
 	// `:not()` and `:is()` list what they hold, each as written.
-	if (matchesAny.has(name) || name === ":has" || name === ":where")
+	if (matchesAny.has(name) || name === ":has" || name === ":not")
 		return `${name}(${node.nodes.map((selector) => String(selector).trim()).join(", ")})`;
 	return name + text.slice(node.value.length);
 }

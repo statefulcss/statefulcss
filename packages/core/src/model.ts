@@ -178,7 +178,10 @@ interface BlockBase {
 	readonly conditions: readonly Condition[];
 	/** The at-rules around it, outermost first. */
 	readonly queries: readonly Query[];
-	/** The guard it sits inside. */
+	/**
+	 * The guard on its own element, or on its host for a pseudo-element. A guard on another compound of the selector
+	 * is among `conditions`, but it doesn't keep this element's states off when the element itself is blocked.
+	 */
 	readonly guard: Id | undefined;
 	/** The `@layer` around it, dotted when nested (`components.forms`); undefined when unlayered. */
 	readonly layer: string | undefined;
@@ -209,6 +212,8 @@ export interface Step {
 	readonly name: string | undefined;
 	/** What names the element at this step: `.card`, `[data-part="title"]`, `p`, `*`. */
 	readonly text: string;
+	/** What names it is written inside `:where()`, so it adds no specificity: `:where([data-part="icon"])`. */
+	readonly inWhere: boolean;
 	readonly at: Position;
 }
 
@@ -225,12 +230,22 @@ export interface Condition {
 	 * something else; a step between them; or what comes before the root (`[dir="rtl"] &`).
 	 */
 	readonly on: "subject" | "host" | "root" | "path" | "context";
+	/** The index, in the block's `path`, of the compound it's written on; undefined for what comes before the root. */
+	readonly step: number | undefined;
 	readonly attribute: AttributeSelector | undefined;
 	/** Inside `:where()`, so it adds no specificity. */
 	readonly inWhere: boolean;
-	/** What `:not()` and `:is()` hold. `:where()` is transparent. */
+	/**
+	 * What `:not()`, `:is()` and `:where()` hold: one condition for each selector they list, any one of which can
+	 * match. Around one selector, `:is()` and `:where()` are transparent: its conditions are the block's own.
+	 */
 	readonly inner: readonly Condition[];
-	/** For a `:has()` that holds one selector. With a list, what the selectors ask is in `inner`. */
+	/**
+	 * It stands for a compound inside a selector function (`:disabled[data-loading]` in `:not()`): the conditions in
+	 * `inner` hold together, so excluding the compound excludes none of them on its own.
+	 */
+	readonly compound: boolean;
+	/** For a `:has()` that holds one selector. With a list, each selector is a condition in `inner` with its own `has`. */
 	readonly has: Has | undefined;
 	/** Set on the `:not()` that is a guard. */
 	readonly guard: Id | undefined;
@@ -278,10 +293,18 @@ export interface StyleQuery {
 /** One `:not()` that lists at least one blocking state. An element can have several. */
 export interface Guard {
 	readonly id: Id;
-	readonly element: Id;
+	/**
+	 * The element it's written on: the block's own, a pseudo-element's host, the component root, or the part or slot
+	 * of a step before the subject. Undefined when that compound is no element of the model, as before the root.
+	 * Written once for a selector list, it is one guard for each element.
+	 */
+	readonly element: Id | undefined;
 	/** Its `inner` conditions are the list; a `:has()` state that joined it is one of them. */
 	readonly condition: Condition;
-	/** The settings' blocking states it lists. */
+	/**
+	 * The settings' blocking states it excludes, each on its own. A compound (`:not(:disabled[data-loading])`)
+	 * excludes neither state alone.
+	 */
 	readonly blocking: readonly string[];
 	/** The blocks inside it. */
 	readonly blocks: readonly Id[];
@@ -292,13 +315,16 @@ export interface PartReference {
 	/** Undefined when the selector names no one part: `[data-part]`. */
 	readonly name: string | undefined;
 	readonly component: Id | undefined;
-	readonly block: Id;
+	/** Every block whose selector names it there: a rule nested in the one that writes it names it too. */
+	readonly blocks: readonly Id[];
 	/**
 	 * Inside the component's scope; a step on the way to a slot, from the root block; inside `:has()` on the root
-	 * compound, the guard's `:not()` included; or anywhere else, a root's own compound included
-	 * (`.tab[data-part="tab"]`): an element is a component or a part, never both.
+	 * compound of a block that writes on the root, the guard's `:not()` included; or anywhere else, a root's own
+	 * compound included (`.tab[data-part="tab"]`): an element is a component or a part, never both.
 	 */
 	readonly place: "scope" | "placement-path" | "has" | "outside";
+	/** Named inside `:has()`, wherever that puts it. */
+	readonly inHas: boolean;
 	readonly at: Position;
 }
 

@@ -117,5 +117,5 @@ pseudo-element .tabs [data-part="tab"]::after
 
 guard on .tabs [data-part="tab"]: :disabled, [aria-disabled="true"], [data-loading], [inert]; around #3
 
-part tab named in #2: scope"
+part tab named in #2 #3 #4 #5: scope"
 `;

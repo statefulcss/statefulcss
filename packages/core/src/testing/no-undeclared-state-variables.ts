@@ -34,7 +34,8 @@ export function noUndeclaredStateVariables(model: Model): Finding[] {
 	};
 
 	for (const read of model.reads) {
-		if (read.via !== "var") continue;
+		// What `:deep()` or `:global()` selects belongs to another stylesheet.
+		if (read.via !== "var" || model.elements[read.element]?.kind === "foreign") continue;
 		const node = read.declaration === undefined ? undefined : model.declarations[read.declaration]?.node;
 		const source = read.source === undefined ? undefined : model.variables[read.source];
 

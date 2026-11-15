@@ -1,11 +1,19 @@
 import type stylelint from "stylelint";
+import stylelintConfigRecommended from "stylelint-config-recommended";
 
 import plugins from "../index.js";
+import { adjusted, overrides, statefulRules } from "./adjustments.js";
 
-/** For a new project. No rules yet. */
+/**
+ * For a new project: Stylelint's own recommended rules, the Stateful CSS rules, and Stylelint's rules that
+ * contradict the methodology switched off or adjusted.
+ */
 const recommended: stylelint.Config = {
+	// The config itself, not its name: it's found whether a project extends this config or imports it.
+	extends: [stylelintConfigRecommended],
 	plugins,
-	rules: {},
+	rules: { ...statefulRules, ...adjusted },
+	overrides,
 };
 
 export default recommended;

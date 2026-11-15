@@ -100,12 +100,6 @@ describe("recommended", () => {
 			"property-no-unknown: error",
 		]);
 	});
-
-	it("leaves a repeated custom property to Stylelint until bind-once reports it", async () => {
-		expect(await warningsOf(recommended, project(), ".page { --s-color: red; --s-color: blue; }")).toEqual([
-			"declaration-block-no-duplicate-custom-properties: error",
-		]);
-	});
 });
 
 describe("compatible", () => {
@@ -132,5 +126,15 @@ describe("compatible", () => {
 		expect(await warningsOf(config, project(), code)).toEqual([]);
 		// The project's other rules stay.
 		expect(await warningsOf(config, project(), ".Button { color: red; }")).toEqual(["color-named: error"]);
+	});
+});
+
+describe.each(configs)("%s", (_name, config) => {
+	const project = temporaryProject();
+
+	it("leaves a repeated custom property to Stylelint until bind-once reports it", async () => {
+		expect(await warningsOf(config, project(), ".page { --s-color: red; --s-color: blue; }")).toEqual([
+			"declaration-block-no-duplicate-custom-properties: error",
+		]);
 	});
 });

@@ -37,6 +37,8 @@ export const fromRecommended: Rules = {
 	"selector-no-invalid": true,
 	// A longhand followed by its shorthand, which always discards the longhand.
 	"declaration-block-no-shorthand-property-overrides": true,
+	// A repeated custom property can never be a fallback. Stylelint reports it until `bind-once` does.
+	"declaration-block-no-duplicate-custom-properties": true,
 };
 
 /** Rules a project's existing config may have on that contradict the methodology. `compatible` switches them off. */

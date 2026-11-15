@@ -334,7 +334,7 @@ describe("& inside a selector function", () => {
 				expect(model.unknowns.map((unknown) => [unknown.reason, unknown.detail, unknown.elements])).toEqual([
 					["unparsable-selector", "& inside :not()", [0]],
 				]);
-				const resolved = readable.replace("&", ".card");
+				const resolved = readable.replaceAll("&", ".card");
 				expect(model.blocks.map((block) => block.selector)).toEqual([resolved]);
 				expect(references(model)).toEqual(
 					readable.includes("data-part") ? [["x", "outside", false, [0]]] : [],

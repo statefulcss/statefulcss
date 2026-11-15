@@ -676,6 +676,52 @@ describe("elements that belong to no component", () => {
 		expect(model.blocks.every((block) => block.reach === "direct")).toBe(true);
 	});
 
+	// Source: the global-elements decision. The audit's probe (2.1): in a scope whose root names no component, the
+	// theme and color-scheme attributes are still each element's identity, and the scope's root is its context.
+	inEverySyntax("theme scopes and color-scheme selectors inside a global @scope", ({ read }) => {
+		const theme = '[data-theme="dark"] { --t-space-4: 1.25rem; }';
+		const scheme = '[data-color-scheme="dark"] { color-scheme: dark; }';
+		const marks = (model: Model) =>
+			model.elements.map((element) =>
+				element.kind === "global"
+					? [element.key, element.themeScope, element.colorScheme, element.blocks]
+					: element.kind,
+			);
+		expect(marks(read(`@scope (main) { ${theme} ${scheme} }`))).toEqual([
+			['main [data-theme="dark"]', { theme: "dark" }, false, [0]],
+			['main [data-color-scheme="dark"]', undefined, true, [1]],
+		]);
+		expect(marks(read(`@scope (main) { ${scheme} ${theme} }`))).toEqual([
+			['main [data-color-scheme="dark"]', undefined, true, [0]],
+			['main [data-theme="dark"]', { theme: "dark" }, false, [1]],
+		]);
+		// The scope's root itself, the same as the flat main[data-theme="dark"]
+		expect(marks(read('@scope (main) { :scope[data-theme="dark"] { --t-space-4: 1.25rem; } }'))).toEqual([
+			['main[data-theme="dark"]', { theme: "dark" }, false, [0]],
+		]);
+	});
+
+	// Source: the global-elements decision: in a component, the same attributes are conditions.
+	inEverySyntax(
+		"theme and color-scheme attributes inside a component's @scope are conditions",
+		({ read }) => {
+			const model = read(`
+			@scope (.card) {
+				[data-theme="dark"] { color: red; }
+				[data-color-scheme="dark"] { color: blue; }
+			}
+		`);
+			expect(elements(model)).toEqual([
+				["root", ".card"],
+				["content", ".card *"],
+			]);
+			expect(model.blocks.map((block) => block.conditions.map((condition) => condition.text))).toEqual([
+				['[data-theme="dark"]'],
+				['[data-color-scheme="dark"]'],
+			]);
+		},
+	);
+
 	// Source: the component-terms decision, clarified 2026-11-14.
 	inEverySyntax("a class block in the utilities layer is a utility, layered or nested", ({ read }) => {
 		const model = read(`

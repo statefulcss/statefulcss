@@ -70,6 +70,7 @@ const shorthands: Record<string, readonly string[]> = {
 		"mask-composite",
 	],
 
+	// `font` also resets the properties it can't set (CSS Fonts, "reset-only sub-properties"), so it overlaps them too.
 	font: [
 		"font-style",
 		"font-variant",
@@ -78,6 +79,21 @@ const shorthands: Record<string, readonly string[]> = {
 		"font-size",
 		"line-height",
 		"font-family",
+		"font-feature-settings",
+		"font-kerning",
+		"font-language-override",
+		"font-optical-sizing",
+		"font-size-adjust",
+		"font-variation-settings",
+	],
+	"font-variant": [
+		"font-variant-ligatures",
+		"font-variant-position",
+		"font-variant-caps",
+		"font-variant-numeric",
+		"font-variant-alternates",
+		"font-variant-east-asian",
+		"font-variant-emoji",
 	],
 	"text-decoration": [
 		"text-decoration-line",
@@ -185,13 +201,16 @@ const kindOf = new Map<string, { kind: number; logical: boolean }>(
 	]),
 );
 
+// Looked up by the table's own keys only: `constructor` is a property name like any other, not a shorthand.
+const table = new Map(Object.entries(shorthands));
+
 /**
  * Every longhand a shorthand sets, through the shorthands under it: `border` sets `border-top-width`. Empty for a
  * longhand, a custom property, and a shorthand this table doesn't list.
  */
 export function longhandsOf(property: string): readonly string[] {
-	return (shorthands[property.trim().toLowerCase()] ?? []).flatMap((part) =>
-		part in shorthands ? longhandsOf(part) : [part],
+	return (table.get(property.trim().toLowerCase()) ?? []).flatMap((part) =>
+		table.has(part) ? longhandsOf(part) : [part],
 	);
 }
 

@@ -59,8 +59,46 @@ describe("the longhands a shorthand sets", () => {
 	});
 
 	it("nothing, for a longhand, a custom property or a property it doesn't know", () => {
-		for (const property of ["color", "padding-top", "inline-size", "--s-padding", "not-a-property", ""])
+		for (const property of [
+			"color",
+			"padding-top",
+			"inline-size",
+			"--s-padding",
+			"not-a-property",
+			"",
+			// Names an object has on its prototype are properties like any other.
+			"constructor",
+			"toString",
+			"__proto__",
+			"hasOwnProperty",
+		])
 			expect(longhandsOf(property)).toEqual([]);
+	});
+
+	it("for font, every font-variant longhand and the properties font only resets", () => {
+		// Source: CSS Fonts 4, the font shorthand: it resets its reset-only sub-properties to their initial values.
+		expect(longhandsOf("font-variant")).toEqual([
+			"font-variant-ligatures",
+			"font-variant-position",
+			"font-variant-caps",
+			"font-variant-numeric",
+			"font-variant-alternates",
+			"font-variant-east-asian",
+			"font-variant-emoji",
+		]);
+		expect(longhandsOf("font")).toEqual(
+			expect.arrayContaining([
+				...longhandsOf("font-variant"),
+				"font-feature-settings",
+				"font-kerning",
+				"font-language-override",
+				"font-optical-sizing",
+				"font-size-adjust",
+				"font-variation-settings",
+			]),
+		);
+		expect(longhandsOf("font")).not.toContain("font-variant");
+		expect(longhandsOf("font")).not.toContain("font-palette");
 	});
 
 	it("whatever the case", () => {
@@ -79,6 +117,10 @@ describe("whether two properties overlap", () => {
 		["border", "border-width", true],
 		["background", "background-color", true],
 		["font", "line-height", true],
+		["font", "font-variant-caps", true],
+		["font", "font-kerning", true],
+		["font", "font-variant", true],
+		["font-variant", "font-variant-numeric", true],
 		["flex", "flex-basis", true],
 		["gap", "row-gap", true],
 		["inset", "top", true],
@@ -112,6 +154,11 @@ describe("whether two properties overlap", () => {
 		["--s-padding", "padding", false],
 		["--s-padding", "--S-padding", false],
 		["not-a-property", "another-one", false],
+		["font", "font-palette", false],
+		["font-variant", "font-weight", false],
+		["constructor", "color", false],
+		["toString", "valueOf", false],
+		["__proto__", "padding", false],
 	];
 
 	it("a shorthand with its longhand, and a logical property with a physical one", () => {

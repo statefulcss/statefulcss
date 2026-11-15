@@ -162,8 +162,11 @@ export function classify(
 	const chain = foldSiblings(block.selector, inScope);
 	const rootIndex = inScope ? 0 : rootIndexOf(chain, names);
 	const subjectIndex = chain.length - 1;
-	const global = rootIndex === -1;
 	const rootCompound = chain[rootIndex]?.compound;
+	const root = rootCompound ? identityOf(rootCompound, names) : undefined;
+	// No compound names a component, or the rule is in a scope whose root names none (`@scope (main)`): either way
+	// the rule styles a global element, whose theme and color-scheme attributes are its identity.
+	const global = root === undefined;
 
 	const context: Step[] = [];
 	const path: Step[] = [];
@@ -230,7 +233,7 @@ export function classify(
 
 	const queries = block.atRules.map(queryOf);
 	return {
-		root: rootCompound ? identityOf(rootCompound, names) : undefined,
+		root,
 		context,
 		path,
 		pseudoElement,

@@ -141,6 +141,8 @@ function entryHint(problem: EntryProblem): string | undefined {
 			return `which has space around it. Write ${literal(problem.trimmed)}.`;
 		case "identity-attribute":
 			return `which asks about ${literal(problem.name)}, the ${problem.setting}. That attribute says what an element is, so it can't be a state. Use another attribute for the state.`;
+		case "color-scheme-attribute":
+			return `which asks about ${literal(problem.name)}, the methodology's light and dark switch. It's no state. Use another attribute for the state.`;
 		case "uppercase":
 			return `which has capital letters. Write ${literal(problem.lowercase)}.`;
 		case "attribute-name":

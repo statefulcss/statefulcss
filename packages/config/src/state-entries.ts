@@ -40,8 +40,10 @@ export type EntryProblem =
 	/** `[data-step=2]`, which CSS doesn't read. `quoted` is the selector with its value in quotes. */
 	| { readonly is: "unquoted-value"; readonly quoted: string }
 	| { readonly is: "class" | "id" | "pseudo-element" | "not-a-state" | "not-a-selector" }
-	/** An attribute selector for the attribute a setting gives to components, parts, slots or themes. */
+	/** The attribute a setting gives to components, parts, slots or themes, as a selector or a name. */
 	| { readonly is: "identity-attribute"; readonly name: string; readonly setting: string }
+	/** The light and dark switch, `data-color-scheme`, which is never a state. */
+	| { readonly is: "color-scheme-attribute"; readonly name: string }
 	/** In a list of attribute names: an attribute selector, which has the name. */
 	| { readonly is: "attribute-selector"; readonly name: string }
 	/** In a list of attribute names: a name with capital letters. */

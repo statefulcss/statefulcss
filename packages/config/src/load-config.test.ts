@@ -703,6 +703,26 @@ describe("loadConfig", () => {
 							"interactionStates[1]",
 							`is "[data-brand=\\"acme\\"]", which asks about "data-brand", the themeAttribute. ${hint}`,
 						],
+						[
+							{ stateAttributes: ["data-state", "data-part"] },
+							"stateAttributes[1]",
+							`is "data-part", which asks about "data-part", the partAttribute. ${hint}`,
+						],
+						[
+							{ stateAttributes: ["data-component"] },
+							"stateAttributes[0]",
+							`is "data-component", which asks about "data-component", the componentAttribute. ${hint}`,
+						],
+						[
+							{ slotAttribute: "data-place", stateAttributes: ["data-place"] },
+							"stateAttributes[0]",
+							`is "data-place", which asks about "data-place", the slotAttribute. ${hint}`,
+						],
+						[
+							{ stateAttributes: ["data-theme"] },
+							"stateAttributes[0]",
+							`is "data-theme", which asks about "data-theme", the themeAttribute. ${hint}`,
+						],
 					];
 					for (const [config, key, message] of rows) {
 						const root = await project({ "statefulcss.config.json": JSON.stringify(config) });
@@ -713,11 +733,43 @@ describe("loadConfig", () => {
 
 					// Only the name each setting has now: with another part attribute, data-part is any attribute.
 					const root = await project({
-						"statefulcss.config.json": '{ "partAttribute": "data-piece", "blockingStates": ["[data-part]"] }',
+						"statefulcss.config.json":
+							'{ "partAttribute": "data-piece", "blockingStates": ["[data-part]"], "stateAttributes": ["data-part"] }',
 					});
 					await expect(loadConfig(path.join(root, "button.css"))).resolves.toMatchObject({
 						blockingStates: ["[data-part]"],
+						stateAttributes: ["data-part"],
 					});
+				});
+
+				// Source: the color-scheme-switch decision. The switch is never a state, in any list or form.
+				it("keeps the light and dark switch out of the state lists", async () => {
+					const hint =
+						"which asks about \"data-color-scheme\", the methodology's light and dark switch. It's no state. Use another attribute for the state.";
+					const rows: [config: Record<string, string[]>, key: string, entry: string][] = [
+						[
+							{ blockingStates: [":disabled", "[data-color-scheme]"] },
+							"blockingStates[1]",
+							"[data-color-scheme]",
+						],
+						[
+							{ interactionStates: ['[data-color-scheme="dark"]'] },
+							"interactionStates[0]",
+							'[data-color-scheme=\\"dark\\"]',
+						],
+						[{ blockingStates: ["[ DATA-COLOR-SCHEME ]"] }, "blockingStates[0]", "[ DATA-COLOR-SCHEME ]"],
+						[
+							{ stateAttributes: ["data-state", "data-color-scheme"] },
+							"stateAttributes[1]",
+							"data-color-scheme",
+						],
+					];
+					for (const [config, key, entry] of rows) {
+						const root = await project({ "statefulcss.config.json": JSON.stringify(config) });
+						const error = await errorFrom(root, "button.css");
+						expect(error).toMatchObject({ kind: "invalid-value", key });
+						expect(error.message.replace(/^.*?\]\. /, "")).toBe(`${key} is "${entry}", ${hint}`);
+					}
 				});
 
 				it("keeps every form of one simple selector as it's written", async () => {

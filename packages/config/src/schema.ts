@@ -160,14 +160,21 @@ export const configSchema = z
 			}
 		}
 
-		// An attribute that says what an element is can't also say what state it's in.
-		for (const list of ["blockingStates", "interactionStates"] as const) {
+		// An attribute that says what an element is can't also say what state it's in, and the light and dark switch
+		// is no state either.
+		for (const list of ["blockingStates", "interactionStates", "stateAttributes"] as const) {
 			for (const [index, entry] of settings[list].entries()) {
-				const name = attributeOf(entry);
+				const name = list === "stateAttributes" ? entry : attributeOf(entry);
+				if (!name) continue;
 				const setting = attributeSettings.find((key) => settings[key] === name);
-				if (!name || !setting) continue;
-				const problem: EntryProblem = { is: "identity-attribute", name, setting };
-				context.addIssue({ code: "custom", path: [list, index], message: problem.is, params: { problem } });
+				const problem: EntryProblem | undefined =
+					name === colorSchemeAttribute
+						? { is: "color-scheme-attribute", name }
+						: setting
+							? { is: "identity-attribute", name, setting }
+							: undefined;
+				if (problem)
+					context.addIssue({ code: "custom", path: [list, index], message: problem.is, params: { problem } });
 			}
 		}
 	})

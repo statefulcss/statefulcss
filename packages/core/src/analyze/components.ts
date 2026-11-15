@@ -349,7 +349,7 @@ export function components(
 		});
 
 		for (const mention of read.partMentions) {
-			const place = placeOf(mention, read, owner, block.scope !== undefined);
+			const place = placeOf(mention, read, owner, read.scoped);
 			const inHas = mention.where === "has";
 			const written = referenced.get(mention.at.node) ?? new Map<string, number>();
 			referenced.set(mention.at.node, written);
@@ -359,14 +359,23 @@ export function components(
 			if (existing !== undefined) references[existing]?.blocks.push(id);
 			else {
 				written.set(key, references.length);
-				references.push({ name: mention.name, component, blocks: [id], place, inHas, at: mention.at });
+				references.push({
+					name: mention.name,
+					component,
+					blocks: [id],
+					place,
+					inHas,
+					at: mention.at,
+					nameAt: mention.nameAt,
+				});
 			}
 		}
 
 		return {
 			element,
+			// A component in a scope whose root names none is reached as it is outside any scope.
 			reach:
-				block.scope !== undefined
+				read.scoped || (block.scope !== undefined && owner.kind !== "component")
 					? "scope"
 					: owner.kind === "component" && read.path.length > 1
 						? "descendant"
@@ -385,9 +394,8 @@ export function components(
 	// The first rule that styles each component's root, outside any scope
 	const firstRootRule = new Map<Id, number>();
 	for (const { rule, selectors } of rules) {
-		if (rule.scope !== undefined) continue;
 		for (const { read, owner } of selectors) {
-			if (owner.kind !== "component" || read.path.length !== 1 || read.pseudoElement) continue;
+			if (read.scoped || owner.kind !== "component" || read.path.length !== 1 || read.pseudoElement) continue;
 			const component = componentOf(rule.sheet, owner.identity);
 			if (component !== undefined && !firstRootRule.has(component)) firstRootRule.set(component, rule.order);
 		}

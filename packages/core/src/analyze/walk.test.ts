@@ -145,6 +145,34 @@ describe("nesting", () => {
 		},
 		{ skip: { css: "CSS nesting has no &-suffix", vue: "a plain <style> block has no &-suffix" } },
 	);
+
+	// The audit's probe (3.11): the selector goes on one line, and quoted text stays as written.
+	inEverySyntax("quoted whitespace and parentheses stay as written", ({ parse }) => {
+		const walked = walk(
+			parse(`[data-component="( x )"] { color: red; }\n.a:not( .b ,\n  [title="a  ( b )"] ) { color: red; }`),
+		);
+		expect(selectors(walked)).toEqual(['[data-component="( x )"]', '.a:not(.b , [title="a  ( b )"])']);
+	});
+
+	inEverySyntax(
+		"SCSS's &-suffix is written where the suffix is",
+		({ read }) => {
+			const model = read(".button { &-icon { color: red; &-large { gap: 0; } } }");
+			expect(
+				model.components.map((component) => {
+					const { at } = component.identity;
+					return [component.name, (at.node as { selector: string }).selector.slice(at.index, at.endIndex)];
+				}),
+			).toEqual([
+				["button", ".button"],
+				["button-icon", "&-icon"],
+				["button-icon-large", "&-large"],
+			]);
+			const icon = model.components[1]?.identity.at;
+			expect([icon?.index, icon?.endIndex]).toEqual([0, 6]);
+		},
+		{ skip: { css: "CSS nesting has no &-suffix", vue: "a plain <style> block has no &-suffix" } },
+	);
 });
 
 describe("scopes", () => {
@@ -317,6 +345,20 @@ describe("scopes", () => {
 		);
 		const part = walked.scopes[0]?.root?.parts[0];
 		expect([part?.source.type, part?.node.sourceIndex]).toEqual(["atrule", 3]);
+	});
+
+	// The audit's probe (3.11): a parenthesis in a quoted value doesn't end the root or the limit.
+	inEverySyntax("a parenthesis inside a quoted value in the prelude", ({ parse }) => {
+		const walked = walk(
+			parse(
+				`@scope ([data-component="a)b"]) to ([data-component="(c"]) { [data-part="icon"] { color: red; } }`,
+			),
+		);
+		expect(walked.scopes.map((scope) => [scope.rootText, scope.limit, scope.root?.parts.length])).toEqual([
+			['[data-component="a)b"]', '[data-component="(c"]', 1],
+		]);
+		expect(selectors(walked)).toEqual(['[data-component="a)b"] [data-part="icon"]']);
+		expect(reasons(walked)).toEqual([]);
 	});
 
 	inEverySyntax("a scope whose root is any one element", ({ parse }) => {

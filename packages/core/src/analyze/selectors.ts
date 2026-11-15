@@ -12,6 +12,8 @@ export interface Part {
 	inWhere?: boolean;
 	/** The `:is()` or `:where()` it was written in, when that holds one compound and no `&`. */
 	wrapper?: parser.Pseudo;
+	/** Where it's written in `source`, when its node was made, not parsed: `&-icon` for SCSS's `.button-icon`. */
+	written?: { readonly index: number; readonly endIndex: number };
 }
 
 /** A compound selector: the parts between two combinators. */
@@ -21,6 +23,8 @@ export interface Compound {
 	parts: Part[];
 	/** Written in the outermost rule, as opposed to added by a rule nested in it (`.dark` in `.card { .dark & { } }`). */
 	outer?: boolean;
+	/** The root of the `@scope` the rule is in, wherever nesting put it (`.dark &` puts it after `.dark`). */
+	scopeRoot?: boolean;
 }
 
 /** A complex selector, resolved against its parents. */
@@ -148,7 +152,7 @@ export function resolve(own: Compound[], parent: Complex | undefined): Complex |
 		const rest = compound.parts.filter((part) => !isNesting(part));
 		const suffix = compound.parts[nesting + 1];
 		if (suffix?.node.type === "tag") {
-			appendSuffix(last, suffix);
+			appendSuffix(last, suffix, compound.parts[nesting]);
 			rest.splice(rest.indexOf(suffix), 1);
 		}
 		last.parts.push(...rest);
@@ -161,8 +165,11 @@ function copy(complex: Complex): Complex {
 	return complex.map((compound) => ({ ...compound, parts: [...compound.parts] }));
 }
 
-/** SCSS `&-icon`: the parent's last class (or tag) gets the suffix, which makes it a different element. */
-function appendSuffix(compound: Compound, suffix: Part): void {
+/**
+ * SCSS `&-icon`: the parent's last class (or tag) gets the suffix, which makes it a different element. The new name
+ * is written as `&-icon`, so that's where it is.
+ */
+function appendSuffix(compound: Compound, suffix: Part, nesting: Part | undefined): void {
 	const value = (suffix.node as parser.Tag).value;
 	let index = compound.parts.length - 1;
 	while (
@@ -180,7 +187,9 @@ function appendSuffix(compound: Compound, suffix: Part): void {
 		target.node.type === "class"
 			? parser.className({ value: `${target.node.value}${value}` })
 			: parser.tag({ value: `${(target.node as parser.Tag).value}${value}` });
-	compound.parts[index] = { node, source: suffix.source };
+	const end = (suffix.node.sourceIndex ?? 0) + String(suffix.node).trim().length;
+	const start = nesting?.node.sourceIndex ?? suffix.node.sourceIndex ?? 0;
+	compound.parts[index] = { node, source: suffix.source, written: { index: start, endIndex: end } };
 }
 
 export const isSibling = (combinator: string | undefined): boolean =>
@@ -206,14 +215,16 @@ export function complexToString(complex: Complex): string {
 		.join("");
 }
 
-const quotedOrSpace = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\s+/g;
+const quotedOrSpace = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\(\s+|\s+\)|\s+/g;
 
 /** Runs of whitespace become one space, and none is left inside parentheses; quoted strings stay as written. */
 function onOneLine(text: string): string {
 	return text
-		.replace(quotedOrSpace, (match) => (/^\s/.test(match) ? " " : match))
-		.replace(/\( /g, "(")
-		.replace(/ \)/g, ")")
+		.replace(quotedOrSpace, (match) => {
+			if (match.startsWith('"') || match.startsWith("'")) return match;
+			if (match.startsWith("(")) return "(";
+			return match.endsWith(")") ? ")" : " ";
+		})
 		.trim();
 }
 
@@ -249,4 +260,20 @@ export function listsElements(node: parser.Pseudo): boolean {
 			["tag", "class", "universal", "id", "combinator", "comment"].includes(child.type),
 		),
 	);
+}
+
+/** The index of the parenthesis that closes the one at `open`, or -1. A parenthesis in a quoted string isn't one. */
+export function closingParenthesis(text: string, open: number): number {
+	let depth = 0;
+	let quote: string | undefined;
+	for (let index = open; index < text.length; index++) {
+		const character = text[index];
+		if (quote !== undefined) {
+			if (character === "\\") index++;
+			else if (character === quote) quote = undefined;
+		} else if (character === '"' || character === "'") quote = character;
+		else if (character === "(") depth++;
+		else if (character === ")" && --depth === 0) return index;
+	}
+	return -1;
 }

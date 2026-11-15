@@ -166,7 +166,8 @@ interface BlockBase {
 	readonly element: Id;
 	/**
 	 * How the selector reaches its element: it is the root compound itself; inside an `@scope`; or from the root
-	 * compound, with a combinator, outside any scope.
+	 * compound, with a combinator, outside any scope. A component's element is reached through its own scope only:
+	 * in `@scope (main)`, `.card` is reached directly, as in the flat `main .card`, and `scope` still names the scope.
 	 */
 	readonly reach: "direct" | "scope" | "descendant";
 	readonly scope: Id | undefined;
@@ -265,7 +266,7 @@ export interface AttributeSelector {
 /** `:has(> :where([data-part="control"]) > :where([data-part="input"]):disabled)` */
 export interface Has {
 	readonly path: readonly HasStep[];
-	/** What it asks of the elements on the path: `:disabled` on the input. */
+	/** What it asks of the elements on the path, every step's in order: `:disabled` on the input. */
 	readonly conditions: readonly Condition[];
 }
 
@@ -276,6 +277,11 @@ export interface HasStep {
 	readonly part: string | undefined;
 	/** The part is named inside `:where()`, so it adds no specificity. */
 	readonly inWhere: boolean;
+	/**
+	 * What it asks of the element at this step, also among the `:has()`'s `conditions`: `:disabled` is on the control
+	 * in `:has(> :where([data-part="control"]):disabled > …)`, on the input when written after the input.
+	 */
+	readonly conditions: readonly Condition[];
 	readonly at: Position;
 }
 
@@ -335,7 +341,13 @@ export interface PartReference {
 	readonly place: "scope" | "placement-path" | "has" | "outside";
 	/** Named inside `:has()`, wherever that puts it. */
 	readonly inHas: boolean;
+	/** The whole attribute: `[data-part="title"]`. */
 	readonly at: Position;
+	/**
+	 * Only the name, as written inside the attribute: `title`, without its quotes, escapes as written. Undefined when
+	 * the selector names no one part.
+	 */
+	readonly nameAt: Position | undefined;
 }
 
 // Declarations, variables and reads

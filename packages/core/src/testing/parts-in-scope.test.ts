@@ -262,6 +262,23 @@ describe("parts-in-scope, as a check over the model", () => {
 		});
 	}
 
+	// Section 4 of the audit: every selector of a list is checked, in either order, and reported once per problem.
+	for (const list of ['[data-part="x"], :scope:hover', ':scope:hover, [data-part="x"]']) {
+		inEverySyntax(`each selector of a list in a scope is checked (${list})`, ({ read }) => {
+			const model = read(
+				`.card { color: red; } @scope (.card) to ([data-component]) { ${list} { color: red; } }`,
+			);
+			expect(partsInScope(model).map((finding) => finding.problem)).toEqual(["condition-on-scope-root"]);
+		});
+	}
+
+	inEverySyntax("a list with the same problem twice is reported once", ({ read }) => {
+		const model = read(
+			".card { color: red; } @scope (.card) to ([data-component]) { :scope:hover, :scope:focus { color: red; } }",
+		);
+		expect(partsInScope(model).map((finding) => finding.problem)).toEqual(["condition-on-scope-root"]);
+	});
+
 	inEverySyntax("each finding points at where it was written", ({ read }) => {
 		const model = read(`
 			.card { color: red; & [data-part="title"] { color: blue; } }

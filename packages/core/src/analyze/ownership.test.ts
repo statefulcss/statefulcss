@@ -414,3 +414,123 @@ describe("a doc comment above a selector list", () => {
 		}
 	});
 });
+
+// Source: the global-elements decision, clarified 2026-11-15: a scope whose root names no component is context.
+describe("a component inside a global @scope", () => {
+	const facts = (model: Model) =>
+		model.blocks.map((block) => [
+			block.selector,
+			keyOf(model, block.element),
+			block.reach,
+			block.scope,
+			block.conditions.map((condition) => [condition.text, condition.on]),
+		]);
+
+	inEverySyntax("styles the component, with the scope's root as context, like the flat form", ({ read }) => {
+		const flat = read(
+			'main .card { --s-color: red; color: var(--s-color); } main .card [data-part="x"] { margin: 0; }',
+		);
+		const scoped = read(
+			'@scope (main) { .card { --s-color: red; color: var(--s-color); } .card [data-part="x"] { margin: 0; } }',
+		);
+		for (const model of [flat, scoped]) {
+			expect(elements(model)).toEqual([
+				["root", ".card"],
+				["part", '.card [data-part="x"]'],
+			]);
+			expect(model.components.map((component) => [component.name, component.hasRootBlock])).toEqual([
+				["card", true],
+			]);
+			expect(model.blocks.map((block) => block.path.map((step) => step.text))).toEqual([
+				[".card"],
+				[".card", '[data-part="x"]'],
+			]);
+			expect(references(model)).toEqual([["x", "outside", false, [1]]]);
+			expect(sources(model)).toEqual([[".card", "--s-color", ".card"]]);
+			expect(undeclared(model)).toEqual([]);
+			expect(placement(model)).toEqual(["part-outside-scope"]);
+		}
+		expect(facts(flat).map(([selector, , reach, scope]) => [selector, reach, scope])).toEqual([
+			["main .card", "direct", undefined],
+			['main .card [data-part="x"]', "descendant", undefined],
+		]);
+		expect(facts(scoped).map(([selector, , reach, scope]) => [selector, reach, scope])).toEqual([
+			["main .card", "direct", 0],
+			['main .card [data-part="x"]', "descendant", 0],
+		]);
+		expect(scoped.scopes[0]).toMatchObject({ component: undefined, root: "main" });
+	});
+
+	inEverySyntax("what a rule nested in it writes before & is context too", ({ read }) => {
+		const model = read("@scope (main) { .card { --s-color: red; .dark & { color: var(--s-color); } } }");
+		expect(elements(model)).toEqual([["root", ".card"]]);
+		expect(facts(model)).toEqual([
+			["main .card", ".card", "direct", 0, []],
+			[".dark main .card", ".card", "direct", 0, [[".dark", "context"]]],
+		]);
+		expect(undeclared(model)).toEqual([]);
+	});
+
+	inEverySyntax("a global element in it stays one", ({ read }) => {
+		const model = read("@scope (main) { a { color: red; } .card a { color: blue; } }");
+		expect(elements(model)).toEqual([
+			["global", "main a"],
+			["root", ".card"],
+			["content", ".card a"],
+		]);
+		expect(facts(model).map(([selector, key, reach]) => [selector, key, reach])).toEqual([
+			["main a", "main a", "scope"],
+			["main .card a", ".card a", "descendant"],
+		]);
+	});
+
+	inEverySyntax("a component's own scope is unchanged", ({ read }) => {
+		const model = read(`
+			.card { color: red; }
+			@scope (.card) to ([data-component]) { [data-part="x"] { margin: 0; } .dark & { color: blue; } }
+		`);
+		expect(elements(model)).toEqual([
+			["root", ".card"],
+			["part", '.card [data-part="x"]'],
+		]);
+		expect(facts(model)).toEqual([
+			[".card", ".card", "direct", undefined, []],
+			['.card [data-part="x"]', '.card [data-part="x"]', "scope", 0, []],
+			// `.dark &` puts the scope's root after `.dark`: it's still the Card, with `.dark` as context.
+			[".dark .card", ".card", "scope", 0, [[".dark", "context"]]],
+		]);
+		expect(references(model)).toEqual([["x", "scope", false, [1]]]);
+		expect(model.scopes[0]).toMatchObject({ component: 0, root: ".card", afterRootBlock: true });
+	});
+});
+
+// The audit's probe (2.3): `at` is the whole attribute; `nameAt` is the name alone, for a name-only highlight or edit.
+describe("where a part's name is written", () => {
+	inEverySyntax("inside the attribute, quoted, unquoted or escaped", ({ read }) => {
+		const model = read(String.raw`
+			@scope (.card) to ([data-component]) {
+				[data-part="title"] { color: red; }
+				[data-part = 'ti\'tle' i] { color: red; }
+				[data-part=ti\74 le] { color: red; }
+				:where([data-part="icon"]):not([data-part="item"]) { color: red; }
+				[data-part] { color: red; }
+				.x:not([data-part^="ico"]) { color: red; }
+			}
+		`);
+		expect(
+			model.partReferences.map((reference) => {
+				const selector = (reference.at.node as { selector: string }).selector;
+				const name = reference.nameAt && selector.slice(reference.nameAt.index, reference.nameAt.endIndex);
+				return [reference.name, selector.slice(reference.at.index, reference.at.endIndex), name];
+			}),
+		).toEqual([
+			["title", '[data-part="title"]', "title"],
+			["ti'tle", String.raw`[data-part = 'ti\'tle' i]`, String.raw`ti\'tle`],
+			["title", String.raw`[data-part=ti\74 le]`, String.raw`ti\74 le`],
+			["icon", '[data-part="icon"]', "icon"],
+			["item", '[data-part="item"]', "item"],
+			[undefined, "[data-part]", undefined],
+			[undefined, '[data-part^="ico"]', undefined],
+		]);
+	});
+});

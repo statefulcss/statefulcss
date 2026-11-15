@@ -21,6 +21,7 @@ import type {
 } from "../model.js";
 import type { Names } from "./names.js";
 import {
+	closingParenthesis,
 	type Complex,
 	type Compound,
 	isPseudoElement,
@@ -35,6 +36,11 @@ import type { WalkedBlock } from "./walk.js";
 export interface Classified {
 	/** What names the component the selector starts from; undefined when nothing does. */
 	readonly root: Identity | undefined;
+	/**
+	 * In an `@scope` whose root names the component. In a scope whose root names none (`@scope (main)`), a class
+	 * starts the component the way it does outside any scope, with the scope's root as context.
+	 */
+	readonly scoped: boolean;
 	/** From the root compound to the subject, or every compound when there's no root. */
 	readonly path: readonly Step[];
 	/** What comes before the root compound: `[dir="rtl"]` in `[dir="rtl"] .button`. */
@@ -69,6 +75,7 @@ export interface PartMention {
 	/** For `position`, `has` and `condition`: the compound it's written on. */
 	readonly on: Condition["on"] | undefined;
 	readonly at: Position;
+	readonly nameAt: Position | undefined;
 }
 
 /** The settings' lists, ready to compare a condition with. */
@@ -159,8 +166,13 @@ export function classify(
 ): Classified {
 	const { names } = vocabulary;
 	const inScope = block.scope !== undefined;
-	const chain = foldSiblings(block.selector, inScope);
-	const rootIndex = inScope ? 0 : rootIndexOf(chain, names);
+	const chain = foldSiblings(block.selector);
+	const scopeIndex = inScope ? chain.findIndex((link) => link.compound.scopeRoot === true) : -1;
+	const scopeLink = chain[scopeIndex];
+	const scoped = scopeLink !== undefined && identityOf(scopeLink.compound, names) !== undefined;
+	const named = scoped ? scopeIndex : rootIndexOf(chain, names);
+	// With no component named, a scope's rule keeps the scope's root as its root compound, as before.
+	const rootIndex = named === -1 && inScope ? Math.max(scopeIndex, 0) : named;
 	const subjectIndex = chain.length - 1;
 	const rootCompound = chain[rootIndex]?.compound;
 	const root = rootCompound ? identityOf(rootCompound, names) : undefined;
@@ -195,6 +207,7 @@ export function classify(
 						where: "position",
 						on: before,
 						at: positionOf(part),
+						nameAt: nameAtOf(part),
 					});
 				partMentions.push(...mentionsWithin(part, before, names));
 			}
@@ -202,7 +215,13 @@ export function classify(
 
 		const where = isContext ? "context" : index === rootIndex ? "root" : isSubject ? "subject" : "step";
 		for (const part of split.partAttributes)
-			partMentions.push({ name: namedValue(part.node), where, on: undefined, at: positionOf(part) });
+			partMentions.push({
+				name: namedValue(part.node),
+				where,
+				on: undefined,
+				at: positionOf(part),
+				nameAt: nameAtOf(part),
+			});
 
 		for (const part of split.conditions) {
 			conditions.push(...conditionsOf(part.node, reading(part.source, before), part.inWhere ?? false));
@@ -234,6 +253,7 @@ export function classify(
 	const queries = block.atRules.map(queryOf);
 	return {
 		root,
+		scoped,
 		context,
 		path,
 		pseudoElement,
@@ -285,6 +305,7 @@ function mentionsWithin(part: Part, on: On, names: Names): PartMention[] {
 			where: inHas ? "has" : "condition",
 			on,
 			at: positionOf({ node: attribute, source: part.source }),
+			nameAt: nameAtOf({ node: attribute, source: part.source }),
 		});
 	});
 	return found;
@@ -316,7 +337,7 @@ interface SiblingPosition {
 }
 
 /** A compound followed by `+` or `~` only says where the next one is: it's a position variant, not a step. */
-function foldSiblings(complex: Complex, inScope: boolean): Link[] {
+function foldSiblings(complex: Complex): Link[] {
 	const chain: Link[] = [];
 	let positions: SiblingPosition[] = [];
 	let combinator: string | undefined;
@@ -324,7 +345,7 @@ function foldSiblings(complex: Complex, inScope: boolean): Link[] {
 		const next = complex[index + 1];
 		if (positions.length === 0) combinator = compound.combinator;
 		// A scope's root is never only a position.
-		if (next && isSibling(next.combinator) && !(inScope && index === 0)) {
+		if (next && isSibling(next.combinator) && compound.scopeRoot !== true) {
 			positions.push({ compound, combinator: next.combinator ?? "+" });
 			continue;
 		}
@@ -633,12 +654,13 @@ function readHas(selector: parser.Selector, reading: Reading, inWhere: boolean):
 	const close = (): void => {
 		const [first] = compound;
 		if (!first) return;
-		let step: HasStep = {
+		let step: Omit<HasStep, "conditions"> = {
 			combinator,
 			part: undefined,
 			inWhere: false,
 			at: positionOf({ node: first, source: reading.source }),
 		};
+		const own: Condition[] = [];
 		for (const node of compound) {
 			const named = partNamedBy(node, names);
 			if (named && step.part === undefined) {
@@ -651,9 +673,16 @@ function readHas(selector: parser.Selector, reading: Reading, inWhere: boolean):
 			const name = attributeName(node);
 			if (name === names.componentAttribute || name === names.partAttribute || name === names.slotAttribute)
 				continue;
-			conditions.push(...conditionsOf(node, reading, inWhere));
+			own.push(...conditionsOf(node, reading, inWhere));
 		}
-		path.push({ combinator: step.combinator, part: step.part, inWhere: step.inWhere, at: step.at });
+		conditions.push(...own);
+		path.push({
+			combinator: step.combinator,
+			part: step.part,
+			inWhere: step.inWhere,
+			conditions: own,
+			at: step.at,
+		});
 		compound = [];
 	};
 
@@ -787,22 +816,6 @@ function queryItems(text: string): QueryItem[] {
 	return items;
 }
 
-/** The index of the parenthesis that closes the one at `open`, or -1. A parenthesis in a quoted string isn't one. */
-function closingParenthesis(text: string, open: number): number {
-	let depth = 0;
-	let quote: string | undefined;
-	for (let index = open; index < text.length; index++) {
-		const character = text[index];
-		if (quote !== undefined) {
-			if (character === "\\") index++;
-			else if (character === quote) quote = undefined;
-		} else if (character === '"' || character === "'") quote = character;
-		else if (character === "(") depth++;
-		else if (character === ")" && --depth === 0) return index;
-	}
-	return -1;
-}
-
 // The block's kind
 
 /**
@@ -906,7 +919,22 @@ function normalize(selector: string): string {
 	}
 }
 
-function positionOf(part: { node: parser.Node; source: Rule | AtRule }): Position {
+/**
+ * Where the part's name is written inside `[data-part="…"]`: the value as written, escapes included, without its
+ * quotes. Undefined when the attribute names no one part.
+ */
+function nameAtOf(part: { node: parser.Node; source: Rule | AtRule }): Position | undefined {
+	const { node } = part;
+	if (node.type !== "attribute" || namedValue(node) === undefined || node.sourceIndex === undefined)
+		return undefined;
+	const raw = node.raws.value ?? node.value ?? "";
+	const quoted = node.quoteMark !== null && node.quoteMark !== undefined && /^["']/.test(raw);
+	const index = node.sourceIndex + node.offsetOf("value") + (quoted ? 1 : 0);
+	return { node: part.source, index, endIndex: index + raw.length - (quoted ? 2 : 0) };
+}
+
+function positionOf(part: { node: parser.Node; source: Rule | AtRule; written?: Part["written"] }): Position {
+	if (part.written) return { node: part.source, ...part.written };
 	// A class that SCSS's `&-suffix` made has no place of its own.
 	const index = part.node.sourceIndex ?? 0;
 	return { node: part.source, index, endIndex: index + String(part.node).trim().length };

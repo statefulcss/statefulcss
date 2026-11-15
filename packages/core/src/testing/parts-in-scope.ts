@@ -61,22 +61,29 @@ export function partsInScope(model: Model): Finding[] {
 			findings.push({ problem: "scope-before-root-block", node: scope.node });
 	}
 
-	const seen = new Set<Rule | AtRule>();
+	// Each selector of a list is its own block: every one is checked, and a rule is reported once for each problem.
+	const seen = new Map<Rule | AtRule, Set<Problem>>();
+	const report = (problem: Problem, node: Rule | AtRule): void => {
+		const problems = seen.get(node) ?? new Set<Problem>();
+		seen.set(node, problems);
+		if (problems.has(problem)) return;
+		problems.add(problem);
+		findings.push({ problem, node });
+	};
 	for (const block of model.blocks) {
-		if (block.reach !== "scope" || seen.has(block.node)) continue;
+		if (block.reach !== "scope") continue;
 		const scope = block.scope === undefined ? undefined : model.scopes[block.scope];
 		if (scope?.component === undefined) continue;
-		seen.add(block.node);
-		if (block.scopeRoot === "&") findings.push({ problem: "nesting-selector-in-scope", node: block.node });
+		if (block.scopeRoot === "&") report("nesting-selector-in-scope", block.node);
 		// The scope's root is the subject itself, the host of a pseudo-element, or a compound before the subject.
 		const subjectIsRoot = block.path.length === 1;
 		const ownRoot = model.elements[block.element]?.kind === "pseudo-element" ? "host" : "subject";
 		if (block.conditions.some((condition) => condition.on === (subjectIsRoot ? ownRoot : "root")))
-			findings.push({ problem: "condition-on-scope-root", node: block.node });
+			report("condition-on-scope-root", block.node);
 		// Inside a scope, `:scope` appears only as `:scope >`.
-		else if (subjectIsRoot) findings.push({ problem: "root-styled-in-scope", node: block.node });
+		else if (subjectIsRoot) report("root-styled-in-scope", block.node);
 		else if (block.scopeRoot === ":scope" && block.path[1]?.combinator === " ")
-			findings.push({ problem: "scope-root-before-descendant", node: block.node });
+			report("scope-root-before-descendant", block.node);
 	}
 
 	return findings;

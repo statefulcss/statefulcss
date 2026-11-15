@@ -356,6 +356,42 @@ describe(":has()", () => {
 		]);
 	});
 
+	// The audit's probe (3.5): the same two steps, with `:disabled` on the control or on the input.
+	inEverySyntax("each condition belongs to the step it's written on", ({ parse }) => {
+		const blocks = classifyAll(
+			parse(`
+				.field:has(> :where([data-part="control"]):disabled > :where([data-part="input"])) { opacity: 0.6; }
+				.field:has(> :where([data-part="control"]) > :where([data-part="input"]):disabled) { opacity: 0.6; }
+				.field:has(> [data-part="control"]:not([inert]) > [data-part="input"][aria-invalid="true"]) { color: red; }
+			`),
+		);
+		expect(
+			blocks.map((block) =>
+				block.conditions[0]?.has?.path.map((step) => [
+					step.part,
+					step.conditions.map((condition) => condition.text),
+				]),
+			),
+		).toEqual([
+			[
+				["control", [":disabled"]],
+				["input", []],
+			],
+			[
+				["control", []],
+				["input", [":disabled"]],
+			],
+			[
+				["control", [":not([inert])"]],
+				["input", ['[aria-invalid="true"]']],
+			],
+		]);
+		// The `:has()` still lists every step's conditions, in order.
+		expect(
+			blocks.map((block) => block.conditions[0]?.has?.conditions.map((condition) => condition.text)),
+		).toEqual([[":disabled"], [":disabled"], [":not([inert])", '[aria-invalid="true"]']]);
+	});
+
 	inEverySyntax("where the part is named", ({ parse }) => {
 		const [block] = classifyAll(parse('.field:has(:where([data-part="input"]):disabled) { opacity: 0.6; }'));
 		const at = block?.conditions[0]?.has?.path[0]?.at;

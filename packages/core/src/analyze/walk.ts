@@ -6,6 +6,7 @@ import type parser from "postcss-selector-parser";
 import type { OtherAtRule, ScopeRootForm, UnknownReason } from "../model.js";
 import { type SheetKind, sheetKind } from "./files.js";
 import {
+	closingParenthesis,
 	type Complex,
 	type Compound,
 	nestingInsideFunction,
@@ -235,8 +236,9 @@ function visitRule(rule: Rule, context: Context, found: Found): void {
 	}
 	const resolved: Parent[] = [];
 	for (const selector of parsed.selectors) {
-		// What the outermost rule writes is where its component is named; a nested rule only adds to it.
-		const outer = context.parents === undefined;
+		// What the outermost rule writes is where its component is named; a nested rule only adds to it. A rule at the
+		// top of a scope is outermost too: in `@scope (main)`, `.card` names its component.
+		const outer = context.parents === undefined || context.scopeTop;
 		const own = toCompounds(selector, rule, context.scopeTop).map((compound) => ({ ...compound, outer }));
 		const inside = nestingInsideFunction(own);
 		if (inside) {
@@ -387,7 +389,7 @@ function scopePrelude(params: string): ScopePrelude {
 	let root: string | undefined;
 	let rootIndex = 0;
 	if (rest.startsWith("(")) {
-		const end = closingParenthesis(rest);
+		const end = closingParenthesis(rest, 0);
 		if (end === -1) return { root: undefined, rootIndex, limit: undefined };
 		const inside = rest.slice(1, end);
 		root = inside.trim() || undefined;
@@ -397,18 +399,8 @@ function scopePrelude(params: string): ScopePrelude {
 	const to = /^to\s*(?=\()/i.exec(rest);
 	if (!to) return { root, rootIndex, limit: undefined };
 	const group = rest.slice(to[0].length);
-	const end = closingParenthesis(group);
+	const end = closingParenthesis(group, 0);
 	return { root, rootIndex, limit: end === -1 ? undefined : group.slice(1, end).trim() || undefined };
-}
-
-/** The index of the parenthesis that closes the one a text starts with, or -1. */
-function closingParenthesis(text: string): number {
-	let depth = 0;
-	for (let index = 0; index < text.length; index++) {
-		if (text[index] === "(") depth++;
-		else if (text[index] === ")" && --depth === 0) return index;
-	}
-	return -1;
 }
 
 /**
@@ -433,5 +425,5 @@ function scopeRoot(
 	if (!complex) return { reason: "unparsable-selector", detail: "& outside a rule" };
 	const [compound, ...path] = complex;
 	if (!compound || path.length > 0) return { reason: "scope-root", detail: "@scope with a path as its root" };
-	return { ...compound, combinator: undefined };
+	return { ...compound, combinator: undefined, scopeRoot: true };
 }

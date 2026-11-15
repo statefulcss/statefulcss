@@ -2,6 +2,7 @@
 // proves the model can answer the rule's cases; the rule itself, with its messages, belongs to the Stylelint plugin.
 import type { Node } from "postcss";
 
+import { namedFor } from "../analyze/variables.js";
 import type { Element, Id, Model, Read, Variable } from "../model.js";
 
 export type Problem =
@@ -17,6 +18,8 @@ export type Problem =
 	| "no-default"
 	/** A component declares a part variable that none of its variants, states or queries changes. */
 	| "unchanging-part-variable"
+	/** A state or part variable taken with `inherit`: only a private may be taken that way. */
+	| "taken-with-inherit"
 	/** Warning: a part variable, or a private named for a part, that nothing reads. The part was probably renamed. */
 	| "unread";
 
@@ -39,11 +42,16 @@ export function noUndeclaredStateVariables(model: Model): Finding[] {
 		const node = read.declaration === undefined ? undefined : model.declarations[read.declaration]?.node;
 		const source = read.source === undefined ? undefined : model.variables[read.source];
 
+		// An `@include` or other unknown in the rule of an element the read could reach may write it.
+		if (!source && mayBeWrittenByUnknown(model, read)) continue;
 		if (read.role === "part") {
 			if (!source && !rootIsElsewhere(model, read)) error("not-declared-by-owner", read.name, node);
 		} else if (read.role === "state" || read.role === "private") {
-			if (!source) error("undeclared", read.name, node);
-			else if (source.element === read.element) continue;
+			if (!source) {
+				// The root block in another file may declare a private named for this element.
+				if (read.role === "private" && rootIsElsewhere(model, read) && namedForReader(model, read)) continue;
+				error("undeclared", read.name, node);
+			} else if (source.element === read.element) continue;
 			else if (read.role === "state") error("state-variable-of-another-element", read.name, node);
 			else if (!isNamedFor(model, source, read.element)) error("private-of-another-element", read.name, node);
 		}
@@ -54,6 +62,11 @@ export function noUndeclaredStateVariables(model: Model): Finding[] {
 		const node = first === undefined ? undefined : model.declarations[first]?.node;
 		if (variable.role !== "state" && variable.role !== "private" && variable.role !== "part") continue;
 
+		for (const write of variable.writes) {
+			const declaration = model.declarations[write];
+			if (variable.role !== "private" && declaration?.inherits)
+				error("taken-with-inherit", variable.name, declaration.node);
+		}
 		if (variable.default === undefined) error("no-default", variable.name, node);
 		if (variable.role === "part" && variable.default !== undefined && !variable.changing)
 			error("unchanging-part-variable", variable.name, node);
@@ -76,6 +89,52 @@ function rootIsElsewhere(model: Model, read: Read): boolean {
 	const scope = block?.scope === undefined ? undefined : model.scopes[block.scope];
 	const component = scope?.component === undefined ? undefined : model.components[scope.component];
 	return scope?.rootKind === "attribute" && component?.hasRootBlock === false;
+}
+
+/** The elements whose variable a read may reach: its own, its host or the part it's under, and its component root. */
+function reachable(model: Model, reader: Id): Set<Id> {
+	const found = new Set<Id>();
+	for (let id: Id | undefined = reader; id !== undefined && !found.has(id);) {
+		found.add(id);
+		const element: Element | undefined = model.elements[id];
+		if (element && "component" in element && element.component !== undefined) {
+			const root = model.components[element.component]?.root;
+			if (root !== undefined) found.add(root);
+		}
+		id =
+			element?.kind === "pseudo-element"
+				? element.host
+				: element?.kind === "content"
+					? element.under
+					: undefined;
+	}
+	return found;
+}
+
+function mayBeWrittenByUnknown(model: Model, read: Read): boolean {
+	const elements = reachable(model, read.element);
+	return model.unknowns.some((unknown) => unknown.elements.some((element) => elements.has(element)));
+}
+
+/**
+ * Whether a private's name is named for the element that reads it, the way its component root would name it: a part
+ * or slot by its name, a part's pseudo-element as `{part}-{pseudo}`, and content by the part it's under.
+ */
+function namedForReader(model: Model, read: Read): boolean {
+	const nameOf = (id: Id | undefined): string | undefined => {
+		const element = id === undefined ? undefined : model.elements[id];
+		if (element?.kind === "part" || element?.kind === "slot") return element.name;
+		if (element?.kind === "content") return nameOf(element.under);
+		if (element?.kind !== "pseudo-element") return undefined;
+		const host = model.elements[element.host];
+		return host?.kind === "part" ? `${host.name}-${element.name}` : undefined;
+	};
+	const own = nameOf(read.element);
+	const reader = model.elements[read.element];
+	const component = reader && "component" in reader ? reader.component : undefined;
+	if (own === undefined || component === undefined) return false;
+	const names = (model.components[component]?.elements ?? []).flatMap((id) => nameOf(id) ?? []);
+	return namedFor(read.name, names) === own;
 }
 
 /** Whether a variable is named for the element that reads it: the part itself, its pseudo-element, or content under it. */

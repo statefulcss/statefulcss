@@ -278,6 +278,80 @@ describe("no-undeclared-state-variables, as a check over the model", () => {
 		{ skip: { css: "SCSS syntax", vue: "SCSS syntax, in a plain <style> block" } },
 	);
 
+	// Section 4 of the audit, the proof's gaps. An unknown in a rule may write anything on that rule's element.
+	inEverySyntax(
+		"an @include could write the variable on its element, and on no other",
+		({ read }) => {
+			const model = read(`
+				.card { @include theme; color: var(--s-c); [data-part="x"] & { color: var(--s-c); } }
+				.other { color: var(--s-c); }
+				@scope (.card) to ([data-component]) { [data-part="title"] { color: var(--_title-color); } }
+			`);
+			const findings = noUndeclaredStateVariables(model);
+			expect(findings.map((finding) => [finding.problem, finding.name, finding.node.parent?.type])).toEqual([
+				["undeclared", "--s-c", "rule"],
+			]);
+			expect(findings[0]?.node.parent).toMatchObject({ selector: ".other" });
+		},
+		{ skip: { css: "SCSS syntax", vue: "SCSS syntax, in a plain <style> block" } },
+	);
+
+	inEverySyntax(
+		"with the root block in another file, a private named for the part may come from it",
+		({ read }) => {
+			const scoped = (body: string) =>
+				read(`@scope ([data-component="card"]) to ([data-component]) { ${body} }`);
+			const problems = (body: string) =>
+				noUndeclaredStateVariables(scoped(body)).map((finding) => [finding.problem, finding.name]);
+			expect(problems('[data-part="icon"] { color: var(--_icon-color); }')).toEqual([]);
+			expect(problems('[data-part="icon"]::after { color: var(--_icon-after-color); }')).toEqual([]);
+			expect(problems('[data-part="icon"] svg { fill: var(--_icon-fill); }')).toEqual([]);
+			expect(problems('[data-part="icon"] { color: var(--_unrelated); }')).toEqual([
+				["undeclared", "--_unrelated"],
+			]);
+			// The longest name wins: `--_icon-label-color` is the icon-label's, not the icon's.
+			expect(
+				problems(
+					'[data-part="icon"] { color: var(--_icon-label-color); } [data-part="icon-label"] { margin: 0; }',
+				),
+			).toEqual([["undeclared", "--_icon-label-color"]]);
+			// A class scope with no root block is checked, as rule 4's second case says.
+			expect(
+				noUndeclaredStateVariables(
+					read('@scope (.card) to ([data-component]) { [data-part="icon"] { color: var(--_icon-color); } }'),
+				).map((finding) => finding.problem),
+			).toEqual(["undeclared"]);
+		},
+	);
+
+	inEverySyntax("only a private is taken with inherit", ({ read }) => {
+		const model = read(`
+			.card { --s-c: red; --p-icon-c: red; --_accent: red; &:hover { --s-c: blue; --p-icon-c: blue; } }
+			@scope (.card) to ([data-component]) {
+				[data-part="icon"] {
+					--s-c: inherit;
+					--p-icon-c: inherit;
+					--_accent: inherit;
+					color: var(--s-c);
+					background: var(--p-icon-c);
+					border-color: var(--_accent);
+				}
+			}
+		`);
+		expect(
+			noUndeclaredStateVariables(model).map((finding) => [
+				finding.problem,
+				finding.name,
+				String(finding.node),
+			]),
+		).toEqual([
+			// The icon reads its own `--p-icon-c`, so the one the Card declares for it is read by nothing.
+			["unread", "--p-icon-c", "--p-icon-c: red"],
+			["taken-with-inherit", "--s-c", "--s-c: inherit"],
+			["taken-with-inherit", "--p-icon-c", "--p-icon-c: inherit"],
+		]);
+	});
+
 	// The whole components of the parts page and the methodology report nothing.
 	inEverySyntax("the Card and Tabs of the parts page report nothing", ({ read }) => {
 		const model = read(`

@@ -5,6 +5,7 @@ import type * as z from "zod";
 
 import { ConfigError } from "./config-error.js";
 import { configSchema } from "./schema.js";
+import type { EntryProblem } from "./state-entries.js";
 
 // Every message a config error can have. Each names the file, says what's wrong, and says or shows the fix.
 
@@ -41,6 +42,15 @@ export function invalidPackageJsonError(file: string, error: unknown): ConfigErr
 		"unreadable",
 		`Can't read ${display(file)}, which is checked for a "${packageJsonKey}" key: ${reason(error)}`,
 		{ file, cause: error },
+	);
+}
+
+/** A folder on the way up that exists but can't be listed, so it's unclear whether it has a config. */
+export function folderError(directory: string, error: unknown): ConfigError {
+	return new ConfigError(
+		"unreadable",
+		`Can't read the folder ${display(directory) || "."}, which is searched for a Stateful CSS config: ${reason(error)}`,
+		{ file: directory, cause: error },
 	);
 }
 
@@ -100,7 +110,8 @@ export function schemaError(file: string, config: unknown, issues: readonly z.co
 
 	const [setting, ...rest] = issue?.path ?? [];
 	if (typeof setting !== "string") return notAnObjectError(file, config);
-	if (issue?.code === "custom") {
+	// A check on the whole setting writes its own message.
+	if (issue?.code === "custom" && rest.length === 0) {
 		return new ConfigError("invalid-value", `"${setting}" in ${where(file)} ${issue.message}`, {
 			file,
 			key: setting,
@@ -112,12 +123,49 @@ export function schemaError(file: string, config: unknown, issues: readonly z.co
 	const examples = meta?.examples as unknown[] | undefined;
 	const key = keyPath(issue?.path ?? []);
 	const value = valueAt(config, issue?.path ?? []);
-	const actual = rest.length === 0 ? `It's ${literal(value)}.` : `${key} is ${literal(value)}.`;
+	const actual = rest.length === 0 ? `It's ${literal(value)}` : `${key} is ${literal(value)}`;
+	// An entry of a state list in the other list's form says what to write.
+	const problem = issue?.code === "custom" ? (issue.params?.problem as EntryProblem | undefined) : undefined;
+	const hint = problem && entryHint(problem);
 	return new ConfigError(
 		"invalid-value",
-		`"${setting}" in ${where(file)} must be ${String(meta?.expected)}, like ${literal(examples?.[0])}. ${actual}`,
+		`"${setting}" in ${where(file)} must be ${String(meta?.expected)}, like ${literal(examples?.[0])}. ${actual}${hint ? `, ${hint}` : "."}`,
 		{ file, key },
 	);
+}
+
+/** What an entry of a state list is and what to write, as the end of `blockingStates[0] is "data-busy", …`. */
+function entryHint(problem: EntryProblem): string | undefined {
+	switch (problem.is) {
+		case "attribute-name":
+			return `an attribute name. Write ${literal(`[${problem.name}]`)}.`;
+		case "name":
+			return `a name on its own. Write ${literal(`:${problem.name}`)} for the pseudo-class or ${literal(`[${problem.name}]`)} for the attribute.`;
+		case "list":
+			return "a list. Give each selector its own entry.";
+		case "combinator":
+			return "a selector with a combinator. An entry is one pseudo-class or one attribute selector.";
+		case "compound":
+			return problem.selectors.length > 0
+				? `a compound. List ${list(problem.selectors.map(literal), "or")} on its own: an entry is one simple selector.`
+				: "a compound. An entry is one pseudo-class or one attribute selector.";
+		case "unquoted-value":
+			return `an attribute selector whose value needs quotes. Write ${literal(problem.quoted)}.`;
+		case "class":
+			return "a class.";
+		case "id":
+			return "an ID.";
+		case "pseudo-element":
+			return "a pseudo-element.";
+		case "not-a-state":
+			return "which can't be a state.";
+		case "not-a-selector":
+			return "which isn't a selector.";
+		case "attribute-selector":
+			return `an attribute selector. Write the attribute name ${literal(problem.name)}.`;
+		case "not-a-name":
+			return undefined;
+	}
 }
 
 function unknownKeyError(file: string, keys: readonly string[]): ConfigError {
@@ -220,8 +268,8 @@ function literal(value: unknown): string {
 }
 
 /** `a, b and c`. */
-function list(items: readonly string[]): string {
-	return items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+function list(items: readonly string[], last = "and"): string {
+	return items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} ${last} ${items.at(-1)}`;
 }
 
 /** An error's message as the end of a sentence. */

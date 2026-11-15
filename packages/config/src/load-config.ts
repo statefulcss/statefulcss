@@ -1,4 +1,5 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile, realpath, stat } from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -6,6 +7,7 @@ import jsonc from "jsonc-parser";
 
 import { ConfigError } from "./config-error.js";
 import {
+	folderError,
 	invalidJsonError,
 	invalidPackageJsonError,
 	multipleFilesError,
@@ -40,6 +42,17 @@ type Outcome = { settings: Settings } | { error: ConfigError } | undefined;
 // removed or renamed; a file's time changes when it's edited.
 const folders = new Map<string, Folder>();
 const files = new Map<string, { mtimeMs: number; outcome: Promise<Outcome> }>();
+
+/** A folder that doesn't exist: it has no config, and the search goes on above it. */
+const missingFolder: Folder = {
+	mtimeMs: Number.NaN,
+	configFiles: [],
+	hasPackageJson: false,
+	isRepositoryRoot: false,
+};
+
+/** Node's CommonJS modules, which it keeps by file path. */
+const commonJsModules = createRequire(import.meta.url).cache;
 
 /**
  * The settings for a file: from the nearest `statefulcss.config` (or `"statefulcss"` key in `package.json`), checked,
@@ -83,15 +96,19 @@ export async function loadConfig(fromPath: string): Promise<Settings> {
 }
 
 async function readFolder(directory: string): Promise<Folder> {
-	const mtimeMs = await modifiedAt(directory);
+	const mtimeMs = await modifiedAt(directory, folderError);
 	const cached = folders.get(directory);
 	if (cached && cached.mtimeMs === mtimeMs) return cached;
 
-	let names: string[] = [];
+	// Only a listing that worked is kept. A folder that can't be listed may have a config, so it stops the search.
+	folders.delete(directory);
+	if (Number.isNaN(mtimeMs)) return missingFolder;
+	let names: string[];
 	try {
 		names = await readdir(directory);
-	} catch {
-		// A folder that doesn't exist or can't be listed has no config; the search goes on above it.
+	} catch (error) {
+		if (isMissing(error)) return missingFolder;
+		throw folderError(directory, error);
 	}
 	const folder: Folder = {
 		mtimeMs,
@@ -104,7 +121,7 @@ async function readFolder(directory: string): Promise<Folder> {
 }
 
 async function loadFile(file: string): Promise<Outcome> {
-	const mtimeMs = await modifiedAt(file);
+	const mtimeMs = await modifiedAt(file, readError);
 	if (Number.isNaN(mtimeMs)) return undefined;
 	const cached = files.get(file);
 	if (cached && cached.mtimeMs === mtimeMs) return cached.outcome;
@@ -134,7 +151,9 @@ async function readConfig(
 
 	// Node keeps every module it has loaded, so an edited file gets its time in the URL to load it again. The first
 	// load has none, which keeps the path in the config's own errors clean (and Vite, in tests, reads it as .ts).
+	// A CommonJS module is kept by its path whatever the URL, so an edited file is also dropped from there.
 	const url = pathToFileURL(file).href;
+	if (reloadAt !== undefined) await forgetCommonJs(file);
 	let module: Record<string, unknown>;
 	try {
 		module = (await import(reloadAt === undefined ? url : `${url}?mtime=${reloadAt}`)) as Record<
@@ -183,10 +202,34 @@ function check(file: string, config: unknown): Outcome {
 		: { error: schemaError(file, config, result.error.issues) };
 }
 
-async function modifiedAt(file: string): Promise<number> {
+/** Drops a file from Node's CommonJS modules, under the path it was loaded by: the one with symlinks resolved. */
+async function forgetCommonJs(file: string): Promise<void> {
+	delete commonJsModules[file];
+	try {
+		delete commonJsModules[await realpath(file)];
+	} catch {
+		// Removed since it was found: loading it reports that.
+	}
+}
+
+/**
+ * When a file or folder was last changed, or `NaN` when it doesn't exist. Any other failure, such as a folder
+ * without search permission, is an error: what's there can't be seen, so the search can't go past it.
+ */
+async function modifiedAt(
+	file: string,
+	unreadable: (file: string, error: unknown) => ConfigError,
+): Promise<number> {
 	try {
 		return (await stat(file)).mtimeMs;
-	} catch {
-		return Number.NaN;
+	} catch (error) {
+		if (isMissing(error)) return Number.NaN;
+		throw unreadable(file, error);
 	}
+}
+
+/** Whether a filesystem error says the path doesn't exist. */
+function isMissing(error: unknown): boolean {
+	const code = (error as NodeJS.ErrnoException | null)?.code;
+	return code === "ENOENT" || code === "ENOTDIR";
 }

@@ -1,7 +1,8 @@
 /**
  * What went wrong with a config:
  *
- * - `unreadable`: the file isn't valid JSON, or a JavaScript or TypeScript config threw or has no default export;
+ * - `unreadable`: the file or a folder on the way up can't be read, the file isn't valid JSON, or a JavaScript or
+ *   TypeScript config threw or has no default export;
  * - `multiple-files`: one folder has more than one config, so it's unclear which applies;
  * - `unknown-key`: a key no setting has, usually a typo;
  * - `invalid-value`: a known setting with a value of the wrong kind.
@@ -9,13 +10,13 @@
 export type ConfigErrorKind = "unreadable" | "multiple-files" | "unknown-key" | "invalid-value";
 
 export interface ConfigErrorDetails {
-	/** The config file. For `multiple-files`, the first of them. */
+	/** The config file. For `multiple-files`, the first of them; for a folder that can't be read, the folder. */
 	file: string;
 	/** Every config in the folder, for `multiple-files`. */
 	files?: readonly string[];
 	/** The key path, such as `blockingStates[2]`, for `unknown-key` and `invalid-value`. */
 	key?: string;
-	/** The error a JavaScript or TypeScript config threw. */
+	/** The error a JavaScript or TypeScript config threw, or the filesystem's error for what can't be read. */
 	cause?: unknown;
 }
 

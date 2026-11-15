@@ -1,3 +1,4 @@
+import { nonStatePseudoClasses } from "@statefulcss/config";
 import type { AtRule, Rule } from "postcss";
 import parser from "postcss-selector-parser";
 
@@ -216,10 +217,19 @@ function onOneLine(text: string): string {
 		.trim();
 }
 
-const legacyPseudoElements = new Set([":before", ":after", ":first-line", ":first-letter"]);
+// Config owns the pseudo-classes that are never a state, so what it refuses in a state list is what core never
+// compares with one.
 
-/** Pseudo-classes that wrap a selector: CSS Modules' `:global()`, Vue's `:deep()` and `:slotted()`. */
-const wrappers = new Set([":global", ":deep", ":slotted", "::v-deep", "::v-slotted", "::v-global"]);
+/** Pseudo-elements that can be written with one colon: `:before`. */
+const legacyPseudoElements = new Set<string>(nonStatePseudoClasses.pseudoElements);
+
+/** Pseudo-classes that wrap a selector: CSS Modules' `:global()`, Vue's `:deep()` and `:slotted()`, and their older spellings. */
+const wrappers = new Set<string>([
+	...nonStatePseudoClasses.wrappers,
+	"::v-deep",
+	"::v-slotted",
+	"::v-global",
+]);
 
 /** `:deep()`, `:slotted()`, `:global()` and their older spellings: what they select belongs to another stylesheet. */
 export function isWrapper(node: parser.Node): boolean {

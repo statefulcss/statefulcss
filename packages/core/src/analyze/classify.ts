@@ -1,7 +1,7 @@
 // Pass 2. Reads one resolved selector and the at-rules around it: the path from the component root to the subject,
 // each condition with its kind, the guard, the queries, and the kind of the block. It needs no other block, so
 // which element the block styles is left to the next pass.
-import type { Settings } from "@statefulcss/config";
+import { nonStatePseudoClasses, type Settings } from "@statefulcss/config";
 import type { AtRule, Rule } from "postcss";
 import parser from "postcss-selector-parser";
 
@@ -119,11 +119,24 @@ const variantPseudoClasses = new Set([
 	":lang",
 ]);
 
+// These two lists are config's, with the wrappers and one-colon pseudo-elements in selectors.ts: config refuses
+// them in a state list, because none is ever compared with one.
+
 /** Pseudo-classes that name the element itself, so they're no condition. */
-const identityPseudoClasses = new Set([":root", ":scope", ":host", ":local"]);
+const identityPseudoClasses = new Set<string>(nonStatePseudoClasses.identity);
 
 /** Pseudo-classes that match any one of the selectors they list. `:not()` and `:has()` have their own reading. */
-const matchesAny = new Set([":is", ":where", ":matches", ":-webkit-any", ":-moz-any"]);
+const matchesAny = new Set<string>(nonStatePseudoClasses.matchesAny);
+
+/** Pseudo-classes that take `An+B`, and some of them `of` and a selector list. */
+const nthPseudoClasses = new Set([
+	":nth-child",
+	":nth-last-child",
+	":nth-of-type",
+	":nth-last-of-type",
+	":nth-col",
+	":nth-last-col",
+]);
 
 /** The order states win in, which is the order a block lists its groups in. */
 const groupOrder: readonly StateGroup[] = ["context", "interaction", "semantic", "blocking", "visited"];
@@ -559,8 +572,9 @@ function pseudoConditions(node: parser.Pseudo, reading: Reading, inWhere: boolea
 
 	const focus = name.startsWith(":focus");
 	const { vocabulary } = reading;
-	if (vocabulary.blocking.has(base.text)) return [{ ...base, kind: "state", group: "blocking", focus }];
-	if (vocabulary.interaction.has(base.text)) return [{ ...base, kind: "state", group: "interaction", focus }];
+	const compared = comparableOf(node);
+	if (vocabulary.blocking.has(compared)) return [{ ...base, kind: "state", group: "blocking", focus }];
+	if (vocabulary.interaction.has(compared)) return [{ ...base, kind: "state", group: "interaction", focus }];
 	if (name === ":visited") return [{ ...base, kind: "state", group: "visited" }];
 	if (variantPseudoClasses.has(name)) return [{ ...base, kind: "variant" }];
 	// A state the settings don't list is semantic.
@@ -837,11 +851,52 @@ function textOf(node: parser.Node): string {
 	return name + text.slice(node.value.length);
 }
 
-/** A setting's selector, written the way `textOf` writes a condition, so the two compare. */
+/**
+ * A simple selector as it's compared with a state list. An attribute selector is its text. A pseudo-class is its
+ * name and its arguments without the spacing CSS ignores, so `:nth-child(2n+1)` is `:nth-child(2n + 1)`; a
+ * condition's own `text` keeps the arguments as written.
+ */
+function comparableOf(node: parser.Node): string {
+	if (node.type !== "pseudo" || node.nodes.length === 0) return textOf(node);
+	const name = node.value.toLowerCase();
+	if (!nthPseudoClasses.has(name)) return `${name}(${node.nodes.map(comparableSelector).join(", ")})`;
+
+	// `An+B` allows space around its sign and is case-insensitive; what follows `of` is a selector list.
+	const [formula = "", ...selectors] = node.nodes
+		.map(String)
+		.join(",")
+		.split(/\s+of\s+/i);
+	const of = selectors.length > 0 ? ` of ${comparableList(selectors.join(" of "))}` : "";
+	return `${name}(${formula.replace(/\s+/g, "").toLowerCase()}${of})`;
+}
+
+/**
+ * A selector inside a pseudo-class's arguments: bare combinators, each attribute selector and pseudo-class as it's
+ * compared, and every name in its own case, since `:state(Loading)` isn't `:state(loading)`.
+ */
+function comparableSelector(selector: parser.Selector): string {
+	return selector.nodes
+		.map((node) => {
+			if (node.type === "combinator") return node.value.trim() || " ";
+			return node.type === "pseudo" || node.type === "attribute" ? comparableOf(node) : String(node).trim();
+		})
+		.join("")
+		.trim();
+}
+
+function comparableList(selectors: string): string {
+	try {
+		return parser().astSync(selectors).nodes.map(comparableSelector).join(", ");
+	} catch {
+		return selectors.trim();
+	}
+}
+
+/** A setting's selector, written the way `comparableOf` writes a condition, so the two compare. */
 function normalize(selector: string): string {
 	try {
 		const [first] = parser().astSync(selector).nodes;
-		const text = first?.nodes.map(textOf).join("");
+		const text = first?.nodes.map(comparableOf).join("");
 		return text || selector.trim();
 	} catch {
 		return selector.trim();

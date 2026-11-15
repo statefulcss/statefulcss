@@ -2,7 +2,14 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { ConfigError, loadConfig, type Settings, type StatefulCSSConfig } from "@statefulcss/config";
+import {
+	ConfigError,
+	defaults,
+	loadConfig,
+	nonStatePseudoClasses,
+	type Settings,
+	type StatefulCSSConfig,
+} from "@statefulcss/config";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { inEverySyntax } from "../testing/syntaxes.js";
@@ -34,9 +41,16 @@ describe("a state list's entry means the same in config and core", () => {
 		[":disabled", ".button:disabled"],
 		[":DISABLED", ".button:disabled"],
 		[":disabled", ".button:DISABLED"],
-		[" :disabled ", ".button:disabled"],
 		[":state(loading)", ".button:state(loading)"],
+		[":state(loading)", ".button:state( loading )"],
+		[":lang(en,fr)", ".button:lang(en , fr)"],
+		// `An+B` with and without the space around its sign, in either case
 		[":nth-child(2n + 1)", ".button:nth-child(2n + 1)"],
+		[":nth-child(2n+1)", ".button:nth-child(2n + 1)"],
+		[":nth-child(2n + 1)", ".button:nth-child(2n+1)"],
+		[":nth-child( 2N - 1 )", ".button:nth-child(2n-1)"],
+		[":nth-last-child(even)", ".button:nth-last-child( EVEN )"],
+		[":nth-child(2n+1 of [data-busy], .busy)", ".button:nth-child(2n + 1 of [ data-busy ] , .busy)"],
 		["[data-busy]", ".button[data-busy]"],
 		["[ data-busy ]", ".button[data-busy]"],
 		["[DATA-BUSY]", ".button[data-busy]"],
@@ -80,12 +94,36 @@ describe("a state list's entry means the same in config and core", () => {
 		async ({ parse }) => {
 			const css = '.button[data-mode="on"] { color: red; } .button[DATA-MODE="off"] { color: blue; }';
 			expect(kindsOf(parse(css), await settingsFrom({}))).toEqual(["variant", "variant"]);
-			for (const entry of ["data-mode", "Data-Mode", " data-mode "]) {
-				expect([entry, ...kindsOf(parse(css), await settingsFrom({ stateAttributes: [entry] }))]).toEqual([
-					entry,
-					"state",
-					"state",
-				]);
+			const settings = await settingsFrom({ stateAttributes: ["data-mode"] });
+			expect(kindsOf(parse(css), settings)).toEqual(["state", "state"]);
+		},
+	);
+
+	inEverySyntax("arguments that differ in more than spacing are another state", ({ parse }) => {
+		const settings = { ...defaults, blockingStates: [":nth-child(2n+1)", ":state(loading)"] };
+		const css = ".button:nth-child(2n+2) { color: red; } .button:state(Loading) { color: red; }";
+		expect(groupsOf(parse(css), settings)).not.toContain("blocking");
+	});
+
+	// Config owns these names and core takes its lists from them. Listed in spite of config, none is compared.
+	inEverySyntax(
+		"a pseudo-class that's never a state is never compared with a state list",
+		async ({ parse }) => {
+			const { matchesAny, holders, identity, wrappers, pseudoElements } = nonStatePseudoClasses;
+			const written = [
+				...[...matchesAny, ...holders, ...wrappers].map((name) => `${name}([data-busy])`),
+				...identity,
+				...pseudoElements,
+			];
+			for (const entry of written) {
+				const settings = { ...defaults, blockingStates: [entry], interactionStates: [entry] };
+				const groups = groupsOf(parse(`.button${entry} { color: red; }`), settings);
+				expect([entry, ...groups]).not.toContain("blocking");
+				expect([entry, ...groups]).not.toContain("interaction");
+				await expect(settingsFrom({ blockingStates: [entry] })).rejects.toMatchObject({
+					kind: "invalid-value",
+					key: "blockingStates[0]",
+				});
 			}
 		},
 	);
@@ -98,6 +136,9 @@ describe("a state list's entry means the same in config and core", () => {
 		["blockingStates[0]", { blockingStates: [":disabled[data-busy]"] }],
 		["interactionStates[0]", { interactionStates: [":hover:active"] }],
 		["stateAttributes[0]", { stateAttributes: ["data-state[data-busy]"] }],
+		// Core reads these as the part and the slot, whatever a state list says.
+		["blockingStates[0]", { blockingStates: ['[data-part="spinner"]'] }],
+		["interactionStates[0]", { interactionStates: ["[data-slot]"] }],
 	])("the other form never reaches core: %s in %j", async (key, config) => {
 		const error = await settingsFrom(config).catch((error: unknown) => error);
 		expect(error).toBeInstanceOf(ConfigError);

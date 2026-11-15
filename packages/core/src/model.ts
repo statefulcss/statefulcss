@@ -242,12 +242,15 @@ export interface Condition {
 	readonly inWhere: boolean;
 	/**
 	 * What `:not()`, `:is()` and `:where()` hold: one condition for each selector they list, any one of which can
-	 * match. Around one selector, `:is()` and `:where()` are transparent: its conditions are the block's own.
+	 * match. Around one selector, `:is()` and `:where()` are transparent: its conditions are the block's own. A list
+	 * with a selector that only names the element (`:where(:scope, :not(:disabled))`) asks nothing, so it's no
+	 * condition.
 	 */
 	readonly inner: readonly Condition[];
 	/**
 	 * It stands for a compound inside a selector function (`:disabled[data-loading]` in `:not()`): the conditions in
-	 * `inner` hold together, so excluding the compound excludes none of them on its own.
+	 * `inner` hold together, so excluding the compound excludes none of them on its own. `:root:disabled` is one too,
+	 * though `:root` makes no condition.
 	 */
 	readonly compound: boolean;
 	/** For a `:has()` that holds one selector. With a list, each selector is a condition in `inner` with its own `has`. */
@@ -318,8 +321,9 @@ export interface Guard {
 	/** Its `inner` conditions are the list; a `:has()` state that joined it is one of them. */
 	readonly condition: Condition;
 	/**
-	 * The settings' blocking states it excludes, each on its own. A compound (`:not(:disabled[data-loading])`)
-	 * excludes neither state alone.
+	 * The settings' blocking states it excludes, each on its own, for every way the block can match. A compound
+	 * (`:not(:disabled[data-loading])`, `:not(:root:disabled)`) excludes neither state alone; `:is()` inside
+	 * (`:not(:is(:focus, :disabled))`) excludes each of its states, in any order.
 	 */
 	readonly blocking: readonly string[];
 	/** The blocks inside it. */
@@ -330,8 +334,12 @@ export interface Guard {
 export interface PartReference {
 	/** Undefined when the selector names no one part: `[data-part]`. */
 	readonly name: string | undefined;
+	/** Under a selector list naming two components (`.card, .button { & > [data-part="x"] { } }`), each has its own. */
 	readonly component: Id | undefined;
-	/** Every block whose selector names it there: a rule nested in the one that writes it names it too. */
+	/**
+	 * Every block whose selector names it there: a rule nested in the one that writes it names it too. Empty when the
+	 * rule declares nothing itself, as with only an `@include` inside.
+	 */
 	readonly blocks: readonly Id[];
 	/**
 	 * Inside the component's scope; a step on the way to a slot, from the root block; inside `:has()` on the root

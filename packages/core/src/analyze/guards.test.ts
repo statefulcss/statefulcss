@@ -52,6 +52,45 @@ describe("what a guard excludes", () => {
 		},
 	);
 
+	const states = [":focus", ":disabled"];
+	for (const list of [states.join(", "), [...states].reverse().join(", ")]) {
+		inEverySyntax(`:not(:is(${list})) excludes :disabled, in either order`, ({ read }) => {
+			const model = read(`.card:not(:is(${list})):hover { color: red; }`);
+			expect(guards(model)).toEqual([[".card", [":disabled"], [0]]]);
+			expect(model.blocks.map((block) => block.guard)).toEqual([0]);
+		});
+	}
+
+	inEverySyntax("what names the element makes the exclusion a compound, which covers nothing", ({ read }) => {
+		const model = read(`
+			.button:where(:not(:root:disabled)):hover { color: red; }
+			.button:not(:where(:root:disabled)):hover { color: red; }
+			@scope (.button) to ([data-component]) {
+				:scope:not(:scope:disabled):hover { color: red; }
+			}
+		`);
+		expect(guards(model)).toEqual([
+			[".button", [], [0]],
+			[".button", [], [1]],
+			[".button", [], [2]],
+		]);
+	});
+
+	const alternatives = [":scope", ":not(:disabled)"];
+	for (const list of [alternatives.join(", "), [...alternatives].reverse().join(", ")]) {
+		inEverySyntax(`a list that the scope's root can match (:where(${list})) excludes nothing`, ({ read }) => {
+			const model = read(`
+				@scope (.button) to ([data-component]) {
+					:scope:where(${list}):hover { color: red; }
+				}
+				.button:is(${list.replace(":scope", ":root")}):hover { color: red; }
+				.button:is(${list.replace(":scope", "*")}):hover { color: red; }
+			`);
+			expect(guards(model)).toEqual([]);
+			expect(kinds(model)).toEqual([["interaction"], ["interaction"], ["interaction"]]);
+		});
+	}
+
 	inEverySyntax("a :has() state that joined the guard stays its own entry", ({ read }) => {
 		const model = read(`
 			.field {

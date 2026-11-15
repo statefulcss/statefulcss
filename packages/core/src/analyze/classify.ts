@@ -257,7 +257,7 @@ export function classify(
 		context,
 		path,
 		pseudoElement,
-		foreign: chain.some((link) => link.compound.parts.some((part) => holdsWrapper(part.node))),
+		foreign: chain.some((link) => link.compound.parts.some((part) => selectsForeign(part.node))),
 		themeScope,
 		colorScheme,
 		conditions,
@@ -278,15 +278,17 @@ function rootIndexOf(chain: readonly Link[], names: Names): number {
 	return outer === -1 ? chain.findIndex(named) : outer;
 }
 
-/** `:deep()`, `:slotted()` or `:global()`, alone or anywhere inside a selector function. */
-function holdsWrapper(node: parser.Node): boolean {
+/**
+ * Whether what a simple selector selects belongs to another stylesheet: it's `:deep()`, `:slotted()` or `:global()`,
+ * or an `:is()` or `:where()` each of whose selectors goes through one. An escape inside `:has()`, `:not()` or another
+ * test (`.card:has(:global(.flag))`) only tests something, so the element stays local; so does a list with a local
+ * selector in it (`:is(.local, :global(.y))`), which keeps that selector's facts.
+ */
+function selectsForeign(node: parser.Node): boolean {
 	if (isWrapper(node)) return true;
-	if (node.type !== "pseudo") return false;
-	let found = false;
-	node.walkPseudos((inner) => {
-		if (isWrapper(inner)) found = true;
-	});
-	return found;
+	if (node.type !== "pseudo" || !matchesAny.has(node.value.toLowerCase()) || node.nodes.length === 0)
+		return false;
+	return node.nodes.every((selector) => selector.nodes.some(selectsForeign));
 }
 
 /**
@@ -433,6 +435,10 @@ function splitCompound(
 	let component: Part | undefined;
 	let part: Part | undefined;
 	let slot: Part | undefined;
+	// A tag inside `:is()` is a choice of element type: a variant of the component, part or slot the compound names,
+	// wherever `:is()` stands in it. On an element nothing else names (`:where(ul, ol)`), it's what names it.
+	const typeIsVariant =
+		!role.isContext && compound.parts.some((current) => namesElement(current.node, names));
 
 	for (const [index, current] of compound.parts.entries()) {
 		const { node } = current;
@@ -440,6 +446,7 @@ function splitCompound(
 		if (pseudoElement) after.push(current);
 		else if (isWrapper(node)) identity.push(current);
 		else if (isPseudoElement(node)) pseudoElement = current;
+		else if (node.type === "tag" && current.wrapper && typeIsVariant) conditions.push(current);
 		else if (node.type === "tag" || node.type === "id" || node.type === "universal") identity.push(current);
 		else if (node.type === "class") {
 			// An extra class on the same element, or a class on what comes before the root, is a condition core
@@ -459,7 +466,8 @@ function splitCompound(
 			else conditions.push(current);
 		} else if (node.type === "pseudo") {
 			const value = node.value.toLowerCase();
-			const listsOnly = (value === ":is" || value === ":where") && index === 0 && listsElements(node);
+			const listsOnly =
+				(value === ":is" || value === ":where") && index === 0 && !typeIsVariant && listsElements(node);
 			if (identityPseudoClasses.has(value) || listsOnly) identity.push(current);
 			else conditions.push(current);
 		} else conditions.push(current);
@@ -480,6 +488,13 @@ function splitCompound(
 		after,
 		partAttributes,
 	};
+}
+
+/** Whether a simple selector names a component, a part or a slot: a class, or one of their attributes. */
+function namesElement(node: parser.Node, names: Names): boolean {
+	if (node.type === "class") return true;
+	const name = attributeName(node);
+	return name === names.componentAttribute || name === names.partAttribute || name === names.slotAttribute;
 }
 
 /** The value of `[data-part="title"]`: only `=` with a value names something. */
@@ -573,6 +588,9 @@ function pseudoConditions(node: parser.Pseudo, reading: Reading, inWhere: boolea
 	}
 	if (matchesAny.has(name)) {
 		const zero = inWhere || name === ":where";
+		// An alternative that only names the element (`:scope`, `:root`, `*`) can always match, so the list asks
+		// nothing: what its other alternatives exclude isn't excluded.
+		if (node.nodes.some(onlyNamesElement)) return [];
 		const inner = branchConditions(node.nodes, reading, zero);
 		const [only, ...others] = inner;
 		// Around one alternative, `:is()` and `:where()` change nothing but specificity. Around several, any one
@@ -622,13 +640,45 @@ function branchConditions(
 		const held = nodes.flatMap((node) => conditionsOf(node, reading, inWhere));
 		const [only, ...others] = held;
 		if (!only) return [];
-		return others.length === 0 ? [only] : [{ ...base, ...summarize(held), compound: true, inner: held }];
+		// A compound stays one even when what names the element in it makes no condition: `:root:disabled` holds
+		// `:disabled` only together with `:root`.
+		if (others.length === 0 && isOneSimpleSelector(nodes)) return [only];
+		return [{ ...base, ...summarize(held), compound: true, inner: held }];
 	});
 }
 
-/** Whether a condition is a blocking state, or a compound that holds one. */
+/** One simple selector, or `:is()` or `:where()` around one. */
+function isOneSimpleSelector(nodes: readonly parser.Node[]): boolean {
+	const [only, ...others] = nodes;
+	if (!only || others.length > 0) return false;
+	if (only.type !== "pseudo" || !matchesAny.has(only.value.toLowerCase())) return true;
+	const [selector, ...more] = only.nodes;
+	if (!selector || more.length > 0) return true;
+	return isOneSimpleSelector(selector.nodes.filter((node) => node.type !== "comment"));
+}
+
+/** A selector inside a selector function that only names the element: `:scope`, `:root`, `*`. */
+function onlyNamesElement(selector: parser.Selector): boolean {
+	const nodes = selector.nodes.filter((node) => node.type !== "comment");
+	return (
+		nodes.length > 0 &&
+		nodes.every(
+			(node) =>
+				node.type === "universal" ||
+				(node.type === "pseudo" && identityPseudoClasses.has(node.value.toLowerCase())),
+		)
+	);
+}
+
+/**
+ * Whether excluding a condition excludes a blocking state: it is one, or it's a compound or an `:is()` list that holds
+ * one. `:not(:is(:focus, :disabled))` excludes both, in either order; what a `:not()` or `:has()` inside holds isn't
+ * excluded.
+ */
 function holdsBlocking(condition: Condition): boolean {
 	if (condition.compound) return condition.inner.some(holdsBlocking);
+	const list = condition.inner.length > 0 && !/^:(?:not|has)\(/.test(condition.text);
+	if (list) return condition.inner.some(holdsBlocking);
 	return condition.kind === "state" && condition.group === "blocking";
 }
 

@@ -53,6 +53,77 @@ describe("a part named by a selector list", () => {
 	});
 });
 
+describe("a part named under a list of two components", () => {
+	const roots = [".card", ".button"];
+	for (const order of [roots, [...roots].reverse()]) {
+		const list = order.join(", ");
+		inEverySyntax(`belongs to each component for its own blocks (${list})`, ({ read }) => {
+			const model = read(`${list} { & > [data-part="x"] { color: red; } }`);
+			const owners = model.partReferences.map((reference) => [
+				reference.component === undefined ? undefined : model.components[reference.component]?.name,
+				reference.blocks.map((id) => keyOf(model, model.blocks[id]?.element)),
+			]);
+			expect(owners).toEqual(order.map((root) => [root.slice(1), [`${root} [data-part="x"]`]]));
+		});
+
+		inEverySyntax(`and so does one inside the root's :has() (${list})`, ({ read }) => {
+			const model = read(`${list} { &:has([data-part="input"]) { color: red; } }`);
+			expect(
+				model.partReferences.map((reference) => [
+					reference.component === undefined ? undefined : model.components[reference.component]?.name,
+					reference.place,
+					reference.blocks,
+				]),
+			).toEqual(order.map((root, index) => [root.slice(1), "has", [index]]));
+		});
+	}
+});
+
+describe("a list of parts inside :is()", () => {
+	const named = ['[data-part="x"]', '[data-part="y"]'];
+	for (const list of [named.join(", "), [...named].reverse().join(", ")]) {
+		inEverySyntax(`writes on both parts (:is(${list})), as a selector list does`, ({ read }) => {
+			const model = read(`
+				@scope (.card) to ([data-component]) {
+					:is(${list}) { --s-c: red; }
+					[data-part="x"] { color: var(--s-c); }
+					[data-part="y"] { color: var(--s-c); }
+				}
+			`);
+			const order = list.startsWith('[data-part="x"]') ? ["x", "y"] : ["y", "x"];
+			expect(model.blocks.slice(0, 2).map((block) => [keyOf(model, block.element), block.kind])).toEqual(
+				order.map((name) => [`.card [data-part="${name}"]`, "own"]),
+			);
+			expect(sources(model)).toEqual([
+				['.card [data-part="x"]', "--s-c", '.card [data-part="x"]'],
+				['.card [data-part="y"]', "--s-c", '.card [data-part="y"]'],
+			]);
+			expect(undeclared(model)).toEqual([]);
+			expect(model.partReferences.slice(0, 2).map((reference) => [reference.name, reference.place])).toEqual(
+				order.map((name) => [name, "scope"]),
+			);
+		});
+	}
+
+	inEverySyntax(
+		":where() keeps each part at zero specificity, and other lists stay one condition",
+		({ read }) => {
+			const model = read(`
+			@scope (.card) to ([data-component]) {
+				:where([data-part="x"], [data-part="y"]) { color: red; }
+				:is([data-part="x"], .other) { color: red; }
+			}
+		`);
+			expect(model.blocks.map((block) => [block.selector, keyOf(model, block.element)])).toEqual([
+				['.card :where([data-part="x"])', '.card [data-part="x"]'],
+				['.card :where([data-part="y"])', '.card [data-part="y"]'],
+				['.card :is([data-part="x"], .other)', ".card *"],
+			]);
+			expect(model.blocks.slice(0, 2).map((block) => block.path.at(-1)?.inWhere)).toEqual([true, true]);
+		},
+	);
+});
+
 describe("a part named inside a selector function", () => {
 	const states = ['[data-part="input"]:disabled', '[data-part="control"]:disabled'];
 	for (const list of [states.join(", "), [...states].reverse().join(", ")]) {
@@ -254,6 +325,37 @@ describe("& inside a selector function", () => {
 			expect(model.blocks.map((block) => block.selector)).toEqual([".card", ".card:hover"]);
 		},
 	);
+
+	for (const readable of ['& > [data-part="x"]', "&:hover"]) {
+		const branches = [":not(&)", readable];
+		for (const list of [branches.join(", "), [...branches].reverse().join(", ")]) {
+			inEverySyntax(`in a list (${list}), only that selector is unknown`, ({ read }) => {
+				const model = read(`.card { ${list} { color: var(--s-c); } }`);
+				expect(model.unknowns.map((unknown) => [unknown.reason, unknown.detail, unknown.elements])).toEqual([
+					["unparsable-selector", "& inside :not()", [0]],
+				]);
+				const resolved = readable.replace("&", ".card");
+				expect(model.blocks.map((block) => block.selector)).toEqual([resolved]);
+				expect(references(model)).toEqual(
+					readable.includes("data-part") ? [["x", "outside", false, [0]]] : [],
+				);
+				expect(model.reads.map((one) => keyOf(model, one.element))).toEqual([
+					readable.includes("data-part") ? '.card [data-part="x"]' : ".card",
+				]);
+			});
+		}
+	}
+
+	const top = ["&:hover", ".card"];
+	for (const list of [top.join(", "), [...top].reverse().join(", ")]) {
+		inEverySyntax(`with no parent rule (${list}), & is unknown on its own`, ({ read }) => {
+			const model = read(`${list} { color: red; }`);
+			expect(model.unknowns.map((unknown) => [unknown.reason, unknown.detail])).toEqual([
+				["unparsable-selector", "& outside a rule"],
+			]);
+			expect(model.blocks.map((block) => block.selector)).toEqual([".card"]);
+		});
+	}
 });
 
 describe("what a nested rule writes before &", () => {
@@ -299,6 +401,25 @@ describe("what a nested rule writes before &", () => {
 });
 
 describe("a rule with no declarations", () => {
+	for (const body of ["", "@include theme;"]) {
+		inEverySyntax(`names its part with no blocks (${body || "empty"})`, ({ read }) => {
+			const model = read(`.card [data-part="x"] { ${body} }`);
+			expect(references(model)).toEqual([["x", "outside", false, []]]);
+			expect(model.partReferences[0]?.at.index).toBe(6);
+			expect(placement(model)).toEqual(["part-outside-scope"]);
+		});
+	}
+
+	inEverySyntax("names it once more when the same rule declares too", ({ read }) => {
+		const model = read('.card [data-part="x"] { @include theme; color: red; }');
+		expect(references(model)).toEqual([["x", "outside", false, [0]]]);
+	});
+
+	inEverySyntax("but one that only holds nested rules names it through theirs", ({ read }) => {
+		const model = read('.card { & > [data-part="footer"] { & > [data-slot="a"] { color: red; } } }');
+		expect(references(model)).toEqual([["footer", "placement-path", false, [0]]]);
+	});
+
 	inEverySyntax("still names its part, for a variable to be named for", ({ read }) => {
 		const model = read(`
 			.card { --p-title-color: red; }
@@ -325,26 +446,55 @@ describe("a rule with no declarations", () => {
 });
 
 describe("a foreign subject inside a transparent wrapper", () => {
-	inEverySyntax(
-		":where(:global(.x)) is as foreign as :global(.x), and a list with one in it too",
-		({ read }) => {
-			const model = read(`
+	inEverySyntax(":where(:global(.x)) is as foreign as :global(.x), and so is a list of them", ({ read }) => {
+		const model = read(`
 			@scope (.card) to ([data-component]) {
 				:global(.x) { color: var(--s-c); }
 				:where(:global(.x)) { color: var(--s-c); }
-				:is(.local, :global(.y)) { color: var(--s-c); }
+				:is(:global(.x), :deep(.y)) { color: var(--s-c); }
 				.local { color: var(--s-c); }
 			}
 		`);
-			expect(model.blocks.map((block) => model.elements[block.element]?.kind)).toEqual([
-				"foreign",
-				"foreign",
-				"foreign",
-				"content",
-			]);
+		expect(model.blocks.map((block) => model.elements[block.element]?.kind)).toEqual([
+			"foreign",
+			"foreign",
+			"foreign",
+			"content",
+		]);
+		expect(undeclared(model)).toEqual(["undeclared"]);
+	});
+
+	const mixed = [".local", ":global(.y)"];
+	for (const list of [mixed.join(", "), [...mixed].reverse().join(", ")]) {
+		inEverySyntax(
+			`a list with a local selector in it (:is(${list})) stays the Card's, of unknown kind`,
+			({ read }) => {
+				const model = read(`
+				@scope (.card) to ([data-component]) {
+					:is(${list}) { color: var(--s-c); }
+					:is(.local, .other) { color: var(--s-c); }
+				}
+			`);
+				expect(model.blocks.map((block) => [keyOf(model, block.element), block.kind])).toEqual([
+					[".card *", "unknown"],
+					[".card :is(.local, .other)", "own"],
+				]);
+				expect(model.elements.map((element) => element.kind)).not.toContain("foreign");
+				expect(undeclared(model)).toEqual(["undeclared", "undeclared"]);
+			},
+		);
+	}
+});
+
+describe("an escape that only tests something", () => {
+	for (const test of [":has(:global(.flag))", ":not(:global(.flag))", ":has(> :deep(.flag))"]) {
+		inEverySyntax(`.card${test} leaves the Card local`, ({ read }) => {
+			const model = read(`.card${test} { color: var(--s-c); }`);
+			expect(elements(model)).toEqual([["root", ".card"]]);
+			expect(sources(model)).toEqual([[".card", "--s-c", undefined]]);
 			expect(undeclared(model)).toEqual(["undeclared"]);
-		},
-	);
+		});
+	}
 });
 
 describe("an attribute scope and class roots of its name", () => {

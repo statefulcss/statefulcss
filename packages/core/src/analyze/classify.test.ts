@@ -11,7 +11,7 @@ import { walk } from "./walk.js";
 /** Every block of a stylesheet, classified. */
 function classifyAll(root: Root | Document, settings: Settings = defaults, names?: Names): Classified[] {
 	const vocabulary = vocabularyFrom(settings, names ?? namesFrom(settings));
-	return walk(root).blocks.map((block) => classify(block, vocabulary));
+	return walk(root, vocabulary.names.partAttribute).blocks.map((block) => classify(block, vocabulary));
 }
 
 const kinds = (blocks: Classified[]) => blocks.map((block) => [block.kind, block.groups]);
@@ -107,6 +107,49 @@ describe("what a condition is", () => {
 		const focus = classifyAll(parse(".button:focus-visible { outline: 0; }"), settings);
 		expect(conditions(focus[0])).toEqual([[":focus-visible", "state", "semantic", "subject"]]);
 	});
+
+	for (const list of ["a, button", "button, a"]) {
+		inEverySyntax(`tags inside :is(${list}) are a variant wherever :is() stands`, ({ parse }) => {
+			const blocks = classifyAll(
+				parse(`
+					.card:is(${list}) { --s-c: 1; }
+					:is(${list}).card { --s-c: 1; }
+					:is(${list})[data-component="tabs"] { --s-c: 1; }
+					.card:is(button) { --s-c: 1; }
+					:where(button).card { --s-c: 1; }
+					.card :is(${list})[data-part="icon"] { --s-c: 1; }
+				`),
+			);
+			expect(kinds(blocks)).toEqual(blocks.map(() => ["variant", []]));
+			expect(blocks.map((block) => block.path.at(-1)?.text)).toEqual([
+				".card",
+				".card",
+				'[data-component="tabs"]',
+				".card",
+				".card",
+				'[data-part="icon"]',
+			]);
+		});
+	}
+
+	inEverySyntax(
+		"a bare tag on the compound is how the root is written, and :where(ul, ol) names a global",
+		({ parse }) => {
+			const blocks = classifyAll(
+				parse("button.card { --s-c: 1; } :where(ul, ol) { margin: 0; } .card :is(a, button) { --s-c: 1; }"),
+			);
+			expect(kinds(blocks)).toEqual([
+				["own", []],
+				["own", []],
+				["own", []],
+			]);
+			expect(blocks.map((block) => block.path.at(-1)?.text)).toEqual([
+				"button.card",
+				":where(ul, ol)",
+				":is(a, button)",
+			]);
+		},
+	);
 
 	inEverySyntax("each condition, with what it's written on", ({ parse }) => {
 		const [pressed] = classifyAll(

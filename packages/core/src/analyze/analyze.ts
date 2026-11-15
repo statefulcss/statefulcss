@@ -33,7 +33,7 @@ export function analyze(root: Root | Document, settings: Settings): Model {
 
 function read(root: Root | Document, settings: Settings): Model {
 	const vocabulary = vocabularyFrom(settings, namesFrom(settings));
-	const walked = walk(root);
+	const walked = walk(root, vocabulary.names.partAttribute);
 
 	// A block core fails on is left out, and recorded, so the rest of the file is still read.
 	const failed: Unknown[] = [];

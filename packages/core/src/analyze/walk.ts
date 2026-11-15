@@ -1,5 +1,6 @@
 // Pass 1. Walks the tree once and lists what the later passes read: every place declarations sit, with its selector
 // resolved and what's around it; the scopes as written; doc comments; and what core can't read.
+import { defaults } from "@statefulcss/config";
 import type { AtRule, ChildNode, Comment, Container, Declaration, Document, Node, Root, Rule } from "postcss";
 import type parser from "postcss-selector-parser";
 
@@ -9,6 +10,7 @@ import {
 	closingParenthesis,
 	type Complex,
 	type Compound,
+	expandPartLists,
 	nestingInsideFunction,
 	parseSelectorList,
 	resolve,
@@ -137,6 +139,8 @@ interface Context {
 	/** Directly inside `@scope`: `:scope` and `&` stand for the scope's root. */
 	readonly scopeTop: boolean;
 	readonly sheet: number;
+	/** The settings' part attribute, lowercased: `data-part`. */
+	readonly partAttribute: string;
 }
 
 /** What one walk gathers. Local to `walk`: nothing outside it sees these arrays change. */
@@ -152,9 +156,10 @@ interface Found {
 
 /**
  * Walks one file. In a Vue file, plain `<style>` blocks are one sheet, scoped blocks another, and each `<style module>`
- * its own. Never throws on syntax it doesn't understand, and never changes the tree.
+ * its own. Never throws on syntax it doesn't understand, and never changes the tree. The part attribute, lowercased,
+ * is the settings' (`data-part`).
  */
-export function walk(root: Root | Document): Walked {
+export function walk(root: Root | Document, partAttribute = defaults.partAttribute): Walked {
 	const path = root.source?.input.file;
 	const roots = root.type === "document" ? root.nodes.filter((node) => node.type === "root") : [root];
 	const sheets: SheetKind[] = [];
@@ -186,6 +191,7 @@ export function walk(root: Root | Document): Walked {
 				scope: undefined,
 				scopeTop: false,
 				sheet,
+				partAttribute,
 			},
 			found,
 		);
@@ -235,6 +241,7 @@ function visitRule(rule: Rule, context: Context, found: Found): void {
 		return;
 	}
 	const resolved: Parent[] = [];
+	// A selector core can't read is unknown on its own: the others in the list are still read.
 	for (const selector of parsed.selectors) {
 		// What the outermost rule writes is where its component is named; a nested rule only adds to it. A rule at the
 		// top of a scope is outermost too: in `@scope (main)`, `.card` names its component.
@@ -243,18 +250,23 @@ function visitRule(rule: Rule, context: Context, found: Found): void {
 		const inside = nestingInsideFunction(own);
 		if (inside) {
 			unknown(found, context, rule, "unparsable-selector", `& inside ${inside}()`);
-			return;
+			continue;
+		}
+		if (
+			!context.parents &&
+			own.some((compound) => compound.parts.some((part) => part.node.type === "nesting"))
+		) {
+			unknown(found, context, rule, "unparsable-selector", "& outside a rule");
+			continue;
 		}
 		const written = context.scopeTop ? scopeRootForm(selector) : undefined;
-		for (const parent of context.parents ?? [undefined]) {
-			const complex = resolve(own, parent?.selector);
-			if (!complex) {
-				unknown(found, context, rule, "unparsable-selector", "& outside a rule");
-				return;
+		for (const alternative of expandPartLists(own, context.partAttribute))
+			for (const parent of context.parents ?? [undefined]) {
+				const complex = resolve(alternative, parent?.selector);
+				if (complex) resolved.push({ selector: complex, scopeRoot: written ?? parent?.scopeRoot });
 			}
-			resolved.push({ selector: complex, scopeRoot: written ?? parent?.scopeRoot });
-		}
 	}
+	if (resolved.length === 0) return;
 	found.rules.push({
 		node: rule,
 		selectors: resolved.map((parent) => parent.selector),

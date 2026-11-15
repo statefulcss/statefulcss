@@ -1,6 +1,6 @@
 // Pass 3. Gives every block its element: finds the components, links their scopes and doc comments, and makes the
 // elements each component selects. Also gathers the guards and every place a selector names a part.
-import type { AtRule, ChildNode, Rule } from "postcss";
+import type { AtRule, ChildNode, Node, Rule } from "postcss";
 
 import type {
 	Component,
@@ -287,15 +287,46 @@ export function components(
 		}));
 	};
 
+	const references: (Omit<PartReference, "blocks"> & { readonly blocks: Id[] })[] = [];
+	const referenced = new Map<Rule | AtRule, Map<string, number>>();
+	/**
+	 * The part reference a mention is, made the first time it's met. Written once, a part is named by every block the
+	 * rule resolves to; under a list naming two components, each has its own reference, with its own blocks.
+	 */
+	const referenceOf = (
+		mention: PartMention,
+		read: Classified,
+		owner: Owner,
+		component: Id | undefined,
+	): number => {
+		const place = placeOf(mention, read, owner, read.scoped);
+		const inHas = mention.where === "has";
+		const written = referenced.get(mention.at.node) ?? new Map<string, number>();
+		referenced.set(mention.at.node, written);
+		const key = `${mention.at.index} ${place} ${inHas} ${component ?? "none"}`;
+		const existing = written.get(key);
+		if (existing !== undefined) return existing;
+		written.set(key, references.length);
+		return (
+			references.push({
+				name: mention.name,
+				component,
+				blocks: [],
+				place,
+				inHas,
+				at: mention.at,
+				nameAt: mention.nameAt,
+			}) - 1
+		);
+	};
+
 	// Every element a rule names is one the file has, whether or not the rule declares anything
 	for (const { rule, selectors } of rules)
 		for (const { read, owner } of selectors) elementOf(read, owner, rule.sheet, true);
 
-	// Blocks, guards and part references
+	// Blocks and guards
 	const guards: { element: Id | undefined; condition: Condition; blocking: string[]; blocks: Id[] }[] = [];
 	const guardIds = new Map<Rule | AtRule, Map<string, Id>>();
-	const references: (Omit<PartReference, "blocks"> & { readonly blocks: Id[] })[] = [];
-	const referenced = new Map<Rule | AtRule, Map<string, number>>();
 
 	/**
 	 * The element a guard is written on: the block's own, its host for a pseudo-element, the component root, or the
@@ -348,28 +379,8 @@ export function components(
 			return { ...condition, guard };
 		});
 
-		for (const mention of read.partMentions) {
-			const place = placeOf(mention, read, owner, read.scoped);
-			const inHas = mention.where === "has";
-			const written = referenced.get(mention.at.node) ?? new Map<string, number>();
-			referenced.set(mention.at.node, written);
-			const key = `${mention.at.index} ${place} ${inHas}`;
-			const existing = written.get(key);
-			// Written once, a part is named by every block the rule resolves to.
-			if (existing !== undefined) references[existing]?.blocks.push(id);
-			else {
-				written.set(key, references.length);
-				references.push({
-					name: mention.name,
-					component,
-					blocks: [id],
-					place,
-					inHas,
-					at: mention.at,
-					nameAt: mention.nameAt,
-				});
-			}
-		}
+		for (const mention of read.partMentions)
+			references[referenceOf(mention, read, owner, component)]?.blocks.push(id);
 
 		return {
 			element,
@@ -387,6 +398,23 @@ export function components(
 			)?.guard,
 		};
 	});
+
+	// A rule with no declarations of its own still names its parts when its body is empty or holds something core
+	// can't read, such as an `@include` that may declare anything. One that only holds nested rules names them
+	// through theirs.
+	const unread = new Set(
+		walked.unknowns.flatMap((unknown) =>
+			unknown.node.type === "rule" ? [] : (ruleAround(unknown.node) ?? []),
+		),
+	);
+	for (const { rule, selectors } of rules) {
+		const empty = (rule.node.nodes ?? []).every((child) => child.type === "comment");
+		if (!empty && !unread.has(rule.node)) continue;
+		for (const { read, owner } of selectors) {
+			const component = owner.kind === "component" ? componentOf(rule.sheet, owner.identity) : undefined;
+			for (const mention of read.partMentions) referenceOf(mention, read, owner, component);
+		}
+	}
 
 	// A component nothing styled yet still has its root
 	const roots = componentKeys.map((_, id) => rootOf(id, true));
@@ -461,6 +489,13 @@ export function components(
 			return [...new Set(found)];
 		}),
 	};
+}
+
+/** The style rule a node is written in, at any depth. */
+function ruleAround(node: Node): Rule | undefined {
+	for (let current = node.parent; current; current = current.parent)
+		if (current.type === "rule") return current as Rule;
+	return undefined;
 }
 
 function draftKey(sheet: number, identity: Identity): string {

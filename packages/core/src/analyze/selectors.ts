@@ -108,6 +108,62 @@ function partsOf(node: parser.Node, source: Rule | AtRule, scopeIsNesting: boole
 
 const isNesting = (part: Part): boolean => part.node.type === "nesting";
 
+/**
+ * A selector whose `:is()` or `:where()` lists parts, `:is([data-part="x"], [data-part="y"])`, as one selector for
+ * each part, the way a selector list is: each part is written on. Two such lists make every pair. Any other list
+ * stays one condition, so `:is(a, button)` is still a choice of element type.
+ */
+export function expandPartLists(compounds: Compound[], partAttribute: string): Compound[][] {
+	if (!compounds.some((compound) => compound.parts.some((part) => listedParts(part, partAttribute))))
+		return [compounds];
+	let selectors: Compound[][] = [[]];
+	for (const compound of compounds) {
+		let alternatives: Part[][] = [[]];
+		for (const part of compound.parts) {
+			const listed = listedParts(part, partAttribute);
+			alternatives = listed
+				? alternatives.flatMap((before) => listed.map((one) => [...before, ...one]))
+				: alternatives.map((before) => [...before, part]);
+		}
+		selectors = selectors.flatMap((before) =>
+			alternatives.map((parts) => [...before, { ...compound, parts }]),
+		);
+	}
+	return selectors;
+}
+
+/**
+ * The parts each selector of an `:is()` or `:where()` list makes, when every one of them is a compound that names a
+ * part. Each keeps its own `:is()` or `:where()`, written around it alone.
+ */
+function listedParts(part: Part, partAttribute: string): Part[][] | undefined {
+	const { node } = part;
+	if (node.type !== "pseudo" || !transparent.has(node.value.toLowerCase()) || node.nodes.length < 2)
+		return undefined;
+	const lists = node.nodes.map((selector) => selector.nodes.filter((child) => child.type !== "comment"));
+	const namesParts = lists.every(
+		(nodes) =>
+			nodes.every(
+				(child) => child.type !== "combinator" && child.type !== "nesting" && !isPseudoElement(child),
+			) &&
+			nodes.some(
+				(child) =>
+					child.type === "attribute" &&
+					child.attribute.toLowerCase() === partAttribute &&
+					child.operator === "=" &&
+					Boolean(child.value),
+			),
+	);
+	if (!namesParts) return undefined;
+	const inWhere = part.inWhere === true || node.value.toLowerCase() === ":where";
+	return node.nodes.map((selector, index) => {
+		// Only written, never read: the selector's text shows the one alternative inside its function.
+		const wrapper = parser.pseudo({ value: node.value });
+		wrapper.append(selector.clone());
+		return (lists[index] ?? []).map((child) => ({ node: child, source: part.source, inWhere, wrapper }));
+	});
+}
+
 /** Whether `&` is written inside a selector function that isn't transparent: `:not(&)`, `:has(&)`, `:is(&, .x)`. */
 export function nestingInsideFunction(compounds: readonly Compound[]): string | undefined {
 	for (const compound of compounds)

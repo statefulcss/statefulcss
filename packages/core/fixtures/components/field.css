@@ -1,0 +1,40 @@
+/* From the methodology's "States that live on a part": a Field whose invalid and disabled states sit on its input. */
+
+.field {
+	--p-label-color: var(--t-color-foreground-base);
+	--s-opacity: 1;
+	--q-field-blocked: false;
+	opacity: var(--s-opacity);
+
+	/* Interaction: guarded, the blocking state on the input included */
+	&:where(
+		:not(
+			:disabled,
+			[aria-disabled="true"],
+			[data-loading],
+			[inert],
+			:has(:where([data-part="input"]):disabled)
+		)
+	) {
+		&:hover {
+			--p-label-color: var(--t-color-foreground-strong);
+		}
+	}
+
+	/* Semantic, through the input */
+	&:has(:where([data-part="input"])[aria-invalid="true"]) {
+		--p-label-color: var(--t-color-foreground-danger);
+	}
+
+	/* Blocking, through the input: its own look, and the flag for its parts */
+	&:has(:where([data-part="input"]):disabled) {
+		--s-opacity: 0.6;
+		--q-field-blocked: true;
+	}
+}
+
+@scope (.field) to ([data-component]) {
+	[data-part="label"] {
+		color: var(--p-label-color);
+	}
+}

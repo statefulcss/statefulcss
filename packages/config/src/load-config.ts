@@ -1,4 +1,5 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readFile, realpath, stat } from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -6,6 +7,7 @@ import jsonc from "jsonc-parser";
 
 import { ConfigError } from "./config-error.js";
 import {
+	folderError,
 	invalidJsonError,
 	invalidPackageJsonError,
 	multipleFilesError,
@@ -38,8 +40,22 @@ type Outcome = { settings: Settings } | { error: ConfigError } | undefined;
 // Both caches are checked by modification time, so a long-running process (an editor's Stylelint server) sees a
 // config that was edited, added or removed without a restart. A folder's time changes when a file in it is added,
 // removed or renamed; a file's time changes when it's edited.
+//
+// A folder's configs are found by asking for each name, never by listing the folder: a folder on the way up may
+// let a path through without letting its contents be listed, such as /home on a shared machine.
 const folders = new Map<string, Folder>();
 const files = new Map<string, { mtimeMs: number; outcome: Promise<Outcome> }>();
+
+/** A folder that doesn't exist: it has no config, and the search goes on above it. */
+const missingFolder: Folder = {
+	mtimeMs: Number.NaN,
+	configFiles: [],
+	hasPackageJson: false,
+	isRepositoryRoot: false,
+};
+
+/** Node's CommonJS modules, which it keeps by file path. */
+const commonJsModules = createRequire(import.meta.url).cache;
 
 /**
  * The settings for a file: from the nearest `statefulcss.config` (or `"statefulcss"` key in `package.json`), checked,
@@ -83,28 +99,30 @@ export async function loadConfig(fromPath: string): Promise<Settings> {
 }
 
 async function readFolder(directory: string): Promise<Folder> {
-	const mtimeMs = await modifiedAt(directory);
+	const mtimeMs = await modifiedAt(directory, folderError);
 	const cached = folders.get(directory);
 	if (cached && cached.mtimeMs === mtimeMs) return cached;
 
-	let names: string[] = [];
-	try {
-		names = await readdir(directory);
-	} catch {
-		// A folder that doesn't exist or can't be listed has no config; the search goes on above it.
+	// Only a folder that could be read is kept. A name that can't be asked for stops the search: it may be a config.
+	folders.delete(directory);
+	if (Number.isNaN(mtimeMs)) return missingFolder;
+	const has = async (name: string) => !Number.isNaN(await modifiedAt(path.join(directory, name), readError));
+	const configFiles: string[] = [];
+	for (const name of configFileNames) {
+		if (await has(name)) configFiles.push(name);
 	}
 	const folder: Folder = {
 		mtimeMs,
-		configFiles: configFileNames.filter((name) => names.includes(name)),
-		hasPackageJson: names.includes("package.json"),
-		isRepositoryRoot: names.includes(".git"),
+		configFiles,
+		hasPackageJson: await has("package.json"),
+		isRepositoryRoot: await has(".git"),
 	};
 	folders.set(directory, folder);
 	return folder;
 }
 
 async function loadFile(file: string): Promise<Outcome> {
-	const mtimeMs = await modifiedAt(file);
+	const mtimeMs = await modifiedAt(file, readError);
 	if (Number.isNaN(mtimeMs)) return undefined;
 	const cached = files.get(file);
 	if (cached && cached.mtimeMs === mtimeMs) return cached.outcome;
@@ -134,7 +152,9 @@ async function readConfig(
 
 	// Node keeps every module it has loaded, so an edited file gets its time in the URL to load it again. The first
 	// load has none, which keeps the path in the config's own errors clean (and Vite, in tests, reads it as .ts).
+	// A CommonJS module is kept by its path whatever the URL, so an edited file is also dropped from there.
 	const url = pathToFileURL(file).href;
+	if (reloadAt !== undefined) await forgetCommonJs(file);
 	let module: Record<string, unknown>;
 	try {
 		module = (await import(reloadAt === undefined ? url : `${url}?mtime=${reloadAt}`)) as Record<
@@ -183,10 +203,34 @@ function check(file: string, config: unknown): Outcome {
 		: { error: schemaError(file, config, result.error.issues) };
 }
 
-async function modifiedAt(file: string): Promise<number> {
+/** Drops a file from Node's CommonJS modules, under the path it was loaded by: the one with symlinks resolved. */
+async function forgetCommonJs(file: string): Promise<void> {
+	delete commonJsModules[file];
+	try {
+		delete commonJsModules[await realpath(file)];
+	} catch {
+		// Removed since it was found: loading it reports that.
+	}
+}
+
+/**
+ * When a file or folder was last changed, or `NaN` when it doesn't exist. Any other failure, such as a folder
+ * that lets no path through, is an error: what's there can't be seen, so the search can't go past it.
+ */
+async function modifiedAt(
+	file: string,
+	unreadable: (file: string, error: unknown) => ConfigError,
+): Promise<number> {
 	try {
 		return (await stat(file)).mtimeMs;
-	} catch {
-		return Number.NaN;
+	} catch (error) {
+		if (isMissing(error)) return Number.NaN;
+		throw unreadable(file, error);
 	}
+}
+
+/** Whether a filesystem error says the path doesn't exist. */
+function isMissing(error: unknown): boolean {
+	const code = (error as NodeJS.ErrnoException | null)?.code;
+	return code === "ENOENT" || code === "ENOTDIR";
 }

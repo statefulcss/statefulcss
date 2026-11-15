@@ -35,6 +35,7 @@ exports[`jsonSchema > matches the snapshot 1`] = `
       ],
       "items": {
         "minLength": 1,
+        "pattern": "^[:\\[]",
         "type": "string",
       },
       "type": "array",
@@ -80,6 +81,7 @@ exports[`jsonSchema > matches the snapshot 1`] = `
       ],
       "items": {
         "minLength": 1,
+        "pattern": "^[:\\[]",
         "type": "string",
       },
       "type": "array",
@@ -135,6 +137,7 @@ exports[`jsonSchema > matches the snapshot 1`] = `
       ],
       "items": {
         "minLength": 1,
+        "pattern": "^[a-z][a-z0-9-]*$",
         "type": "string",
       },
       "type": "array",

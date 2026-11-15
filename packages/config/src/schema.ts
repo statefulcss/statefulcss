@@ -1,17 +1,44 @@
 import * as z from "zod";
 
+import {
+	attributeNamePattern,
+	attributeNameProblem,
+	attributeOf,
+	selectorProblem,
+	stateSelectorPattern,
+	type EntryProblem,
+} from "./state-entries.js";
+
 const attributeSettings = ["themeAttribute", "componentAttribute", "partAttribute", "slotAttribute"] as const;
 
 function attributeName(defaultName: string, description: string) {
 	return z
 		.string()
-		.regex(/^[a-z][a-z0-9-]*$/)
+		.regex(attributeNamePattern)
 		.default(defaultName)
 		.meta({
 			description,
 			expected: "an attribute name",
 			examples: [defaultName],
 		});
+}
+
+/** The light and dark switch. No setting can use it, or one selector would be the switch and something else. */
+const colorSchemeAttribute = "data-color-scheme";
+
+/**
+ * One entry of a state list, in the list's form. What's wrong with any other entry goes with its issue. `pattern`
+ * is the form's outline, for the JSON Schema: an editor checks that much, and the loader checks the rest.
+ */
+function stateEntry(problemOf: (entry: string) => EntryProblem | undefined, pattern: RegExp) {
+	return z
+		.string()
+		.min(1)
+		.superRefine((entry, context) => {
+			const problem = entry === "" ? undefined : problemOf(entry);
+			if (problem) context.addIssue({ code: "custom", message: problem.is, params: { problem } });
+		})
+		.meta({ pattern: pattern.source });
 }
 
 /**
@@ -60,25 +87,25 @@ export const configSchema = z
 				examples: ["default"],
 			}),
 		blockingStates: z
-			.array(z.string().min(1))
+			.array(stateEntry(selectorProblem, stateSelectorPattern))
 			.default(() => [":disabled", '[aria-disabled="true"]', "[data-loading]", "[inert]"])
 			.meta({
 				description:
 					"Selectors for states that block interaction. They come last and set only their own look; a guard keeps interaction states off blocked elements.",
-				expected: "a list of selectors",
+				expected: "a list of pseudo-classes and attribute selectors",
 				examples: [[":disabled", '[aria-disabled="true"]']],
 			}),
 		interactionStates: z
-			.array(z.string().min(1))
+			.array(stateEntry(selectorProblem, stateSelectorPattern))
 			.default(() => [":hover", ":focus", ":focus-visible", ":focus-within", ":active"])
 			.meta({
 				description:
 					"Selectors for states the user causes by pointing or focusing. They come before the other states.",
-				expected: "a list of selectors",
+				expected: "a list of pseudo-classes and attribute selectors",
 				examples: [[":hover", ":focus-visible", ":active"]],
 			}),
 		stateAttributes: z
-			.array(z.string().min(1))
+			.array(stateEntry(attributeNameProblem, attributeNamePattern))
 			.default(() => [])
 			.meta({
 				description: "Attributes that have a value but are states, such as Radix's data-state.",
@@ -116,7 +143,13 @@ export const configSchema = z
 		for (const key of attributeSettings) {
 			const name = settings[key];
 			const previous = seen.get(name);
-			if (previous) {
+			if (name === colorSchemeAttribute) {
+				context.addIssue({
+					code: "custom",
+					path: [key],
+					message: `can't be "${name}". That attribute is the methodology's light and dark switch. Give this setting another attribute name.`,
+				});
+			} else if (previous) {
 				context.addIssue({
 					code: "custom",
 					path: [key],
@@ -124,6 +157,24 @@ export const configSchema = z
 				});
 			} else {
 				seen.set(name, key);
+			}
+		}
+
+		// An attribute that says what an element is can't also say what state it's in, and the light and dark switch
+		// is no state either.
+		for (const list of ["blockingStates", "interactionStates", "stateAttributes"] as const) {
+			for (const [index, entry] of settings[list].entries()) {
+				const name = list === "stateAttributes" ? entry : attributeOf(entry);
+				if (!name) continue;
+				const setting = attributeSettings.find((key) => settings[key] === name);
+				const problem: EntryProblem | undefined =
+					name === colorSchemeAttribute
+						? { is: "color-scheme-attribute", name }
+						: setting
+							? { is: "identity-attribute", name, setting }
+							: undefined;
+				if (problem)
+					context.addIssue({ code: "custom", path: [list, index], message: problem.is, params: { problem } });
 			}
 		}
 	})

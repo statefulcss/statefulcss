@@ -1,0 +1,37 @@
+import type { Settings } from "@statefulcss/config";
+
+/** The attribute and layer names core reads a stylesheet with. */
+export interface Names {
+	/** On every component root: `data-component`. */
+	readonly componentAttribute: string;
+	/** On a part: `data-part`. */
+	readonly partAttribute: string;
+	/** On a component placed in another: `data-slot`. */
+	readonly slotAttribute: string;
+	/** On a theme scope: `data-theme`. */
+	readonly themeAttribute: string;
+	/** The light and dark switch: `data-color-scheme`. */
+	readonly colorSchemeAttribute: string;
+	/** The layer whose class blocks are utilities, not components. */
+	readonly utilitiesLayer: string;
+}
+
+/** The names the settings don't hold. They live here and nowhere else. */
+const defaultNames = {
+	colorSchemeAttribute: "data-color-scheme",
+	utilitiesLayer: "utilities",
+} as const;
+
+/**
+ * The names for one project. Every pass takes its names from here, never from the settings, so if the settings'
+ * shape changes, only this function does. Attribute names compare in lower case, as HTML's do.
+ */
+export function namesFrom(settings: Settings): Names {
+	return {
+		...defaultNames,
+		componentAttribute: settings.componentAttribute.toLowerCase(),
+		partAttribute: settings.partAttribute.toLowerCase(),
+		slotAttribute: settings.slotAttribute.toLowerCase(),
+		themeAttribute: settings.themeAttribute.toLowerCase(),
+	};
+}

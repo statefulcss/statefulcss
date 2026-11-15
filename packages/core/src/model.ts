@@ -1,52 +1,497 @@
-// The model of one stylesheet, as Stateful CSS sees it. Stubs: the shapes fill in as the analysis is built.
-import type { AtRule, Declaration as CSSDeclaration, Root, Rule } from "postcss";
+// The model of one stylesheet, as Stateful CSS sees it. It describes; the rules judge.
+//
+// Facts point at each other by id, never by object. An id is the index into one of the model's arrays:
+// `model.blocks[declaration.block]`. There are no cycles, so the model is JSON once its PostCSS nodes are dropped:
+// every one sits in a field called `node`, plus the model's own `root`.
+import type { Settings } from "@statefulcss/config";
+import type { AtRule, Comment, Declaration as PostCSSDeclaration, Document, Node, Root, Rule } from "postcss";
 
-/** One stylesheet: its components and every variable it declares or reads. */
+/** An index into one of the model's arrays. */
+export type Id = number;
+
+/** One stylesheet. */
 export interface Model {
-	root: Root;
-	components: Component[];
-	variables: Variable[];
+	readonly root: Root | Document;
+	readonly settings: Settings;
+	readonly file: FileInfo;
+	/** A Vue file's plain `<style>` blocks are one sheet, its scoped blocks another, and each module block its own. */
+	readonly sheets: readonly Sheet[];
+	readonly components: readonly Component[];
+	readonly scopes: readonly Scope[];
+	readonly elements: readonly Element[];
+	/** In document order. */
+	readonly blocks: readonly Block[];
+	readonly guards: readonly Guard[];
+	readonly declarations: readonly Declaration[];
+	readonly variables: readonly Variable[];
+	readonly reads: readonly Read[];
+	readonly partReferences: readonly PartReference[];
+	/** `@property` rules. */
+	readonly registrations: readonly Registration[];
+	readonly docComments: readonly DocComment[];
+	/** At-rules that aren't about elements: `@import`, `@keyframes`, `@font-face`, `@layer` statements. */
+	readonly atRules: readonly OtherAtRule[];
+	/** Syntax core doesn't understand. Recorded, never thrown on, and never guessed at. */
+	readonly unknowns: readonly Unknown[];
 }
 
-/** A top-level component block, with its `@component` name and its elements. */
+export interface FileInfo {
+	/** The file the root was parsed from, if any. */
+	readonly path: string | undefined;
+	/** Whether any of its sheets is a CSS Module (`*.module.css`, or a Vue `<style module>`). */
+	readonly cssModule: boolean;
+}
+
+export interface Sheet {
+	readonly kind: "plain" | "scoped" | "module";
+}
+
+/** Where something was written: a rule or at-rule, and the offsets inside its selector or parameters. */
+export interface Position {
+	readonly node: Rule | AtRule;
+	readonly index: number;
+	readonly endIndex: number;
+}
+
+// Components and scopes
+
+/** How a file names a component: by its class, or by `[data-component="name"]`. */
+export type Identity =
+	| { readonly kind: "class"; readonly className: string; readonly at: Position }
+	| { readonly kind: "attribute"; readonly value: string; readonly at: Position };
+
 export interface Component {
-	name: string;
-	node: Rule;
-	elements: Element[];
+	readonly id: Id;
+	readonly sheet: number;
+	readonly identity: Identity;
+	/** What its component variables start with: the `@component` tag, else the attribute's value, else the class in kebab-case. */
+	readonly name: string;
+	readonly nameFrom: "tag" | "attribute" | "class";
+	readonly docComment: Id | undefined;
+	/** Its root element. It exists even when the file has no root block. */
+	readonly root: Id;
+	/** False when the file only styles the parts of a component whose root block is in another file. */
+	readonly hasRootBlock: boolean;
+	readonly scopes: readonly Id[];
+	/** The root first, then its parts, slots, pseudo-elements and content. */
+	readonly elements: readonly Id[];
 }
 
-/** The component's root, a child element or a pseudo-element. */
-export interface Element {
-	selector: string;
-	blocks: Block[];
+/** An `@scope`. */
+export interface Scope {
+	readonly id: Id;
+	readonly node: AtRule;
+	/** Undefined when the root isn't a class or a component attribute. */
+	readonly component: Id | undefined;
+	/** As written: `.card`, `[data-component="tabs"]`, `&`. */
+	readonly root: string | undefined;
+	/**
+	 * How its root names the component. An attribute is how a file styles the parts of a component whose root block
+	 * is in another file.
+	 */
+	readonly rootKind: "class" | "attribute" | undefined;
+	/** As written: `[data-component]`. */
+	readonly limit: string | undefined;
+	/** The limit is exactly the component attribute. */
+	readonly limitIsComponents: boolean;
+	/** Written inside a rule. */
+	readonly nested: boolean;
+	/** Undefined when the file has no root block for its component. */
+	readonly afterRootBlock: boolean | undefined;
 }
 
-/** Where a declaration sits: the element's own block, a variant, a state, or `@supports`. */
-export type BlockKind = "element" | "variant" | "state" | "supports";
+// Elements
 
-/** The group a state belongs to. */
-export type StateGroup = "context" | "interaction" | "semantic" | "blocking";
-
-export interface Block {
-	kind: BlockKind;
-	/** Set for states only. */
-	stateGroup?: StateGroup;
-	node: Rule | AtRule;
-	declarations: Declaration[];
+interface ElementBase {
+	readonly id: Id;
+	readonly sheet: number;
+	/** For people: `.card`, `.card [data-part="title"]::after`. */
+	readonly key: string;
+	readonly blocks: readonly Id[];
+	/** The variables its blocks write. */
+	readonly variables: readonly Id[];
 }
+
+/**
+ * Anything with its own declarations. An element belongs to at most one component: the one whose root block or scope
+ * selects it.
+ */
+export type Element = ElementBase &
+	(
+		| { readonly kind: "root"; readonly component: Id }
+		| { readonly kind: "part"; readonly component: Id; readonly name: string }
+		| { readonly kind: "slot"; readonly component: Id; readonly name: string }
+		/** `after` for `::after` and `:after`. Its host is a root, a part, content or a global element. */
+		| {
+				readonly kind: "pseudo-element";
+				readonly component: Id | undefined;
+				readonly name: string;
+				readonly host: Id;
+		  }
+		/** Plain elements and other classes a component selects. `under` is the nearest part its selector names. */
+		| {
+				readonly kind: "content";
+				readonly component: Id;
+				readonly selector: string;
+				readonly under: Id | undefined;
+		  }
+		/** No class and no component attribute, outside any scope: `a`, `:root`, `[data-theme="espresso"]`. */
+		| {
+				readonly kind: "global";
+				readonly selector: string;
+				readonly themeScope: ThemeScope | undefined;
+				readonly colorScheme: boolean;
+		  }
+		/** A class block in the utilities layer. The component rules skip it. */
+		| { readonly kind: "utility"; readonly selector: string }
+		/** What `:deep()`, `:slotted()`, `::v-deep` or `:global()` selects. The rules skip it. */
+		| { readonly kind: "foreign"; readonly selector: string }
+	);
+
+export type ElementKind = Element["kind"];
+
+export interface ThemeScope {
+	/** The theme's name; undefined for the unnamed `[data-theme]` scope. */
+	readonly theme: string | undefined;
+}
+
+// Blocks, conditions and guards
+
+interface BlockBase {
+	readonly id: Id;
+	/** The rule, or the at-rule when declarations sit directly in a nested `@media`, `@container` or `@supports`. */
+	readonly node: Rule | AtRule;
+	/** The resolved selector: `.card > [data-part="footer"] > [data-slot="action"]`. */
+	readonly selector: string;
+	readonly element: Id;
+	/**
+	 * How the selector reaches its element: it is the root compound itself; inside an `@scope`; or from the root
+	 * compound, with a combinator, outside any scope. A component's element is reached through its own scope only:
+	 * in `@scope (main)`, `.card` is reached directly, as in the flat `main .card`, and `scope` still names the scope.
+	 */
+	readonly reach: "direct" | "scope" | "descendant";
+	readonly scope: Id | undefined;
+	/** How a block inside a scope writes the scope's root, when it does. */
+	readonly scopeRoot: ScopeRootForm | undefined;
+	/** From the component root to the subject. Sibling context is a position variant, not a step. */
+	readonly path: readonly Step[];
+	/** From the selector. */
+	readonly conditions: readonly Condition[];
+	/** The at-rules around it, outermost first. */
+	readonly queries: readonly Query[];
+	/**
+	 * The guard on its own element, or on its host for a pseudo-element. A guard on another compound of the selector
+	 * is among `conditions`, but it doesn't keep this element's states off when the element itself is blocked.
+	 */
+	readonly guard: Id | undefined;
+	/** The `@layer` around it, dotted when nested (`components.forms`); undefined when unlayered. */
+	readonly layer: string | undefined;
+	readonly declarations: readonly Id[];
+}
+
+/**
+ * Where declarations sit: one resolved selector of one rule, inside its at-rules. A rule whose declarations are
+ * written around a nested rule that declares something makes one block for each run, so blocks, declarations and
+ * a variable's writes are all in the order the file writes them.
+ */
+export type Block = BlockBase &
+	(
+		| { readonly kind: "own" } // no condition and no query; `& { }` included
+		| { readonly kind: "variant" } // only variants
+		| { readonly kind: "state"; readonly groups: readonly StateGroup[] } // any state makes it a state
+		| { readonly kind: "supports" } // only `@supports`
+		| { readonly kind: "unknown" } // an extra class, or a condition core can't classify
+	);
+
+export type BlockKind = Block["kind"];
+
+export type ScopeRootForm = ":scope" | "&";
+
+export type StateGroup = "context" | "interaction" | "semantic" | "blocking" | "visited";
+
+export interface Step {
+	/** Undefined for the first step. */
+	readonly combinator: " " | ">" | undefined;
+	readonly names: "root" | "part" | "slot" | "other";
+	/** The part's or slot's name. */
+	readonly name: string | undefined;
+	/** What names the element at this step: `.card`, `[data-part="title"]`, `p`, `*`. */
+	readonly text: string;
+	/** What names it is written inside `:where()`, so it adds no specificity: `:where([data-part="icon"])`. */
+	readonly inWhere: boolean;
+	readonly at: Position;
+}
+
+export interface Condition {
+	/** Normalized: `[data-size="small"]`, `:hover`, `:not(:disabled, [inert])`. */
+	readonly text: string;
+	readonly kind: "variant" | "state" | "guard" | "unknown";
+	/** For a state. For `:is()`, `:not()` and `:has()`, the group of the first state inside. */
+	readonly group: StateGroup | undefined;
+	/** `:focus`, `:focus-visible`, `:focus-within`. */
+	readonly focus: boolean;
+	/**
+	 * The compound it's written on: the subject; a pseudo-element's host; the component root, when the subject is
+	 * something else; a step between them; or what comes before the root (`[dir="rtl"] &`).
+	 */
+	readonly on: "subject" | "host" | "root" | "path" | "context";
+	/** The index, in the block's `path`, of the compound it's written on; undefined for what comes before the root. */
+	readonly step: number | undefined;
+	readonly attribute: AttributeSelector | undefined;
+	/** Inside `:where()`, so it adds no specificity. */
+	readonly inWhere: boolean;
+	/**
+	 * What `:not()`, `:is()` and `:where()` hold: one condition for each selector they list, any one of which can
+	 * match. Around one selector, `:is()` and `:where()` are transparent: its conditions are the block's own. A list
+	 * with a selector that only names the element (`:where(:scope, :not(:disabled))`) asks nothing, so it's no
+	 * condition.
+	 */
+	readonly inner: readonly Condition[];
+	/**
+	 * It stands for a compound inside a selector function (`:disabled[data-loading]` in `:not()`): the conditions in
+	 * `inner` hold together, so excluding the compound excludes none of them on its own. `:root:disabled` is one too,
+	 * though `:root` makes no condition.
+	 */
+	readonly compound: boolean;
+	/** For a `:has()` that holds one selector. With a list, each selector is a condition in `inner` with its own `has`. */
+	readonly has: Has | undefined;
+	/** Set on the `:not()` that is a guard. */
+	readonly guard: Id | undefined;
+	readonly at: Position;
+}
+
+export interface AttributeSelector {
+	readonly name: string;
+	readonly operator: string | undefined;
+	readonly value: string | undefined;
+}
+
+/** `:has(> :where([data-part="control"]) > :where([data-part="input"]):disabled)` */
+export interface Has {
+	readonly path: readonly HasStep[];
+	/** What it asks of the elements on the path, every step's in order: `:disabled` on the input. */
+	readonly conditions: readonly Condition[];
+}
+
+export interface HasStep {
+	/** A space when none is written: `:has()` looks at descendants. */
+	readonly combinator: " " | ">" | "+" | "~";
+	/** The part this step names, if it names one. */
+	readonly part: string | undefined;
+	/** The part is named inside `:where()`, so it adds no specificity. */
+	readonly inWhere: boolean;
+	/**
+	 * What it asks of the element at this step, also among the `:has()`'s `conditions`: `:disabled` is on the control
+	 * in `:has(> :where([data-part="control"]):disabled > …)`, on the input when written after the input.
+	 */
+	readonly conditions: readonly Condition[];
+	readonly at: Position;
+}
+
+/** `@media`, `@container`, `@supports` or `@starting-style` around a block. */
+export interface Query {
+	readonly node: AtRule;
+	readonly name: "media" | "container" | "supports" | "starting-style";
+	readonly params: string;
+	/** `@container style(--q-tabs-blocked: false)`. Each one is also a read. */
+	readonly styleQueries: readonly StyleQuery[];
+}
+
+export interface StyleQuery {
+	readonly name: string;
+	readonly value: string | undefined;
+	/** A `not` turns it around: the block applies when it doesn't hold. */
+	readonly negated: boolean;
+	/**
+	 * It's one side of an `or`, or of an `and` under a `not`: the block can apply whether it holds or not, so it
+	 * proves nothing on its own.
+	 */
+	readonly optional: boolean;
+}
+
+/** One `:not()` that lists at least one blocking state. An element can have several. */
+export interface Guard {
+	readonly id: Id;
+	/**
+	 * The element it's written on: the block's own, a pseudo-element's host, the component root, or the part or slot
+	 * of a step before the subject. Undefined when that compound is no element of the model, as before the root.
+	 * Written once for a selector list, it is one guard for each element.
+	 */
+	readonly element: Id | undefined;
+	/** Its `inner` conditions are the list; a `:has()` state that joined it is one of them. */
+	readonly condition: Condition;
+	/**
+	 * The settings' blocking states it excludes, each on its own, for every way the block can match. A compound
+	 * (`:not(:disabled[data-loading])`, `:not(:root:disabled)`) excludes neither state alone; `:is()` inside
+	 * (`:not(:is(:focus, :disabled))`) excludes each of its states, in any order.
+	 */
+	readonly blocking: readonly string[];
+	/** The blocks inside it. */
+	readonly blocks: readonly Id[];
+}
+
+/** One place where a selector names a part. */
+export interface PartReference {
+	/** Undefined when the selector names no one part: `[data-part]`. */
+	readonly name: string | undefined;
+	/** Under a selector list naming two components (`.card, .button { & > [data-part="x"] { } }`), each has its own. */
+	readonly component: Id | undefined;
+	/**
+	 * Every block whose selector names it there: a rule nested in the one that writes it names it too. Empty when the
+	 * rule declares nothing itself, as with only an `@include` inside.
+	 */
+	readonly blocks: readonly Id[];
+	/**
+	 * Inside the component's scope; a step on the way to a slot, from the root block; inside `:has()` on the root
+	 * compound of a block that writes on the root, the guard's `:not()` included; or anywhere else, a root's own
+	 * compound included (`.tab[data-part="tab"]`): an element is a component or a part, never both.
+	 */
+	readonly place: "scope" | "placement-path" | "has" | "outside";
+	/** Named inside `:has()`, wherever that puts it. */
+	readonly inHas: boolean;
+	/** The whole attribute: `[data-part="title"]`. */
+	readonly at: Position;
+	/**
+	 * Only the name, as written inside the attribute: `title`, without its quotes, escapes as written. Undefined when
+	 * the selector names no one part.
+	 */
+	readonly nameAt: Position | undefined;
+}
+
+// Declarations, variables and reads
+
+/**
+ * Who may write a custom property. `library` is an unprefixed name the component's doc comment lists in `@sets` or
+ * `@reads`; `none` is any other unprefixed name.
+ */
+export type Role = "token" | "component" | "state" | "part" | "private" | "query" | "library" | "none";
 
 export interface Declaration {
-	node: CSSDeclaration;
-	/** The variables its value reads. */
-	reads: Variable[];
+	readonly id: Id;
+	readonly node: PostCSSDeclaration;
+	readonly block: Id;
+	/**
+	 * The written declaration it comes from: the id of the first declaration made from the same node, its own when
+	 * it's the first. A selector list makes one declaration for each of its blocks, and `.card:hover, .card:focus`
+	 * writes on the Card once: count the distinct values among an element's declarations.
+	 */
+	readonly written: Id;
+	/** Lowercased; a custom property keeps its case. */
+	readonly property: string;
+	/** For a custom property. */
+	readonly role: Role | undefined;
+	readonly value: string;
+	/** A custom property set to `inherit`. */
+	readonly inherits: boolean;
+	/** The value holds syntax core can't read (SCSS interpolation, `v-bind()`), so `reads` is empty. */
+	readonly valueUnread: boolean;
+	readonly reads: readonly Id[];
 }
 
-/** Who may write a variable, from its prefix. */
-export type VariableRole = "token" | "component" | "state" | "private" | "library";
-
+/** One custom property on one element: `--s-color` on a Tabs root and on its tab are two variables. */
 export interface Variable {
-	name: string;
-	role: VariableRole;
-	writers: Declaration[];
-	readers: Declaration[];
+	readonly id: Id;
+	readonly name: string;
+	readonly role: Role;
+	/** The element whose blocks write it. */
+	readonly element: Id;
+	/** Every declaration of it on that element, in order. */
+	readonly writes: readonly Id[];
+	/** Its first write in an `own` or `supports` block. */
+	readonly default: Id | undefined;
+	/** Its writes in variant and state blocks. */
+	readonly changes: readonly Id[];
+	/**
+	 * A variant or a state writes it, its value reads a variable that is changing, or it's taken with `inherit` from
+	 * an owner's variable of the same name that is.
+	 */
+	readonly changing: boolean;
+	/**
+	 * For `--p-*` and `--_*`: the elements whose name starts the variable's name; the longest name wins. A component
+	 * root names its parts, its slots and its own pseudo-elements (`--p-tab-*`, `--p-after-*`), and its parts'
+	 * pseudo-elements as `{part}-{pseudo}` (`--p-tab-after-opacity`, read by `[data-part="tab"]::after`): the root
+	 * declares a part's pseudo-element variable when its own states change it. A part names its own pseudo-elements
+	 * (`--p-after-*` in the tab's block).
+	 */
+	readonly namedFor: readonly Id[];
+	/** The reads that reach it. */
+	readonly reads: readonly Id[];
+}
+
+export interface Read {
+	readonly id: Id;
+	readonly name: string;
+	readonly role: Role;
+	readonly element: Id;
+	readonly block: Id;
+	readonly via: "var" | "style-query";
+	/** Undefined for a style query. */
+	readonly declaration: Id | undefined;
+	readonly hasFallback: boolean;
+	/** It sits inside another `var()`'s fallback. */
+	readonly inFallback: boolean;
+	/** The whole value; one word of it (a shorthand's slot); or inside a function such as `calc()`. */
+	readonly position: "whole" | "word" | "function";
+	/**
+	 * The variable it reaches inside its component: the element's own, else its host's or the part it's under, else
+	 * the component root's. Undefined for tokens, component variables and anything the component doesn't declare.
+	 */
+	readonly source: Id | undefined;
+}
+
+/** An `@property` rule. */
+export interface Registration {
+	readonly node: AtRule;
+	readonly name: string;
+	readonly role: Role;
+	readonly syntax: string | undefined;
+	readonly inherits: string | undefined;
+	readonly initialValue: string | undefined;
+}
+
+/** A doc comment above a component: its name, then its tags. */
+export interface DocComment {
+	readonly id: Id;
+	readonly node: Comment;
+	/** The component of the block right after it. */
+	readonly component: Id | undefined;
+	/** Its first line. */
+	readonly title: string | undefined;
+	/** Every tag, unknown ones included. */
+	readonly tags: readonly DocTag[];
+	/** `@component`. */
+	readonly componentName: string | undefined;
+	readonly sets: readonly string[];
+	readonly reads: readonly string[];
+	readonly queries: readonly string[];
+}
+
+export interface DocTag {
+	readonly name: string;
+	readonly value: string;
+}
+
+export interface OtherAtRule {
+	/** Lowercased, without the `@`. */
+	readonly name: string;
+	readonly node: AtRule;
+}
+
+export type UnknownReason =
+	| "interpolation"
+	| "template-placeholder"
+	| "unknown-at-rule"
+	| "unparsable-selector"
+	| "nested-property"
+	/** An `@scope` core doesn't read: no root, a list of roots, or a path as its root. */
+	| "scope-root"
+	| "internal";
+
+export interface Unknown {
+	readonly node: Node;
+	readonly reason: UnknownReason;
+	/** What wasn't understood: `#{$size}`, `@include`, the parser's message. */
+	readonly detail: string | undefined;
+	/** The elements whose rule it sits in: an `@include` inside `.button` may declare anything. */
+	readonly elements: readonly Id[];
 }

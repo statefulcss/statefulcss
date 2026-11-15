@@ -4,8 +4,8 @@ import { defaults } from "@statefulcss/config";
 import stylelint from "stylelint";
 
 import type { Finding, Message, RuleDefinition } from "../rules/rule.js";
-import { apply, canApply } from "./edits.js";
-import { load } from "./load.js";
+import { apply, canApply, overlap } from "./edits.js";
+import { liveOf, load } from "./load.js";
 import { type Span, spanOf } from "./positions.js";
 
 const { createPlugin, utils } = stylelint;
@@ -55,8 +55,8 @@ export function toPlugin(
 
 		const fault = (error: unknown): void => {
 			if (failLoudly) throw error;
-			if (faults.has(result.root)) return;
-			faults.add(result.root);
+			if (faults.has(result)) return;
+			faults.add(result);
 			utils.report({
 				ruleName,
 				result,
@@ -69,11 +69,12 @@ export function toPlugin(
 			});
 		};
 
+		const config = result.stylelint.config;
 		const loaded = await load(result);
 		if ("error" in loaded) {
 			// The rules don't run on settings they can't trust, and the run fails as for a bad Stylelint option.
-			if (configErrors.has(result.root)) return;
-			configErrors.add(result.root);
+			if (configErrors.has(result)) return;
+			configErrors.add(result);
 			result.warn(loaded.error.message, { stylelintType: "invalidOption" });
 			result.stylelint.stylelintError = true;
 			return;
@@ -81,7 +82,7 @@ export function toPlugin(
 		if ("fault" in loaded) return fault(loaded.fault);
 
 		const { model, settings } = loaded;
-		let reportable = checked.get(result.root);
+		let reportable = checked.get(result);
 		if (!reportable) {
 			try {
 				// A fault core recorded for the whole file: nothing in it was read.
@@ -93,15 +94,30 @@ export function toPlugin(
 				reportable = [];
 				fault(error);
 			}
-			checked.set(result.root, reportable);
+			checked.set(result, reportable);
 		}
 
 		for (const { finding, span } of reportable) {
-			if (span.node.root() !== root) continue;
+			if (liveOf(span.node.root()) !== root) continue;
+			// A finding the rule can't word is a fault of the rule's, like a check that throws.
 			const message = messageOf(finding.message);
-			if (!message) continue;
-			// A fix another fix has overtaken is left for the next run, and its problem is reported as usual.
-			const edits = finding.edits?.length && canApply(finding.edits) ? finding.edits : undefined;
+			try {
+				if (!message) throw new Error(`"${ruleName}" has no message "${finding.message}"`);
+				message(...finding.args);
+				if (finding.edits && overlap(finding.edits))
+					throw new Error(`a fix of "${ruleName}" has edits that overlap`);
+			} catch (error) {
+				fault(error);
+				if (!message) continue;
+			}
+			// A fix another fix has overtaken is left for the next run, and its problem is reported as usual. So is a
+			// single-problem fix in a `.vue` file: Stylelint 18 cuts it out of the wrong text there. `--fix` is right.
+			const forEditor = config?.computeEditInfo === true && config.fix !== true;
+			const withheld = forEditor && result.root.type === "document";
+			const edits =
+				finding.edits?.length && !withheld && !overlap(finding.edits) && canApply(finding.edits)
+					? finding.edits
+					: undefined;
 			utils.report({
 				ruleName,
 				result,
@@ -109,10 +125,12 @@ export function toPlugin(
 				...(span.index === undefined || span.endIndex === undefined
 					? {}
 					: { index: span.index, endIndex: span.endIndex }),
-				message,
+				message: safely(message),
 				messageArgs: [...finding.args],
 				...(finding.severity ? { severity: finding.severity } : {}),
-				...(edits ? { fix: { apply: () => apply(edits), node: edits[0]?.at.node ?? span.node } } : {}),
+				...(edits
+					? { fix: { apply: () => apply(edits), node: liveOf(edits[0]?.at.node ?? span.node) ?? root } }
+					: {}),
 			});
 		}
 	};
@@ -121,6 +139,17 @@ export function toPlugin(
 	rule.messages = messages;
 	rule.meta = metaOf(definition);
 	return createPlugin(ruleName, rule);
+}
+
+/** A message that says so, where its own function throws: the fault is reported once, and the finding still is. */
+function safely(message: Message): Message {
+	return (...args) => {
+		try {
+			return message(...args);
+		} catch {
+			return "A problem this rule couldn't describe";
+		}
+	};
 }
 
 interface Reportable {

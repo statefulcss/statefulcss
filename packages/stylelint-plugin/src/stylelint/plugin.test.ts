@@ -5,7 +5,7 @@ import path from "node:path";
 import stylelint from "stylelint";
 import { afterAll, describe, expect, it } from "vitest";
 
-import type { Finding, RuleDefinition } from "../rules/rule.js";
+import { defineRule, type Finding, type RuleDefinition } from "../rules/rule.js";
 import { lint, sourceFor, temporaryProject, testRule } from "../testing/test-rule.js";
 import { toPlugin } from "./plugin.js";
 
@@ -78,6 +78,15 @@ testRule(names, {
 			],
 		},
 		{
+			description: "a scope's root after an SCSS line comment",
+			code: `
+				@scope // the card
+				  (.card) to ([data-component]) { p { color: red; } }
+			`,
+			skip: { css: "a line comment is SCSS", vue: "a line comment is SCSS" },
+			warnings: [{ message: 'Scope of ".card"', line: 2, column: 4, endLine: 2, endColumn: 9 }],
+		},
+		{
 			description: "a scope's root after a comment in the parameters",
 			code: `
 				@scope /* the card */ (.card) to ([data-component]) { p { color: red; } }
@@ -110,6 +119,19 @@ const sides: RuleDefinition<Record<never, never>, "whole" | "property" | "value"
 
 testRule(sides, {
 	reject: [
+		{
+			description: "a value with an SCSS line comment inside it",
+			code: `
+				.card { color: rgb(1 // red
+				 2 3); }
+			`,
+			skip: { css: "a line comment is SCSS", vue: "a line comment is SCSS" },
+			warnings: [
+				{ message: "Whole", line: 1, column: 9, endLine: 2, endColumn: 7 },
+				{ message: "Property", line: 1, column: 9, endLine: 1, endColumn: 14 },
+				{ message: "Value", line: 1, column: 16, endLine: 2, endColumn: 6, severity: "warning" },
+			],
+		},
 		{
 			description: "a declaration, its property and its value",
 			code: `
@@ -167,6 +189,29 @@ const rename: RuleDefinition<Record<never, never>, "renamed" | "old"> = {
 testRule(rename, {
 	reject: [
 		{
+			description: "a fix after two comments side by side, one of which PostCSS leaves out",
+			code: `
+				.card /*one*//*two*/[data-part="icon"] { color: red; }
+			`,
+			warnings: [{ message: 'Expected "glyph"', line: 1, column: 33, endLine: 1, endColumn: 37 }],
+			fixed: `
+				.card /*one*//*two*/[data-part="glyph"] { color: red; }
+			`,
+		},
+		{
+			description: "a fix after an SCSS line comment, which stays a line comment",
+			code: `
+				.card // the card
+				 [data-part="icon"] { color: red; }
+			`,
+			skip: { css: "a line comment is SCSS", vue: "a line comment is SCSS" },
+			warnings: [{ message: 'Expected "glyph"', line: 2, column: 14, endLine: 2, endColumn: 18 }],
+			fixed: `
+				.card // the card
+				 [data-part="glyph"] { color: red; }
+			`,
+		},
+		{
 			description: "two fixes in one selector, and a comment that stays",
 			code: `
 				.card [data-part="icon"] /* inside */ [data-part="icon"] { color: red; }
@@ -219,6 +264,75 @@ describe("the glue", () => {
 		expect(fixed.warnings.map((warning) => warning.text)).toEqual([
 			'Expected "glyph" (statefulcss/test-rename-again)',
 		]);
+	});
+
+	it("reports where the file wrote it, whatever another rule's fix does to the selector meanwhile", async () => {
+		// Stylelint's own rule adds the quotes while the settings load.
+		const config: stylelint.Config = {
+			...configFor(names),
+			rules: { "statefulcss/test-names": true, "selector-attribute-quotes": "always" },
+		};
+		const source = sourceFor("css", { code: ".card[data-mode=x] [data-part=icon] { color: red; }" });
+		for (const fix of [false, true]) {
+			const { warnings } = await lint(source, project(), config, fix);
+			expect(
+				warnings
+					.filter((warning) => warning.rule === "statefulcss/test-names")
+					.map(({ column, endColumn }) => ({ column, endColumn })),
+			).toEqual([{ column: 20, endColumn: 36 }]);
+		}
+	});
+
+	it("leaves a fix alone when another rule has rewritten its node, and reports the problem", async () => {
+		// A second plugin takes a prefix off the selector after the model is read, so the second name stands where
+		// the first one stood.
+		const ruleName = "test/remove-prefix";
+		const removePrefix: stylelint.Rule = () => (root) => {
+			root.walkRules((rule) => {
+				rule.selector = rule.selector.replace(".prefix12345678901 ", "");
+			});
+		};
+		removePrefix.ruleName = ruleName;
+		removePrefix.messages = {};
+		/** Renames only the first part a selector names. */
+		const first: RuleDefinition = {
+			...rename,
+			check: (model, context) => rename.check(model, context).slice(0, 1),
+		};
+		const config: stylelint.Config = {
+			plugins: [toPlugin(first), stylelint.createPlugin(ruleName, removePrefix)],
+			rules: { "statefulcss/test-rename": true, [ruleName]: true },
+		};
+		const source = sourceFor("css", {
+			code: '.prefix12345678901 .a [data-part="icon"] [data-part="icon"] { color: red; }',
+		});
+		const fixed = await lint(source, project(), config, true);
+		expect(fixed.code).toBe('.a [data-part="icon"] [data-part="icon"] { color: red; }');
+		expect(fixed.warnings.map(({ text, column, endColumn }) => ({ text, column, endColumn }))).toEqual([
+			{ text: 'Expected "glyph" (statefulcss/test-rename)', column: 35, endColumn: 39 },
+		]);
+	});
+
+	it("offers an editor a fix for one problem, but not in a .vue file", async () => {
+		const config = configFor(rename);
+		const fixOf = async (syntax: "css" | "vue") => {
+			const source = sourceFor(syntax, { code: '.card [data-part="icon"] { color: red; }' });
+			const { results } = await stylelint.lint({
+				code: source.code,
+				codeFilename: path.join(project(), source.file),
+				config,
+				computeEditInfo: true,
+				...(source.customSyntax ? { customSyntax: source.customSyntax } : {}),
+			});
+			return results[0]?.warnings.map((warning) => warning.fix);
+		};
+		expect(await fixOf("css")).toEqual([{ range: [18, 22], text: "glyph" }]);
+		expect(await fixOf("vue")).toEqual([undefined]);
+		// `--fix` still renames it there.
+		const vue = sourceFor("vue", { code: '.card [data-part="icon"] { color: red; }' });
+		expect((await lint(vue, project(), config, true)).code).toBe(
+			vue.wrap('.card [data-part="glyph"] { color: red; }'),
+		);
 	});
 
 	it("honours a disable comment", async () => {
@@ -386,12 +500,116 @@ describe("a fault of the plugin's own", () => {
 		]);
 	});
 
+	const part: RuleDefinition = {
+		name: "test-faulty",
+		severity: "error",
+		fixable: true,
+		messages: {
+			part: () => "Part",
+			throws: () => {
+				throw new Error("the message went wrong");
+			},
+		},
+		check: (model) =>
+			model.partReferences.map((reference) => ({
+				message: reference.name ?? "",
+				args: [],
+				at: reference.at,
+			})),
+	};
+	const faulty = async (name: string, loudly: boolean) => {
+		const config: stylelint.Config = {
+			plugins: [toPlugin(part, { failLoudly: loudly })],
+			rules: { "statefulcss/test-faulty": true },
+		};
+		const code = `.card [data-part="${name}"] { color: red; }`;
+		return (await lint(sourceFor("css", { code }), project(), config)).warnings.map(
+			(warning) => warning.text,
+		);
+	};
+
+	it("covers a finding whose message key the rule doesn't have", async () => {
+		expect(await faulty("part", false)).toEqual(["Part (statefulcss/test-faulty)"]);
+		expect(await faulty("misspelled", false)).toEqual([
+			expect.stringContaining('check this file: "statefulcss/test-faulty" has no message "misspelled"'),
+		]);
+		await expect(faulty("misspelled", true)).rejects.toThrow('has no message "misspelled"');
+	});
+
+	it("covers a message that throws, and still reports the finding", async () => {
+		expect(await faulty("throws", false)).toEqual([
+			expect.stringContaining("check this file: the message went wrong"),
+			"A problem this rule couldn't describe (statefulcss/test-faulty)",
+		]);
+		await expect(faulty("throws", true)).rejects.toThrow("the message went wrong");
+	});
+
+	it("covers a fix whose edits overlap, and leaves the tree alone", async () => {
+		const overlapping: RuleDefinition = {
+			...part,
+			check: (model) =>
+				model.partReferences.flatMap((reference) => {
+					const at = reference.nameAt;
+					if (!at) return [];
+					const inside = { ...at, index: at.index + 1, endIndex: at.index + 3 };
+					return [
+						{
+							message: "part",
+							args: [],
+							at,
+							edits: [
+								{ kind: "replace" as const, at, expects: "icon", text: "badge" },
+								{ kind: "replace" as const, at: inside, expects: "co", text: "X" },
+							],
+						},
+					];
+				}),
+		};
+		const source = sourceFor("css", { code: '.card [data-part="icon"] { color: red; }' });
+		const config = (loudly: boolean): stylelint.Config => ({
+			plugins: [toPlugin(overlapping, { failLoudly: loudly })],
+			rules: { "statefulcss/test-faulty": true },
+		});
+		const fixed = await lint(source, project(), config(false), true);
+		expect(fixed.code).toBe(source.code);
+		expect(fixed.warnings.map((warning) => warning.text)).toEqual([
+			expect.stringContaining("has edits that overlap"),
+			"Part (statefulcss/test-faulty)",
+		]);
+		await expect(lint(source, project(), config(true), true)).rejects.toThrow("has edits that overlap");
+	});
+
 	it("fails a test loudly", async () => {
 		const config: stylelint.Config = {
 			plugins: [toPlugin(broken("test-broken"), { failLoudly: true })],
 			rules: { "statefulcss/test-broken": true },
 		};
 		await expect(lint(source, project(), config)).rejects.toThrow("the check went wrong");
+	});
+});
+
+describe("a rule written with defineRule", () => {
+	it("doesn't compile with a finding whose message key it doesn't have", () => {
+		const rule = defineRule({
+			name: "test-keys",
+			severity: "error",
+			fixable: false,
+			messages: { part: () => "Part" },
+			// @ts-expect-error -- "misspelled" is no key of the rule's messages.
+			check: (model) => [
+				...model.partReferences.map((reference) => ({
+					message: "part" as const,
+					args: [],
+					at: reference.at,
+				})),
+				...model.partReferences.map((reference) => ({
+					message: "misspelled" as const,
+					args: [],
+					at: reference.at,
+				})),
+			],
+		});
+		expect(Object.keys(rule.messages)).toEqual(["part"]);
 	});
 });
 

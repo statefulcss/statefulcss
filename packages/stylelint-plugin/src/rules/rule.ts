@@ -33,7 +33,17 @@ export interface RuleDefinition<Options = Record<never, never>, Key extends stri
 	 * The check. It reads only the model, the settings and its options, and it never changes the tree. Written as a
 	 * method, so a list can hold rules with different options.
 	 */
-	check(model: Model, context: Context<Options>): readonly Finding<Key>[];
+	check(model: Model, context: Context<Options>): readonly Finding<NoInfer<Key>>[];
+}
+
+/**
+ * A rule, with its message keys read from its `messages` alone: a finding whose key is misspelled doesn't compile.
+ * Every rule is written with it.
+ */
+export function defineRule<Options = Record<never, never>, Key extends string = string>(
+	definition: RuleDefinition<Options, Key>,
+): RuleDefinition<Options, Key> {
+	return definition;
 }
 
 export interface Context<Options> {

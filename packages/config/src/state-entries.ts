@@ -2,8 +2,33 @@
 // pseudo-class or an attribute selector; `stateAttributes` takes an attribute name. An entry is read just far
 // enough to tell which it is, and what to write when it's the other.
 
+/**
+ * Pseudo-classes that are never a state. No state list can have one, and core never compares one with a state
+ * list: it takes its own lists from here, so the two agree.
+ */
+export const nonStatePseudoClasses = Object.freeze({
+	/** Hold a list of selectors, and match when any of them does. */
+	matchesAny: Object.freeze([":is", ":where", ":matches", ":-webkit-any", ":-moz-any"] as const),
+	/** Hold selectors too, and are read by what they hold. */
+	holders: Object.freeze([":not", ":has"] as const),
+	/** Say which element it is. */
+	identity: Object.freeze([":root", ":scope", ":host", ":local"] as const),
+	/** Wrap a selector that belongs to another stylesheet: CSS Modules' `:global()`, Vue's `:deep()` and `:slotted()`. */
+	wrappers: Object.freeze([":global", ":deep", ":slotted"] as const),
+	/** Pseudo-elements that can be written with one colon. */
+	pseudoElements: Object.freeze([":before", ":after", ":first-line", ":first-letter"] as const),
+});
+
+/** An attribute name as a setting takes it: `data-state`. */
+export const attributeNamePattern = /^[a-z][a-z0-9-]*$/;
+
+/** How an entry of `blockingStates` or `interactionStates` starts. Editors check this much; the loader checks it all. */
+export const stateSelectorPattern = new RegExp(String.raw`^[:\[]`);
+
 /** Why an entry isn't in its list's form. */
 export type EntryProblem =
+	/** Right once the space around it is gone. */
+	| { readonly is: "padded"; readonly trimmed: string }
 	/** In a list of selectors: a name that reads as an attribute's, such as `data-busy`. */
 	| { readonly is: "attribute-name"; readonly name: string }
 	/** In a list of selectors: any other name on its own, such as `hover`. */
@@ -15,8 +40,12 @@ export type EntryProblem =
 	/** `[data-step=2]`, which CSS doesn't read. `quoted` is the selector with its value in quotes. */
 	| { readonly is: "unquoted-value"; readonly quoted: string }
 	| { readonly is: "class" | "id" | "pseudo-element" | "not-a-state" | "not-a-selector" }
+	/** An attribute selector for the attribute a setting gives to components, parts, slots or themes. */
+	| { readonly is: "identity-attribute"; readonly name: string; readonly setting: string }
 	/** In a list of attribute names: an attribute selector, which has the name. */
 	| { readonly is: "attribute-selector"; readonly name: string }
+	/** In a list of attribute names: a name with capital letters. */
+	| { readonly is: "uppercase"; readonly lowercase: string }
 	| { readonly is: "not-a-name" };
 
 interface Piece {
@@ -25,7 +54,7 @@ interface Piece {
 }
 
 const escape = String.raw`\\[^\n]`;
-const identifier = String.raw`(?:--|-?(?:[a-z_\u0080-￿]|${escape}))(?:[\w\u0080-￿-]|${escape})*`;
+const identifier = String.raw`(?:--|-?(?:[a-z_\u0080-\uffff]|${escape}))(?:[\w\u0080-\uffff-]|${escape})*`;
 const quoted = String.raw`"(?:[^"\\\n]|\\[^])*"|'(?:[^'\\\n]|\\[^])*'`;
 const operator = String.raw`[~|^$*]?=`;
 
@@ -38,34 +67,21 @@ const unquotedValue = new RegExp(
 	String.raw`^\[\s*(${identifier})\s*(${operator})\s*([^\s"'[\]\\]+)\s*\]$`,
 	"i",
 );
-const attributeName = /^[a-z_][\w-]*$/i;
 
-// Pseudo-classes core never compares with a state list, so config doesn't accept them: the ones that hold other
-// selectors, the ones that say which element it is, and the wrappers CSS Modules and Vue add. Core's lists are in
-// its classify.ts and selectors.ts.
-const notStates = new Set([
-	":not",
-	":is",
-	":where",
-	":has",
-	":matches",
-	":-webkit-any",
-	":-moz-any",
-	":root",
-	":scope",
-	":host",
-	":local",
-	":global",
-	":deep",
-	":slotted",
+const notStates = new Set<string>([
+	...nonStatePseudoClasses.matchesAny,
+	...nonStatePseudoClasses.holders,
+	...nonStatePseudoClasses.identity,
+	...nonStatePseudoClasses.wrappers,
 ]);
-
-/** Pseudo-elements that can be written with one colon. */
-const legacyPseudoElements = new Set([":before", ":after", ":first-line", ":first-letter"]);
+const pseudoElements = new Set<string>(nonStatePseudoClasses.pseudoElements);
 
 /** What's wrong with an entry of `blockingStates` or `interactionStates`, or `undefined` for one simple selector. */
 export function selectorProblem(entry: string): EntryProblem | undefined {
-	const pieces = piecesOf(entry.trim());
+	const trimmed = entry.trim();
+	if (trimmed !== entry) return selectorProblem(trimmed) ?? { is: "padded", trimmed };
+
+	const pieces = piecesOf(entry);
 	if (!Array.isArray(pieces)) return { is: pieces };
 	const [piece, ...others] = pieces;
 	if (!piece) return { is: "not-a-selector" };
@@ -84,7 +100,7 @@ export function selectorProblem(entry: string): EntryProblem | undefined {
 		}
 		case "pseudo-class": {
 			const name = piece.text.replace(/\(.*$/s, "").toLowerCase();
-			if (legacyPseudoElements.has(name)) return { is: "pseudo-element" };
+			if (pseudoElements.has(name)) return { is: "pseudo-element" };
 			return notStates.has(name) ? { is: "not-a-state" } : undefined;
 		}
 		case "name":
@@ -96,14 +112,24 @@ export function selectorProblem(entry: string): EntryProblem | undefined {
 	}
 }
 
+/** The attribute an attribute selector asks about, in lowercase; `undefined` for anything else. */
+export function attributeOf(entry: string): string | undefined {
+	return attributeSelector.exec(entry)?.[1]?.toLowerCase();
+}
+
 /** What's wrong with an entry of `stateAttributes`, or `undefined` for an attribute name. */
 export function attributeNameProblem(entry: string): EntryProblem | undefined {
-	const text = entry.trim();
-	if (attributeName.test(text)) return undefined;
-	const pieces = piecesOf(text);
+	if (attributeNamePattern.test(entry)) return undefined;
+	const trimmed = entry.trim();
+	if (trimmed !== entry) return attributeNameProblem(trimmed) ?? { is: "padded", trimmed };
+	if (attributeNamePattern.test(entry.toLowerCase()))
+		return { is: "uppercase", lowercase: entry.toLowerCase() };
+
+	const pieces = piecesOf(entry);
 	const [piece, ...others] = Array.isArray(pieces) ? pieces : [];
-	const [, name] = (piece?.kind === "attribute" && /^\[\s*([^\s~|^$*=\]]+)/.exec(piece.text)) || [];
-	return name && others.length === 0 && attributeName.test(name)
+	const name =
+		piece?.kind === "attribute" ? /^\[\s*([^\s~|^$*=\]]+)/.exec(piece.text)?.[1]?.toLowerCase() : undefined;
+	return name && others.length === 0 && attributeNamePattern.test(name)
 		? { is: "attribute-selector", name }
 		: { is: "not-a-name" };
 }

@@ -1,13 +1,20 @@
 import * as z from "zod";
 
-import { attributeNameProblem, selectorProblem, type EntryProblem } from "./state-entries.js";
+import {
+	attributeNamePattern,
+	attributeNameProblem,
+	attributeOf,
+	selectorProblem,
+	stateSelectorPattern,
+	type EntryProblem,
+} from "./state-entries.js";
 
 const attributeSettings = ["themeAttribute", "componentAttribute", "partAttribute", "slotAttribute"] as const;
 
 function attributeName(defaultName: string, description: string) {
 	return z
 		.string()
-		.regex(/^[a-z][a-z0-9-]*$/)
+		.regex(attributeNamePattern)
 		.default(defaultName)
 		.meta({
 			description,
@@ -19,16 +26,19 @@ function attributeName(defaultName: string, description: string) {
 /** The light and dark switch. No setting can use it, or one selector would be the switch and something else. */
 const colorSchemeAttribute = "data-color-scheme";
 
-/** One entry of a state list, in the list's form. What's wrong with any other entry goes with its issue. */
-function stateEntry(problemOf: (entry: string) => EntryProblem | undefined) {
+/**
+ * One entry of a state list, in the list's form. What's wrong with any other entry goes with its issue. `pattern`
+ * is the form's outline, for the JSON Schema: an editor checks that much, and the loader checks the rest.
+ */
+function stateEntry(problemOf: (entry: string) => EntryProblem | undefined, pattern: RegExp) {
 	return z
 		.string()
-		.trim()
 		.min(1)
 		.superRefine((entry, context) => {
 			const problem = entry === "" ? undefined : problemOf(entry);
 			if (problem) context.addIssue({ code: "custom", message: problem.is, params: { problem } });
-		});
+		})
+		.meta({ pattern: pattern.source });
 }
 
 /**
@@ -77,7 +87,7 @@ export const configSchema = z
 				examples: ["default"],
 			}),
 		blockingStates: z
-			.array(stateEntry(selectorProblem))
+			.array(stateEntry(selectorProblem, stateSelectorPattern))
 			.default(() => [":disabled", '[aria-disabled="true"]', "[data-loading]", "[inert]"])
 			.meta({
 				description:
@@ -86,7 +96,7 @@ export const configSchema = z
 				examples: [[":disabled", '[aria-disabled="true"]']],
 			}),
 		interactionStates: z
-			.array(stateEntry(selectorProblem))
+			.array(stateEntry(selectorProblem, stateSelectorPattern))
 			.default(() => [":hover", ":focus", ":focus-visible", ":focus-within", ":active"])
 			.meta({
 				description:
@@ -95,7 +105,7 @@ export const configSchema = z
 				examples: [[":hover", ":focus-visible", ":active"]],
 			}),
 		stateAttributes: z
-			.array(stateEntry(attributeNameProblem))
+			.array(stateEntry(attributeNameProblem, attributeNamePattern))
 			.default(() => [])
 			.meta({
 				description: "Attributes that have a value but are states, such as Radix's data-state.",
@@ -147,6 +157,17 @@ export const configSchema = z
 				});
 			} else {
 				seen.set(name, key);
+			}
+		}
+
+		// An attribute that says what an element is can't also say what state it's in.
+		for (const list of ["blockingStates", "interactionStates"] as const) {
+			for (const [index, entry] of settings[list].entries()) {
+				const name = attributeOf(entry);
+				const setting = attributeSettings.find((key) => settings[key] === name);
+				if (!name || !setting) continue;
+				const problem: EntryProblem = { is: "identity-attribute", name, setting };
+				context.addIssue({ code: "custom", path: [list, index], message: problem.is, params: { problem } });
 			}
 		}
 	})

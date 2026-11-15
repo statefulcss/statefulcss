@@ -95,6 +95,24 @@ describe("jsonSchema", () => {
 		expect(JSON.stringify(jsonSchema)).not.toContain('"expected"');
 	});
 
+	it("gives editors the outline of each state list's entries", () => {
+		const properties = jsonSchema.properties as Record<
+			string,
+			{ pattern?: string; items?: { pattern?: string } }
+		>;
+		for (const key of ["blockingStates", "interactionStates"] as const) {
+			const pattern = new RegExp(properties[key]?.items?.pattern ?? "$^", "u");
+			expect(pattern.source).toBe(String.raw`^[:\[]`);
+			expect(defaults[key].filter((entry) => !pattern.test(entry))).toEqual([]);
+			expect(["data-busy", ".busy", " :hover"].filter((entry) => pattern.test(entry))).toEqual([]);
+		}
+		const names = new RegExp(properties.stateAttributes?.items?.pattern ?? "$^", "u");
+		expect(names.source).toBe(properties.themeAttribute?.pattern);
+		expect(["data-state", "[data-state]", "Data-State"].filter((entry) => names.test(entry))).toEqual([
+			"data-state",
+		]);
+	});
+
 	it("allows no other keys and requires none", () => {
 		expect(jsonSchema.additionalProperties).toBe(false);
 		expect(jsonSchema.required).toBeUndefined();

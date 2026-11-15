@@ -1,6 +1,13 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { ConfigError, defaults, defineConfig, loadConfig, type Settings } from "./index.js";
+import {
+	ConfigError,
+	defaults,
+	defineConfig,
+	loadConfig,
+	nonStatePseudoClasses,
+	type Settings,
+} from "./index.js";
 
 describe("defineConfig", () => {
 	it("returns the config it's given", () => {
@@ -39,5 +46,17 @@ describe("exports", () => {
 			Error,
 		);
 		expect(defaults.strict).toBe(false);
+	});
+
+	it("has the pseudo-classes that are never a state, for core, and they can't be changed", () => {
+		expect(nonStatePseudoClasses).toEqual({
+			matchesAny: [":is", ":where", ":matches", ":-webkit-any", ":-moz-any"],
+			holders: [":not", ":has"],
+			identity: [":root", ":scope", ":host", ":local"],
+			wrappers: [":global", ":deep", ":slotted"],
+			pseudoElements: [":before", ":after", ":first-line", ":first-letter"],
+		});
+		expect(Object.isFrozen(nonStatePseudoClasses)).toBe(true);
+		expect(Object.values(nonStatePseudoClasses).every((names) => Object.isFrozen(names))).toBe(true);
 	});
 });

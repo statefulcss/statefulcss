@@ -45,7 +45,7 @@ export function invalidPackageJsonError(file: string, error: unknown): ConfigErr
 	);
 }
 
-/** A folder on the way up that exists but can't be listed, so it's unclear whether it has a config. */
+/** A folder on the way up that exists but can't be looked at, so it's unclear whether it has a config. */
 export function folderError(directory: string, error: unknown): ConfigError {
 	return new ConfigError(
 		"unreadable",
@@ -137,6 +137,12 @@ export function schemaError(file: string, config: unknown, issues: readonly z.co
 /** What an entry of a state list is and what to write, as the end of `blockingStates[0] is "data-busy", …`. */
 function entryHint(problem: EntryProblem): string | undefined {
 	switch (problem.is) {
+		case "padded":
+			return `which has space around it. Write ${literal(problem.trimmed)}.`;
+		case "identity-attribute":
+			return `which asks about ${literal(problem.name)}, the ${problem.setting}. That attribute says what an element is, so it can't be a state. Use another attribute for the state.`;
+		case "uppercase":
+			return `which has capital letters. Write ${literal(problem.lowercase)}.`;
 		case "attribute-name":
 			return `an attribute name. Write ${literal(`[${problem.name}]`)}.`;
 		case "name":

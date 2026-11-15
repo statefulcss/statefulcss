@@ -1,4 +1,4 @@
-import { readdir, readFile, realpath, stat } from "node:fs/promises";
+import { readFile, realpath, stat } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -40,6 +40,9 @@ type Outcome = { settings: Settings } | { error: ConfigError } | undefined;
 // Both caches are checked by modification time, so a long-running process (an editor's Stylelint server) sees a
 // config that was edited, added or removed without a restart. A folder's time changes when a file in it is added,
 // removed or renamed; a file's time changes when it's edited.
+//
+// A folder's configs are found by asking for each name, never by listing the folder: a folder on the way up may
+// let a path through without letting its contents be listed, such as /home on a shared machine.
 const folders = new Map<string, Folder>();
 const files = new Map<string, { mtimeMs: number; outcome: Promise<Outcome> }>();
 
@@ -100,21 +103,19 @@ async function readFolder(directory: string): Promise<Folder> {
 	const cached = folders.get(directory);
 	if (cached && cached.mtimeMs === mtimeMs) return cached;
 
-	// Only a listing that worked is kept. A folder that can't be listed may have a config, so it stops the search.
+	// Only a folder that could be read is kept. A name that can't be asked for stops the search: it may be a config.
 	folders.delete(directory);
 	if (Number.isNaN(mtimeMs)) return missingFolder;
-	let names: string[];
-	try {
-		names = await readdir(directory);
-	} catch (error) {
-		if (isMissing(error)) return missingFolder;
-		throw folderError(directory, error);
+	const has = async (name: string) => !Number.isNaN(await modifiedAt(path.join(directory, name), readError));
+	const configFiles: string[] = [];
+	for (const name of configFileNames) {
+		if (await has(name)) configFiles.push(name);
 	}
 	const folder: Folder = {
 		mtimeMs,
-		configFiles: configFileNames.filter((name) => names.includes(name)),
-		hasPackageJson: names.includes("package.json"),
-		isRepositoryRoot: names.includes(".git"),
+		configFiles,
+		hasPackageJson: await has("package.json"),
+		isRepositoryRoot: await has(".git"),
 	};
 	folders.set(directory, folder);
 	return folder;
@@ -214,7 +215,7 @@ async function forgetCommonJs(file: string): Promise<void> {
 
 /**
  * When a file or folder was last changed, or `NaN` when it doesn't exist. Any other failure, such as a folder
- * without search permission, is an error: what's there can't be seen, so the search can't go past it.
+ * that lets no path through, is an error: what's there can't be seen, so the search can't go past it.
  */
 async function modifiedAt(
 	file: string,

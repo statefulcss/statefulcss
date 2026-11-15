@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -358,18 +358,67 @@ describe("loadConfig", () => {
 				"app/statefulcss.config.json": '{ "strict": false }',
 			};
 
-			it("stops at a folder that can't be listed, and lists it again next time", async () => {
+			it("finds the config in a folder that can't be listed", async () => {
 				const root = await project(nested);
 				fail("readdir", root, "app", "EACCES");
+				fail("readdir", root, "", "EACCES");
+				await expect(loadConfig(path.join(root, "app/button.css"))).resolves.toMatchObject({ strict: false });
+				await expect(loadConfig(path.join(root, "button.css"))).resolves.toMatchObject({ strict: true });
+			});
+
+			// A folder that lets paths through but not its listing, like /home on a shared machine. Root reads any
+			// folder, and Windows has no such mode.
+			it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+				"goes up through a folder on disk that can't be listed",
+				async () => {
+					const root = await project({
+						"statefulcss.config.json": '{ "strict": true }',
+						"home/user/site/button.css": "",
+						"home/statefulcss.config.json": '{ "baseTheme": "home" }',
+					});
+					await chmod(path.join(root, "home"), 0o311);
+					try {
+						await expect(loadConfig(path.join(root, "home/user/site/button.css"))).resolves.toMatchObject({
+							baseTheme: "home",
+						});
+						await rm(path.join(root, "home/statefulcss.config.json"));
+						await touch(root, "home", 10);
+						await expect(loadConfig(path.join(root, "home/user/site/button.css"))).resolves.toMatchObject({
+							strict: true,
+						});
+					} finally {
+						await chmod(path.join(root, "home"), 0o755);
+					}
+				},
+			);
+
+			it("stops at a folder that lets no path through, and looks again next time", async () => {
+				const root = await project(nested);
+				// Without search permission, every name in the folder fails the same way.
+				for (const name of ["statefulcss.config.json", "statefulcss.config.js", "package.json", ".git"]) {
+					fail("stat", root, `app/${name}`, "EACCES");
+				}
 				const error = await errorFrom(root, "app/button.css");
-				expect(error).toMatchObject({ kind: "unreadable", file: path.join(root, "app") });
+				expect(error).toMatchObject({
+					kind: "unreadable",
+					file: path.join(root, "app/statefulcss.config.json"),
+				});
 				expect(error.cause).toMatchObject({ code: "EACCES" });
 				expect(error.message).toMatchInlineSnapshot(
-					`"Can't read the folder <root>/app, which is searched for a Stateful CSS config: EACCES: permission denied, readdir '<root>/app'."`,
+					`"Can't read <root>/app/statefulcss.config.json: EACCES: permission denied, stat '<root>/app/statefulcss.config.json'."`,
 				);
 
 				failures.clear();
 				await expect(loadConfig(path.join(root, "app/button.css"))).resolves.toMatchObject({ strict: false });
+			});
+
+			it("stops at a .git whose details can't be read, so the repository's edge is unknown", async () => {
+				const root = await project({ "statefulcss.config.json": '{ "strict": true }', "app/button.css": "" });
+				fail("stat", root, "app/.git", "EIO");
+				expect(await errorFrom(root, "app/button.css")).toMatchObject({
+					kind: "unreadable",
+					file: path.join(root, "app/.git"),
+				});
 			});
 
 			it("stops at a folder whose details can't be read", async () => {
@@ -414,16 +463,11 @@ describe("loadConfig", () => {
 				await expect(loadConfig(path.join(root, "app/button.css"))).resolves.toMatchObject({ strict: true });
 			});
 
-			it.each([
-				["stat", "ENOENT"],
-				["stat", "ENOTDIR"],
-				["readdir", "ENOENT"],
-				["readdir", "ENOTDIR"],
-			] as const)(
-				"goes past a folder that's gone, and looks again next time (%s, %s)",
-				async (call, code) => {
+			it.each(["ENOENT", "ENOTDIR"])(
+				"goes past a folder that's gone, and looks again next time (%s)",
+				async (code) => {
 					const root = await project(nested);
-					fail(call, root, "app", code);
+					fail("stat", root, "app", code);
 					await expect(loadConfig(path.join(root, "app/button.css"))).resolves.toMatchObject({
 						strict: true,
 					});
@@ -538,6 +582,10 @@ describe("loadConfig", () => {
 					"takes one pseudo-class or attribute selector for each entry of %s",
 					async (setting) => {
 						const rows: [entry: string, message: string][] = [
+							// Space around it
+							[" :hover", `is " :hover", which has space around it. Write ":hover".`],
+							["[inert]\t", `is "[inert]\\t", which has space around it. Write "[inert]".`],
+							[" data-busy ", `is " data-busy ", an attribute name. Write "[data-busy]".`],
 							// The other list's form
 							["data-busy", `is "data-busy", an attribute name. Write "[data-busy]".`],
 							["aria-busy", `is "aria-busy", an attribute name. Write "[aria-busy]".`],
@@ -613,6 +661,10 @@ describe("loadConfig", () => {
 							"[ data-mode = on ]",
 							`is "[ data-mode = on ]", an attribute selector. Write the attribute name "data-mode".`,
 						],
+						["[DATA-MODE]", `is "[DATA-MODE]", an attribute selector. Write the attribute name "data-mode".`],
+						["Data-State", `is "Data-State", which has capital letters. Write "data-state".`],
+						[" data-open ", `is " data-open ", which has space around it. Write "data-open".`],
+						["aria_busy", `is "aria_busy".`],
 						["data-state[data-busy]", `is "data-state[data-busy]".`],
 						["[data-state][data-busy]", `is "[data-state][data-busy]".`],
 						[":open", `is ":open".`],
@@ -627,7 +679,48 @@ describe("loadConfig", () => {
 					}
 				});
 
-				it("keeps every form of one simple selector, without the space around it", async () => {
+				it("keeps an attribute that names a component, part, slot or theme out of the state lists", async () => {
+					const hint =
+						"That attribute says what an element is, so it can't be a state. Use another attribute for the state.";
+					const rows: [config: Record<string, string | string[]>, key: string, message: string][] = [
+						[
+							{ blockingStates: [":disabled", '[data-part="spinner"]'] },
+							"blockingStates[1]",
+							`is "[data-part=\\"spinner\\"]", which asks about "data-part", the partAttribute. ${hint}`,
+						],
+						[
+							{ interactionStates: ["[data-slot]"] },
+							"interactionStates[0]",
+							`is "[data-slot]", which asks about "data-slot", the slotAttribute. ${hint}`,
+						],
+						[
+							{ blockingStates: ["[ DATA-COMPONENT ]"] },
+							"blockingStates[0]",
+							`is "[ DATA-COMPONENT ]", which asks about "data-component", the componentAttribute. ${hint}`,
+						],
+						[
+							{ themeAttribute: "data-brand", interactionStates: [":hover", '[data-brand="acme"]'] },
+							"interactionStates[1]",
+							`is "[data-brand=\\"acme\\"]", which asks about "data-brand", the themeAttribute. ${hint}`,
+						],
+					];
+					for (const [config, key, message] of rows) {
+						const root = await project({ "statefulcss.config.json": JSON.stringify(config) });
+						const error = await errorFrom(root, "button.css");
+						expect(error).toMatchObject({ kind: "invalid-value", key });
+						expect(error.message.replace(/^.*?\]\. /, "")).toBe(`${key} ${message}`);
+					}
+
+					// Only the name each setting has now: with another part attribute, data-part is any attribute.
+					const root = await project({
+						"statefulcss.config.json": '{ "partAttribute": "data-piece", "blockingStates": ["[data-part]"] }',
+					});
+					await expect(loadConfig(path.join(root, "button.css"))).resolves.toMatchObject({
+						blockingStates: ["[data-part]"],
+					});
+				});
+
+				it("keeps every form of one simple selector as it's written", async () => {
 					const selectors = [
 						":disabled",
 						":HOVER",
@@ -652,16 +745,16 @@ describe("loadConfig", () => {
 					];
 					const root = await project({
 						"statefulcss.config.json": JSON.stringify({
-							blockingStates: [...selectors, " [inert]\t"],
+							blockingStates: selectors,
 							interactionStates: selectors,
-							stateAttributes: ["data-state", "Data-Mode", "aria_x", " data-open "],
+							stateAttributes: ["data-state", "aria-x", "open2"],
 						}),
 					});
 					await expect(loadConfig(path.join(root, "button.css"))).resolves.toEqual({
 						...defaults,
-						blockingStates: [...selectors, "[inert]"],
+						blockingStates: selectors,
 						interactionStates: selectors,
-						stateAttributes: ["data-state", "Data-Mode", "aria_x", "data-open"],
+						stateAttributes: ["data-state", "aria-x", "open2"],
 					});
 				});
 			});

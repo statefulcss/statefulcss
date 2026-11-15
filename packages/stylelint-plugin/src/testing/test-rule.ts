@@ -9,7 +9,8 @@ import type { StatefulCSSConfig } from "@statefulcss/config";
 import stylelint from "stylelint";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import plugins, { ruleNames } from "../index.js";
+import { statefulRules } from "../configs/adjustments.js";
+import plugins from "../index.js";
 import type { RuleDefinition } from "../rules/rule.js";
 import { ruleNameOf, toPlugin } from "../stylelint/plugin.js";
 
@@ -107,20 +108,43 @@ export function testRule(definition: RuleDefinition, tests: RuleTests): void {
 
 				if (one.fixed === undefined) return;
 				const fixed = await lint(source, project(), config, true);
+				expect(fixed.invalid).toEqual([]);
 				expect(fixed.code).toBe(source.wrap(dedent(one.fixed)));
+				const output = { ...source, code: fixed.code ?? "" };
 
-				// A fix never produces CSS that a rule reports: not this one again, and no other rule newly.
+				// The fix did what it said: linted again, the output has the problems the fix left, and no other.
+				const again = await lint(output, project(), config);
+				expect(again.invalid).toEqual([]);
+				expect(textsOf(again.warnings)).toEqual(textsOf(fixed.warnings));
+
+				// A fix never produces CSS that another rule reports. Every rule runs as the configs set it, and the
+				// tested rule as this test sets it. Each warning counts on its own: two of one text are two problems.
 				const everyRule: stylelint.Config = {
 					plugins: [...plugins.filter((other) => !isRule(other, ruleName)), plugin],
-					rules: Object.fromEntries([...new Set([...ruleNames, ruleName])].map((name) => [name, true])),
+					rules: { ...statefulRules, [ruleName]: config.rules?.[ruleName] },
 				};
 				const before = await lint(source, project(), everyRule);
-				const after = await lint({ ...source, code: fixed.code ?? "" }, project(), everyRule);
-				const had = new Set(before.warnings.map((warning) => warning.text));
-				expect(after.warnings.filter((warning) => !had.has(warning.text))).toEqual([]);
+				const after = await lint(output, project(), everyRule);
+				expect(before.invalid).toEqual([]);
+				expect(after.invalid).toEqual([]);
+				const others = (warnings: stylelint.Warning[]): string[] =>
+					textsOf(warnings.filter((warning) => warning.rule !== ruleName));
+				const had = others(before.warnings);
+				const introduced = others(after.warnings).filter((text) => {
+					const index = had.indexOf(text);
+					if (index === -1) return true;
+					had.splice(index, 1);
+					return false;
+				});
+				expect(introduced).toEqual([]);
 			});
 		}
 	});
+}
+
+/** Warnings as their texts, in an order that doesn't depend on where a fix moved them. */
+function textsOf(warnings: stylelint.Warning[]): string[] {
+	return warnings.map((warning) => warning.text).sort();
 }
 
 function isRule(plugin: stylelint.Plugin, ruleName: string): boolean {

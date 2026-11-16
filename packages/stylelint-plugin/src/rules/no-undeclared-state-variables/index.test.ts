@@ -233,7 +233,7 @@ testRule(noUndeclaredStateVariables, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected "--s-display" read on part "spinner", where ".button" declares it. Read a part variable that ".button" declares for it, or declare its own.`,
+					message: `Unexpected "--s-display" read on part "spinner" but declared on ".button". Read a part variable declared for it on ".button", or declare its own.`,
 					line: 6,
 					column: 35,
 					endLine: 6,
@@ -253,6 +253,8 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--p-title-color" read on part "title" but never declared on ".note", so it would come from an outer component. Declare it on ".note" and write it in its variants or states.`,
 					line: 2,
 					column: 31,
+					endLine: 2,
+					endColumn: 51,
 				},
 			],
 		},
@@ -304,6 +306,8 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--_padding" changed in "[data-size="large"]" but never declared on ".card". Declare its default in the block of ".card".`,
 					line: 3,
 					column: 25,
+					endLine: 3,
+					endColumn: 35,
 				},
 			],
 		},
@@ -317,9 +321,11 @@ testRule(noUndeclaredStateVariables, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected "--s-transform" read on ".link::after", where ".link" declares it. Read a part variable that ".link" declares for it, or declare its own.`,
+					message: `Unexpected "--s-transform" read on ".link::after" but declared on ".link". Read a part variable declared for it on ".link", or declare its own.`,
 					line: 3,
 					column: 24,
+					endLine: 3,
+					endColumn: 42,
 				},
 			],
 		},
@@ -332,9 +338,11 @@ testRule(noUndeclaredStateVariables, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected "--_accent" read on part "badge", where ".card" declares it. Take it on purpose with "--_accent: inherit" in the block of part "badge".`,
+					message: `Unexpected "--_accent" read on part "badge" but declared on ".card". Take it on purpose with "--_accent: inherit" in the block of part "badge".`,
 					line: 2,
 					column: 69,
+					endLine: 2,
+					endColumn: 83,
 				},
 			],
 		},
@@ -349,16 +357,22 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--s-display" read on ".card" but never declared there. Declare its default in the block of ".card".`,
 					line: 1,
 					column: 18,
+					endLine: 1,
+					endColumn: 34,
 				},
 				{
 					message: `Unexpected "--_padding" read on ".card" but never declared there. Declare its default in the block of ".card".`,
 					line: 1,
 					column: 45,
+					endLine: 1,
+					endColumn: 60,
 				},
 				{
 					message: `Unexpected "--s-color" read on "a" but never declared there. Declare its default in the block of "a".`,
 					line: 2,
 					column: 12,
+					endLine: 2,
+					endColumn: 26,
 				},
 			],
 		},
@@ -388,6 +402,8 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--p-after-block-size" read on "::after" of part "tab" but never declared on part "tab", so it would come from an outer component. Declare it on part "tab" and write it in its variants or states.`,
 					line: 3,
 					column: 57,
+					endLine: 3,
+					endColumn: 82,
 				},
 			],
 		},
@@ -408,20 +424,18 @@ testRule(noUndeclaredStateVariables, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected "--p-icon-c" on ".card" that no part reads. If a part was renamed, rename the variable to match.`,
-					line: 1,
-					column: 21,
-					severity: "warning",
-				},
-				{
 					message: `Unexpected "--s-c" taken with "inherit". Only a private is taken that way, so declare its default in the block of part "icon".`,
 					line: 4,
 					column: 10,
+					endLine: 4,
+					endColumn: 17,
 				},
 				{
 					message: `Unexpected "--p-icon-c" taken with "inherit". Only a private is taken that way, so remove it: part "icon" reads what its owner declares without declaring it.`,
 					line: 5,
 					column: 15,
+					endLine: 5,
+					endColumn: 22,
 				},
 			],
 		},
@@ -454,6 +468,8 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--p-icon-color" on ".button" that no part reads. If a part was renamed, rename the variable to match.`,
 					line: 3,
 					column: 2,
+					endLine: 3,
+					endColumn: 16,
 					severity: "warning",
 				},
 			],
@@ -470,12 +486,16 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--p-icon-color" on ".button" that no part reads. If a part was renamed, rename the variable to match.`,
 					line: 1,
 					column: 11,
+					endLine: 1,
+					endColumn: 25,
 					severity: "warning",
 				},
 				{
 					message: `Unexpected "--p-glyph-color" read on part "glyph" but never declared on ".button", so it would come from an outer component. Declare it on ".button" and write it in its variants or states.`,
 					line: 2,
 					column: 71,
+					endLine: 2,
+					endColumn: 91,
 					severity: "error",
 				},
 			],
@@ -492,6 +512,8 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--p-list-gap" read on part "list" but never declared on "[data-component="tabs"]", so it would come from an outer component. Declare it on "[data-component="tabs"]" and write it in its variants or states.`,
 					line: 2,
 					column: 84,
+					endLine: 2,
+					endColumn: 101,
 				},
 			],
 		},
@@ -510,16 +532,22 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--_unrelated" read on part "icon" but never declared there. Declare its default in the block of part "icon".`,
 					line: 2,
 					column: 30,
+					endLine: 2,
+					endColumn: 47,
 				},
 				{
 					message: `Unexpected "--_icon-label-color" read on part "icon" but never declared there. Declare its default in the block of part "icon".`,
 					line: 3,
 					column: 30,
+					endLine: 3,
+					endColumn: 54,
 				},
 				{
 					message: `Unexpected "--_icon-color" read on part "icon" but never declared there. Declare its default in the block of part "icon".`,
 					line: 6,
 					column: 68,
+					endLine: 6,
+					endColumn: 86,
 				},
 			],
 		},
@@ -541,6 +569,8 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--p-title-color" read on part "title" but never declared on ".card", so it would come from an outer component. Declare it on ".card" and write it in its variants or states.`,
 					line: 5,
 					column: 10,
+					endLine: 5,
+					endColumn: 30,
 				},
 			],
 		},
@@ -555,6 +585,8 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--p-title-color" declared on ".card" but never changed by its variants, states or queries. Declare the value on part "title" instead.`,
 					line: 1,
 					column: 22,
+					endLine: 1,
+					endColumn: 37,
 				},
 			],
 		},
@@ -569,6 +601,8 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--p-title-color" on ".card" that no part reads. If a part was renamed, rename the variable to match.`,
 					line: 1,
 					column: 9,
+					endLine: 1,
+					endColumn: 24,
 					severity: "warning",
 				},
 			],
@@ -581,11 +615,15 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--s-missing" read on ".card" but never declared there. Declare its default in the block of ".card".`,
 					line: 1,
 					column: 35,
+					endLine: 1,
+					endColumn: 51,
 				},
 				{
 					message: `Unexpected "--s-x" changed in ":hover" but never declared on ".card". Declare its default in the block of ".card".`,
 					line: 1,
 					column: 53,
+					endLine: 1,
+					endColumn: 58,
 				},
 			],
 		},
@@ -638,6 +676,8 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--p-x-color" read on part "x" but never declared on ".card", so it would come from an outer component. Declare it on ".card" and write it in its variants or states.`,
 					line: 3,
 					column: 43,
+					endLine: 3,
+					endColumn: 59,
 				},
 			],
 		},
@@ -656,16 +696,427 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--s-missing" read on part "x" but never declared there. Declare its default in the block of part "x".`,
 					line: 3,
 					column: 27,
+					endLine: 3,
+					endColumn: 43,
 				},
 				{
 					message: `Unexpected "--_unrelated" read on part "x" but never declared there. Declare its default in the block of part "x".`,
 					line: 3,
 					column: 57,
+					endLine: 3,
+					endColumn: 74,
 				},
 				{
 					message: `Unexpected "--s-c" read on ".other" but never declared there. Declare its default in the block of ".other".`,
 					line: 5,
 					column: 17,
+					endLine: 5,
+					endColumn: 27,
+				},
+			],
+		},
+	],
+});
+
+// From Astra's audit of rules 4 and 9: each reported case next to the one that makes it right.
+testRule(noUndeclaredStateVariables, {
+	accept: [
+		// The owner is chosen from the reader and the name (F04, F02).
+		{
+			description: "a part declaring the part variable its pseudo-element reads, and the root feeding it",
+			code: `
+				.card { --p-tab-after-color: red; &:hover { --p-tab-after-color: blue; } }
+				@scope (.card) to ([data-component]) {
+					[data-part="tab"] {
+						--p-after-color: red;
+						&[aria-selected="true"] { --p-after-color: blue; }
+						&::after { color: var(--p-after-color); background: var(--p-tab-after-color); }
+					}
+				}
+			`,
+		},
+		{
+			description: "content under a part reading the part variable its root declares for that part",
+			code: `
+				.card { --p-tab-color: red; &:hover { --p-tab-color: blue; } }
+				@scope (.card) to ([data-component]) { [data-part="tab"] p { color: var(--p-tab-color); } }
+			`,
+		},
+		{
+			description: "an @include on the part that declares its pseudo-element's part variable",
+			code: `
+				.card { color: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="tab"] { @include palette; }
+					[data-part="tab"]::after { color: var(--p-after-color); }
+				}
+			`,
+		},
+		{
+			description: "an @include on the root that declares a part's pseudo-element's part variable",
+			code: `
+				.card { @include palette; }
+				@scope (.card) to ([data-component]) {
+					[data-part="tab"]::after { color: var(--p-tab-after-color); }
+				}
+			`,
+		},
+		{
+			description:
+				"with the root block in another file, the root's part variable for a part's pseudo-element",
+			code: `
+				@scope ([data-component="tabs"]) to ([data-component]) {
+					[data-part="tab"]::after { color: var(--p-tab-after-color); }
+				}
+			`,
+		},
+		{
+			description: "an @include on the part that may declare the private named for its pseudo-element",
+			code: `
+				.card { --_after-color: red; color: var(--_after-color); }
+				@scope (.card) to ([data-component]) {
+					[data-part="tab"] { @include palette; &::after { color: var(--_after-color); } }
+				}
+			`,
+		},
+		// A private taken with inherit (F05).
+		{
+			description: "a part taking a private its root declares",
+			code: `
+				.card { --_accent: red; color: var(--_accent); }
+				@scope (.card) to ([data-component]) {
+					[data-part="badge"] { --_accent: inherit; color: var(--_accent); }
+				}
+			`,
+		},
+		// What counts as a part reading it (F03, question 1).
+		{
+			description: "the part a private is named for, taking it with inherit",
+			code: `
+				.card { --_accent-ink: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="accent"] { --_accent-ink: inherit; color: var(--_accent-ink); }
+				}
+			`,
+		},
+		{
+			description: "content under the part a part variable is named for, reading it",
+			code: `
+				.card { --p-title-color: black; &:hover { --p-title-color: gray; } }
+				@scope (.card) to ([data-component]) {
+					[data-part="title"] { font-weight: 600; }
+					[data-part="title"] span { color: var(--p-title-color); }
+				}
+			`,
+		},
+		{
+			description: "a private the root reads into the part variable its part reads",
+			code: `
+				.button { --_icon-color: red; --p-icon-color: var(--_icon-color); &:hover { --p-icon-color: blue; } }
+				@scope (.button) to ([data-component]) { [data-part="icon"] { color: var(--p-icon-color); } }
+			`,
+		},
+		// An unknown under a variant, state or query excuses only a change (question 2).
+		{
+			description: "an @include in a state may change a part variable, so it isn't called unchanging",
+			code: `
+				.card { --p-title-color: red; &:hover { @include paint; } }
+				@scope (.card) to ([data-component]) { [data-part="title"] { color: var(--p-title-color); } }
+			`,
+		},
+		// The root's own pseudo-element, with no scope in the file (question 3).
+		{
+			description:
+				"the root's pseudo-element reading the part variable the root declares for it, with no scope",
+			code: `.card { --p-after-opacity: 0; &:hover { --p-after-opacity: 1; } &::after { opacity: var(--p-after-opacity); } }`,
+		},
+		// One finding for each written read and reason (F08).
+		{
+			description: "a selector list whose roots both declare what it reads",
+			code: `.card { --s-c: red; } .button { --s-c: blue; } .card, .button { color: var(--s-c); }`,
+		},
+	],
+	reject: [
+		{
+			description: "a part's pseudo-element reading a part variable only the root declares under that name",
+			code: `
+				.card { --p-after-color: red; &:hover { --p-after-color: blue; } &::after { color: var(--p-after-color); } }
+				@scope (.card) to ([data-component]) {
+					[data-part="tab"]::after { color: var(--p-after-color); }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--p-after-color" read on "::after" of part "tab" but never declared on part "tab", so it would come from an outer component. Declare it on part "tab" and write it in its variants or states.`,
+					line: 3,
+					column: 36,
+					endLine: 3,
+					endColumn: 56,
+				},
+			],
+		},
+		{
+			description: "content under a part reading a part variable only that part declares",
+			code: `
+				.card { color: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="tab"] { --p-tab-color: red; }
+					[data-part="tab"] p { color: var(--p-tab-color); }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--p-tab-color" read on ".card [data-part="tab"] p" but never declared on ".card", so it would come from an outer component. Declare it on ".card" and write it in its variants or states.`,
+					line: 4,
+					column: 31,
+					endLine: 4,
+					endColumn: 49,
+				},
+			],
+		},
+		{
+			description:
+				"an @include on the root can't declare the part variable a part declares for its pseudo-element",
+			code: `
+				.card { @include palette; }
+				@scope (.card) to ([data-component]) {
+					[data-part="tab"]::after { color: var(--p-after-color); }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--p-after-color" read on "::after" of part "tab" but never declared on part "tab", so it would come from an outer component. Declare it on part "tab" and write it in its variants or states.`,
+					line: 3,
+					column: 36,
+					endLine: 3,
+					endColumn: 56,
+				},
+			],
+		},
+		{
+			description: "an @include on a part can't declare the root's part variable for its pseudo-element",
+			code: `
+				.card { color: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="tab"] { @include palette; }
+					[data-part="tab"]::after { color: var(--p-tab-after-color); }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--p-tab-after-color" read on "::after" of part "tab" but never declared on ".card", so it would come from an outer component. Declare it on ".card" and write it in its variants or states.`,
+					line: 4,
+					column: 36,
+					endLine: 4,
+					endColumn: 60,
+				},
+			],
+		},
+		{
+			description:
+				"with the root block in another file, a part still declares its pseudo-element's part variable",
+			code: `
+				@scope ([data-component="tabs"]) to ([data-component]) {
+					[data-part="tab"]::after { color: var(--p-after-color); }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--p-after-color" read on "::after" of part "tab" but never declared on part "tab", so it would come from an outer component. Declare it on part "tab" and write it in its variants or states.`,
+					line: 2,
+					column: 36,
+					endLine: 2,
+					endColumn: 56,
+				},
+			],
+		},
+		{
+			description: "a part's pseudo-element reading the root's private, with nothing on the part",
+			code: `
+				.card { --_after-color: red; color: var(--_after-color); }
+				@scope (.card) to ([data-component]) {
+					[data-part="tab"] { color: red; &::after { color: var(--_after-color); } }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--_after-color" read on "::after" of part "tab" but declared on ".card". Take it on purpose with "--_after-color: inherit" in the block of "::after" of part "tab".`,
+					line: 3,
+					column: 52,
+					endLine: 3,
+					endColumn: 71,
+				},
+			],
+		},
+		{
+			description: "a private taken with inherit that no owner in the component declares",
+			code: `
+				.card { color: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="badge"] { --_accent: inherit; color: var(--_accent); }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--_accent" taken with "inherit" on part "badge" but never declared on ".card", so it would come from an outer component. Declare it on ".card", or give part "badge" its own value.`,
+					line: 3,
+					column: 35,
+					endLine: 3,
+					endColumn: 42,
+				},
+			],
+		},
+		{
+			description: "a private named for a part that the part neither reads nor takes",
+			code: `
+				.card { --_accent-ink: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="accent"] { color: red; }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--_accent-ink" on ".card" that no part reads. If a part was renamed, rename the variable to match.`,
+					line: 1,
+					column: 9,
+					endLine: 1,
+					endColumn: 22,
+					severity: "warning",
+				},
+			],
+		},
+		{
+			description: "a plain element in the scope, under no part, reading a part variable",
+			code: `
+				.card { --p-title-color: black; &:hover { --p-title-color: gray; } }
+				@scope (.card) to ([data-component]) {
+					[data-part="title"] { color: red; }
+					p { color: var(--p-title-color); }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--p-title-color" on ".card" that no part reads. If a part was renamed, rename the variable to match.`,
+					line: 1,
+					column: 9,
+					endLine: 1,
+					endColumn: 24,
+					severity: "warning",
+				},
+			],
+		},
+		{
+			description: "a private the root reads only for itself",
+			code: `
+				.button { --_icon-color: red; color: var(--_icon-color); }
+				@scope (.button) to ([data-component]) { [data-part="icon"] { inline-size: 1em; } }
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--_icon-color" on ".button" that no part reads. If a part was renamed, rename the variable to match.`,
+					line: 1,
+					column: 11,
+					endLine: 1,
+					endColumn: 24,
+					severity: "warning",
+				},
+			],
+		},
+		{
+			description: "an @include in a state can't declare the default of what that state changes",
+			code: `
+				.card { &:hover { @include paint; --s-opacity: 0.7; } }
+				.note { &:hover { @include paint; } &[data-size="large"] { --p-title-color: red; } }
+				@scope (.note) to ([data-component]) { [data-part="title"] { color: var(--p-title-color); } }
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--s-opacity" changed in ":hover" but never declared on ".card". Declare its default in the block of ".card".`,
+					line: 1,
+					column: 35,
+					endLine: 1,
+					endColumn: 46,
+				},
+				{
+					message: `Unexpected "--p-title-color" changed in "[data-size="large"]" but never declared on ".note". Declare its default in the block of ".note".`,
+					line: 2,
+					column: 60,
+					endLine: 2,
+					endColumn: 75,
+				},
+			],
+		},
+		{
+			description:
+				"the root's styled pseudo-element not reading its part variable, with no scope in the file",
+			code: `.card { --p-after-opacity: 0; &:hover { --p-after-opacity: 1; } &::after { content: ""; } }`,
+			warnings: [
+				{
+					message: `Unexpected "--p-after-opacity" on ".card" that no part reads. If a part was renamed, rename the variable to match.`,
+					line: 1,
+					column: 9,
+					endLine: 1,
+					endColumn: 26,
+					severity: "warning",
+				},
+			],
+		},
+		{
+			description: "a selector list reading what neither root declares, naming both",
+			code: `.card, .button { color: var(--s-missing); }`,
+			warnings: [
+				{
+					message: `Unexpected "--s-missing" read on ".card" and ".button" but never declared there. Declare its default in the block of ".card" and ".button".`,
+					line: 1,
+					column: 25,
+					endLine: 1,
+					endColumn: 41,
+				},
+			],
+		},
+		{
+			description: "a selector list reading what only one root declares, naming that one",
+			code: `.card { --s-c: red; } .card, .button { color: var(--s-c); }`,
+			warnings: [
+				{
+					message: `Unexpected "--s-c" read on ".button" but never declared there. Declare its default in the block of ".button".`,
+					line: 1,
+					column: 47,
+					endLine: 1,
+					endColumn: 57,
+				},
+			],
+		},
+		{
+			description: "a selector list changing what neither root declares, naming both",
+			code: `.a:hover, .b:hover { --s-x: 1; }`,
+			warnings: [
+				{
+					message: `Unexpected "--s-x" changed in ":hover" but never declared on ".a" and ".b". Declare its default in the block of ".a" and ".b".`,
+					line: 1,
+					column: 22,
+					endLine: 1,
+					endColumn: 27,
+				},
+			],
+		},
+		{
+			description: "two reasons at one read stay two findings",
+			code: `.a { --s-c: red; } .b { display: block; } .a, .b { &::after { color: var(--s-c); } }`,
+			warnings: [
+				{
+					message: `Unexpected "--s-c" read on ".a::after" but declared on ".a". Read a part variable declared for it on ".a", or declare its own.`,
+					line: 1,
+					column: 70,
+					endLine: 1,
+					endColumn: 80,
+				},
+				{
+					message: `Unexpected "--s-c" read on ".b::after" but never declared there. Declare its default in the block of ".b::after".`,
+					line: 1,
+					column: 70,
+					endLine: 1,
+					endColumn: 80,
 				},
 			],
 		},
@@ -696,6 +1147,8 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--p-list-gap" read on part "list" but never declared on "[data-ui="tabs"]", so it would come from an outer component. Declare it on "[data-ui="tabs"]" and write it in its variants or states.`,
 					line: 2,
 					column: 71,
+					endLine: 2,
+					endColumn: 88,
 				},
 			],
 		},

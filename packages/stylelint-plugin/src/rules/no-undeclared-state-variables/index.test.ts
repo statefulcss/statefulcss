@@ -835,6 +835,83 @@ testRule(noUndeclaredStateVariables, {
 			description: "a selector list whose roots both declare what it reads",
 			code: `.card { --s-c: red; } .button { --s-c: blue; } .card, .button { color: var(--s-c); }`,
 		},
+		// Any part or slot reading or taking it counts for the rename warning, not only the part it's named for.
+		{
+			description: "a part taking a private named for another part",
+			code: `
+				.card { --_accent-ink: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="accent"] { color: red; }
+					[data-part="badge"] { --_accent-ink: inherit; color: var(--_accent-ink); }
+				}
+			`,
+		},
+		{
+			description: "a part reading a part variable named for another part, left to part-variables",
+			code: `
+				.card { --p-title-color: black; &:hover { --p-title-color: gray; } }
+				@scope (.card) to ([data-component]) {
+					[data-part="title"] { color: red; }
+					[data-part="badge"] { color: var(--p-title-color); }
+				}
+			`,
+		},
+		{
+			description: "a slot reading a part variable named for a part",
+			code: `
+				.card { --p-title-color: black; &:hover { --p-title-color: gray; } }
+				@scope (.card) to ([data-component]) {
+					[data-part="title"] { color: red; }
+					[data-slot="badge"] { color: var(--p-title-color); }
+				}
+			`,
+		},
+		// An inherit passes the value through: a read is judged by the element that supplies it.
+		{
+			description: "a part forwarding its root's private to its pseudo-element with inherit",
+			code: `
+				.card { --_icon-color: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="icon"] { --_icon-color: inherit; &::after { color: var(--_icon-color); } }
+				}
+			`,
+		},
+		{
+			description: "a part forwarding its root's private to content under it with inherit",
+			code: `
+				.card { --_icon-color: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="icon"] { --_icon-color: inherit; }
+					[data-part="icon"] span { color: var(--_icon-color); }
+				}
+			`,
+		},
+		{
+			description: "with the root block in another file, a part forwarding a private with inherit",
+			code: `
+				@scope ([data-component="card"]) to ([data-component]) {
+					[data-part="icon"] { --_icon-color: inherit; &::after { color: var(--_icon-color); } }
+				}
+			`,
+		},
+		{
+			description: "an @include on the root that may declare the private a part's pseudo-element reads",
+			code: `
+				.card { @include palette; }
+				@scope (.card) to ([data-component]) {
+					[data-part="tab"] { color: red; &::after { color: var(--_tab-after-ink); } }
+				}
+			`,
+		},
+		{
+			description: "a part's pseudo-element taking its root's private past a part that declares none",
+			code: `
+				.card { --_tab-color: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="tab"] { color: red; &::after { --_tab-color: inherit; color: var(--_tab-color); } }
+				}
+			`,
+		},
 	],
 	reject: [
 		{
@@ -1117,6 +1194,108 @@ testRule(noUndeclaredStateVariables, {
 					column: 70,
 					endLine: 1,
 					endColumn: 80,
+				},
+			],
+		},
+		// Controls for any part counting: neither part reads or takes it.
+		{
+			description: "a private named for a part that no part reads or takes",
+			code: `
+				.card { --_accent-ink: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="accent"] { color: red; }
+					[data-part="badge"] { color: red; }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--_accent-ink" on ".card" that no part reads. If a part was renamed, rename the variable to match.`,
+					line: 1,
+					column: 9,
+					endLine: 1,
+					endColumn: 22,
+					severity: "warning",
+				},
+			],
+		},
+		// A concrete value nearer the reader than its owner is decisive, and only its supplier counts as read.
+		{
+			description: "a part's own value for its root's private, read by its pseudo-element",
+			code: `
+				.card { --_icon-color: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="icon"] { --_icon-color: blue; &::after { color: var(--_icon-color); } }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--_icon-color" on ".card" that no part reads. If a part was renamed, rename the variable to match.`,
+					line: 1,
+					column: 9,
+					endLine: 1,
+					endColumn: 22,
+					severity: "warning",
+				},
+				{
+					message: `Unexpected "--_icon-color" read on "::after" of part "icon" but declared on part "icon". Take it on purpose with "--_icon-color: inherit" in the block of "::after" of part "icon".`,
+					line: 3,
+					column: 62,
+					endLine: 3,
+					endColumn: 80,
+				},
+			],
+		},
+		{
+			description: "with the root block in another file, a part's own value read by its pseudo-element",
+			code: `
+				@scope ([data-component="card"]) to ([data-component]) {
+					[data-part="icon"] { --_icon-color: blue; &::after { color: var(--_icon-color); } }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--_icon-color" read on "::after" of part "icon" but declared on part "icon". Take it on purpose with "--_icon-color: inherit" in the block of "::after" of part "icon".`,
+					line: 2,
+					column: 62,
+					endLine: 2,
+					endColumn: 80,
+				},
+			],
+		},
+		{
+			description: "an @include on the root can't hide a part's own value read by its pseudo-element",
+			code: `
+				.card { @include palette; }
+				@scope (.card) to ([data-component]) {
+					[data-part="tab"] { --_tab-after-ink: blue; &::after { color: var(--_tab-after-ink); } }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--_tab-after-ink" read on "::after" of part "tab" but declared on part "tab". Take it on purpose with "--_tab-after-ink: inherit" in the block of "::after" of part "tab".`,
+					line: 3,
+					column: 64,
+					endLine: 3,
+					endColumn: 85,
+				},
+			],
+		},
+		{
+			description: "a pseudo-element taking its part's value with inherit leaves its root's private unread",
+			code: `
+				.card { --_tab-color: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="tab"] { --_tab-color: blue; &::after { --_tab-color: inherit; color: var(--_tab-color); } }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--_tab-color" on ".card" that no part reads. If a part was renamed, rename the variable to match.`,
+					line: 1,
+					column: 9,
+					endLine: 1,
+					endColumn: 21,
+					severity: "warning",
 				},
 			],
 		},

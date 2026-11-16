@@ -2,9 +2,9 @@
 // on that element, except what its owner declares for it; and a part variable is declared by the part's owner, only
 // when the owner's variants, states or queries write it.
 import type { Settings } from "@statefulcss/config";
-import { namedFor } from "@statefulcss/core";
 import type { Block, Declaration, Element, Id, Model, Read, Variable } from "@statefulcss/core";
 
+import { ownershipOf, type Ownership } from "../ownership.js";
 import { defineRule, type Finding } from "../rule.js";
 
 const messages = {
@@ -49,9 +49,8 @@ export default defineRule<Record<never, never>, Key>({
 			model,
 			settings,
 			report,
-			names: namesByOwner(model),
+			ownership: ownershipOf(model),
 			unknowns: unknownsByElement(model),
-			takers: takersByName(model),
 		};
 		for (const read of model.reads) checkRead(context, read);
 		for (const variable of model.variables) checkVariable(context, variable);
@@ -68,17 +67,10 @@ interface Context {
 	readonly model: Model;
 	readonly settings: Settings;
 	readonly report: (declaration: Declaration, name: string, finding: Finding<Key>) => void;
-	/** The names each owner gives the elements it declares for. */
-	readonly names: ReadonlyMap<Id, readonly Naming[]>;
+	/** Owners, suppliers and readers, decided once for the model. */
+	readonly ownership: Ownership;
 	/** Where each element's unknowns sit: whether one may write a default, and whether it has any. */
 	readonly unknowns: ReadonlyMap<Id, Unknowns>;
-	/** The elements that take a variable with `inherit`, by its name. */
-	readonly takers: ReadonlyMap<string, readonly Id[]>;
-}
-
-interface Naming {
-	readonly name: string;
-	readonly element: Id;
 }
 
 interface Unknowns {
@@ -88,7 +80,7 @@ interface Unknowns {
 
 /** A read of a state variable, a private or a part variable: whether its element may read it. */
 function checkRead(context: Context, read: Read): void {
-	const { model, settings, report } = context;
+	const { model, settings, report, ownership } = context;
 	if (read.via !== "var" || read.declaration === undefined) return;
 	if (read.role !== "state" && read.role !== "private" && read.role !== "part") return;
 	const reader = model.elements[read.element];
@@ -97,29 +89,10 @@ function checkRead(context: Context, read: Read): void {
 	const at = { node: declaration.node, part: "value" } as const;
 	const name = (id: Id): string => nameOf(model, settings, id);
 	const source = read.source === undefined ? undefined : model.variables[read.source];
-	const own = source?.element === read.element;
-	// The one element that may declare it for the reader, chosen from the reader and the name.
-	const owner = ownerOf(context, read.element, read.name, read.role);
-	// That owner may declare it in an unknown, or in another file when it's a root whose block is elsewhere.
-	const ownerMayDeclare =
-		owner !== undefined &&
-		(mayDeclare(context, owner) ||
-			(owner === componentOf(model, reader)?.root && rootIsElsewhere(model, read)));
 
-	if (read.role === "part") {
-		// A root's own part variables, a global element's, and content's that names no part of its own: which
-		// element reads them is `part-variables`' question.
-		if (owner === undefined || declares(model, owner, read.name) || ownerMayDeclare) return;
-		report(declaration, read.name, {
-			message: "notDeclaredByOwner",
-			args: [read.name, name(read.element), name(owner)],
-			at,
-		});
-		return;
-	}
-
-	// An unknown on the reader may declare its own.
-	if (own || mayDeclare(context, read.element)) return;
+	// The reader's own state variable or private, or one it takes with `inherit`, before any owner. An unknown on the
+	// reader may declare its own.
+	if (read.role !== "part" && (source?.element === read.element || mayDeclare(context, read.element))) return;
 	if (read.role === "state") {
 		report(
 			declaration,
@@ -131,14 +104,40 @@ function checkRead(context: Context, read: Read): void {
 		return;
 	}
 
-	// A private: its owner may declare it for the reader, by the reader's name.
-	if (source && source.element === owner) return;
-	if (ownerMayDeclare) return;
+	// The one element that may declare it for the reader, chosen from the reader and the name.
+	const owner = ownership.owner(read.element, read.name, read.role);
+	// That owner may declare it in an unknown, or in another file when it's a root whose block is elsewhere.
+	const ownerMayDeclare =
+		owner !== undefined &&
+		(mayDeclare(context, owner) ||
+			(owner === ownership.component(reader)?.root && rootIsElsewhere(model, read)));
+
+	if (read.role === "part") {
+		// A root's own part variables, a global element's, and content's that names no part of its own: which
+		// element reads them is `part-variables`' question.
+		if (owner === undefined || ownership.variable(owner, read.name) || ownerMayDeclare) return;
+		report(declaration, read.name, {
+			message: "notDeclaredByOwner",
+			args: [read.name, name(read.element), name(owner)],
+			at,
+		});
+		return;
+	}
+
+	// A private: judged by the element that supplies the value, past any `inherit` on the way. Its owner may declare it
+	// for the reader, by the reader's name.
+	const supplier = source && ownership.supplier(source);
+	if (supplier && supplier.element === owner) return;
+	// A concrete value nearer the reader than its owner is decisive, whatever the owner may declare.
+	const owners = ownership.owners(read.element);
+	const nearer =
+		supplier !== undefined && owner !== undefined && owners.indexOf(supplier.element) < owners.indexOf(owner);
+	if (ownerMayDeclare && !nearer) return;
 	report(
 		declaration,
 		read.name,
-		source
-			? { message: "privateOfAnother", args: [read.name, name(read.element), name(source.element)], at }
+		supplier
+			? { message: "privateOfAnother", args: [read.name, name(read.element), name(supplier.element)], at }
 			: { message: "undeclared", args: [read.name, name(read.element)], at },
 	);
 }
@@ -200,7 +199,7 @@ function checkVariable(context: Context, variable: Variable): void {
 	const forPart =
 		(variable.role === "part" && byOwner) || (variable.role === "private" && variable.namedFor.length > 0);
 	const declaredAt = fallback ?? first;
-	if (!forPart || !declaredAt || !partsInView(model, element, variable)) return;
+	if (!forPart || !declaredAt || !partsInView(context, element, variable)) return;
 	if (readByPart(context, variable) || componentHasUnknown(context, element)) return;
 	report(declaredAt, variable.name, {
 		message: "unread",
@@ -212,16 +211,17 @@ function checkVariable(context: Context, variable: Variable): void {
 
 /** A private taken with `inherit`: some owner of the element, in its component, must declare it. */
 function checkInherited(context: Context, variable: Variable, write: Declaration): void {
-	const { model, settings, report } = context;
+	const { model, settings, report, ownership } = context;
 	const element = model.elements[variable.element];
-	const root = componentOf(model, element)?.root;
-	const owners = ownersOf(model, variable.element);
+	const component = ownership.component(element);
+	const root = component?.root;
+	const owners = ownership.owners(variable.element);
 	if (!element || root === undefined || owners.length === 0) return;
-	if (owners.some((owner) => declares(model, owner, variable.name) || mayDeclare(context, owner))) return;
+	if (owners.some((owner) => ownership.variable(owner, variable.name) || mayDeclare(context, owner))) return;
 	const block = model.blocks[write.block];
 	const scope = block?.scope === undefined ? undefined : model.scopes[block.scope];
-	if (scope?.rootKind === "attribute" && componentOf(model, element)?.hasRootBlock === false) return;
-	const owner = ownerOf(context, variable.element, variable.name, "private") ?? root;
+	if (scope?.rootKind === "attribute" && component?.hasRootBlock === false) return;
+	const owner = ownership.owner(variable.element, variable.name, "private") ?? root;
 	report(write, variable.name, {
 		message: "inheritUndeclared",
 		args: [variable.name, nameOf(model, settings, variable.element), nameOf(model, settings, owner)],
@@ -230,125 +230,34 @@ function checkInherited(context: Context, variable: Variable, write: Declaration
 }
 
 /**
- * Whether a part reads a variable named for it: the part it's named for, a slot, a pseudo-element of either, or
- * content under that part, reading it or taking it with `inherit`. A private also counts when the root reads it into
- * a part variable that a part reads.
+ * Whether a part reads a variable named for a part: any part or slot, a pseudo-element of either, or content under
+ * a part, or the element the variable is named for, reading the value it supplies or taking it with `inherit`. A
+ * private also counts when the root reads it into a part variable that a part reads.
  */
 function readByPart(context: Context, variable: Variable, depth = 0): boolean {
-	const { model } = context;
+	const { model, ownership } = context;
 	const named = new Set(variable.namedFor);
-	const counts = (reader: Id): boolean => chainOf(model, reader).some((id) => named.has(id));
-	for (const id of variable.reads) {
-		const read = model.reads[id];
-		if (!read) continue;
-		if (counts(read.element)) return true;
-		if (depth > 0 || variable.role !== "private" || read.element !== variable.element) continue;
+	const counts = (reader: Id): boolean =>
+		ownership.chain(reader).some((id) => {
+			const kind = model.elements[id]?.kind;
+			return named.has(id) || kind === "part" || kind === "slot";
+		});
+	for (const consumer of ownership.consumers(variable)) {
+		if (counts(consumer.element)) return true;
+		if (depth > 0 || variable.role !== "private" || consumer.element !== variable.element) continue;
 		// The root reads the private into a part variable of its own: `--p-icon-color: var(--_icon-color)`.
-		const into = read.declaration === undefined ? undefined : model.declarations[read.declaration];
+		const read = consumer.read === undefined ? undefined : model.reads[consumer.read];
+		const into = read?.declaration === undefined ? undefined : model.declarations[read.declaration];
 		if (into?.role !== "part") continue;
-		const target = variableOn(model, variable.element, into.property);
+		const target = ownership.variable(variable.element, into.property);
 		if (target && readByPart(context, target, depth + 1)) return true;
 	}
-	// Taken with `inherit` from this element, by an element it owns.
-	return (context.takers.get(variable.name) ?? []).some(
-		(taker) => counts(taker) && ownersOf(model, taker).includes(variable.element),
-	);
+	return false;
 }
 
 /** Foreign and utility elements are no component's: the rules skip them. */
 function skipped(element: Element): boolean {
 	return element.kind === "foreign" || element.kind === "utility";
-}
-
-/** The component an element belongs to. */
-function componentOf(model: Model, element: Element | undefined): Model["components"][number] | undefined {
-	return element && "component" in element && element.component !== undefined
-		? model.components[element.component]
-		: undefined;
-}
-
-/**
- * The element and those it stands in: a pseudo-element's host, and the part content is under. What's named for one
- * of them is named for the element.
- */
-function chainOf(model: Model, id: Id): Id[] {
-	const chain: Id[] = [];
-	for (let next: Id | undefined = id; next !== undefined && !chain.includes(next);) {
-		chain.push(next);
-		const element: Element | undefined = model.elements[next];
-		next =
-			element?.kind === "pseudo-element"
-				? element.host
-				: element?.kind === "content"
-					? element.under
-					: undefined;
-	}
-	return chain;
-}
-
-/** The elements above an element in its component: those it stands in, and its component's root. A root has none. */
-function ownersOf(model: Model, id: Id): Id[] {
-	const element = model.elements[id];
-	if (!element || element.kind === "root" || element.kind === "global") return [];
-	const owners = chainOf(model, id).slice(1);
-	const root = componentOf(model, element)?.root;
-	if (root !== undefined && root !== id && !owners.includes(root)) owners.push(root);
-	return owners;
-}
-
-/**
- * The one element that may declare a variable for a reader, chosen from the reader and the name: the owner whose
- * name for an element the reader stands in starts the variable's name. A root names its parts, slots and own
- * pseudo-elements, and its parts' pseudo-elements as `{part}-{pseudo}`; a part names its own pseudo-elements. For a
- * part variable no owner names for the reader: a part's or a slot's is the root, a part's pseudo-element's is that
- * part, a root's pseudo-element's is the root. Content is not a part, so no owner declares part variables for it.
- */
-function ownerOf(
-	context: Context,
-	reader: Id,
-	name: string,
-	role: "state" | "private" | "part",
-): Id | undefined {
-	const { model } = context;
-	const chain = chainOf(model, reader);
-	const owners = ownersOf(model, reader);
-	for (const owner of owners) {
-		const names = context.names.get(owner) ?? [];
-		const match = namedFor(
-			name,
-			names.map((one) => one.name),
-		);
-		if (names.some((one) => one.name === match && chain.includes(one.element))) return owner;
-	}
-	if (role !== "part") return undefined;
-	const element = model.elements[reader];
-	if (element?.kind === "part" || element?.kind === "slot") return componentOf(model, element)?.root;
-	if (element?.kind !== "pseudo-element") return undefined;
-	const host = model.elements[element.host];
-	if (host?.kind === "part" || host?.kind === "slot" || host?.kind === "root") return host.id;
-	return undefined;
-}
-
-/**
- * The names each owner gives the elements it declares for, gathered once: a root names its parts, its slots and its
- * own pseudo-elements, and its parts' pseudo-elements as `{part}-{pseudo}`; a part names its own pseudo-elements.
- */
-function namesByOwner(model: Model): Map<Id, Naming[]> {
-	const names = new Map<Id, Naming[]>();
-	const add = (owner: Id | undefined, name: string, element: Id): void => {
-		if (owner !== undefined) names.set(owner, [...(names.get(owner) ?? []), { name, element }]);
-	};
-	for (const element of model.elements) {
-		if (element.kind === "part" || element.kind === "slot")
-			add(componentOf(model, element)?.root, element.name, element.id);
-		if (element.kind !== "pseudo-element") continue;
-		const host = model.elements[element.host];
-		if (host?.kind === "root" || host?.kind === "part" || host?.kind === "slot")
-			add(host.id, element.name, element.id);
-		if (host?.kind === "part" || host?.kind === "slot")
-			add(componentOf(model, host)?.root, `${host.name}-${element.name}`, element.id);
-	}
-	return names;
 }
 
 /**
@@ -375,34 +284,12 @@ function unknownsByElement(model: Model): Map<Id, Unknowns> {
 	return unknowns;
 }
 
-/** The elements that take a variable with `inherit`, by its name, gathered once. */
-function takersByName(model: Model): Map<string, Id[]> {
-	const takers = new Map<string, Id[]>();
-	for (const variable of model.variables) {
-		const inherits = variable.writes.some((id) => model.declarations[id]?.inherits === true);
-		if (inherits) takers.set(variable.name, [...(takers.get(variable.name) ?? []), variable.element]);
-	}
-	return takers;
-}
-
 function mayDeclare(context: Context, element: Id): boolean {
 	return context.unknowns.get(element)?.mayDeclare ?? false;
 }
 
-function declares(model: Model, element: Id, name: string): boolean {
-	return variableOn(model, element, name) !== undefined;
-}
-
-function variableOn(model: Model, element: Id, name: string): Variable | undefined {
-	for (const id of model.elements[element]?.variables ?? []) {
-		const variable = model.variables[id];
-		if (variable?.name === name) return variable;
-	}
-	return undefined;
-}
-
 function componentHasUnknown(context: Context, element: Element): boolean {
-	const elements = componentOf(context.model, element)?.elements ?? [element.id];
+	const elements = context.ownership.component(element)?.elements ?? [element.id];
 	return elements.some((id) => context.unknowns.has(id));
 }
 
@@ -422,8 +309,9 @@ function rootIsElsewhere(model: Model, read: Read): boolean {
  * the variable is named only for the root's own pseudo-elements, which the root block styles. Otherwise its parts may
  * be styled in another file.
  */
-function partsInView(model: Model, element: Element, variable: Variable): boolean {
-	if ((componentOf(model, element)?.scopes.length ?? 0) > 0) return true;
+function partsInView(context: Context, element: Element, variable: Variable): boolean {
+	const { model, ownership } = context;
+	if ((ownership.component(element)?.scopes.length ?? 0) > 0) return true;
 	return (
 		variable.namedFor.length > 0 &&
 		variable.namedFor.every((id) => {
@@ -464,7 +352,7 @@ function nameOf(model: Model, settings: Settings, id: Id): string {
 			return `"::${element.name}" of ${nameOf(model, settings, host.id)}`;
 	}
 	if (element.kind === "root") {
-		const identity = componentOf(model, element)?.identity;
+		const identity = ownershipOf(model).component(element)?.identity;
 		if (identity?.kind === "class") return `".${identity.className}"`;
 		if (identity) return `"[${settings.componentAttribute}="${identity.value}"]"`;
 	}

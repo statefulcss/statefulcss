@@ -191,37 +191,41 @@ testRule(rename, {
 		{
 			description: "a fix after two comments side by side, one of which PostCSS leaves out",
 			code: `
-				.card /*one*//*two*/[data-part="icon"] { color: red; }
+				@scope (.card) to ([data-component]) { :scope > /*one*//*two*/[data-part="icon"] { color: red; } }
 			`,
-			warnings: [{ message: 'Expected "glyph"', line: 1, column: 33, endLine: 1, endColumn: 37 }],
+			warnings: [{ message: 'Expected "glyph"', line: 1, column: 75, endLine: 1, endColumn: 79 }],
 			fixed: `
-				.card /*one*//*two*/[data-part="glyph"] { color: red; }
+				@scope (.card) to ([data-component]) { :scope > /*one*//*two*/[data-part="glyph"] { color: red; } }
 			`,
 		},
 		{
 			description: "a fix after an SCSS line comment, which stays a line comment",
 			code: `
-				.card // the card
-				 [data-part="icon"] { color: red; }
+				@scope (.card) to ([data-component]) {
+					:scope > // the part
+					 [data-part="icon"] { color: red; }
+				}
 			`,
 			skip: { css: "a line comment is SCSS", vue: "a line comment is SCSS" },
-			warnings: [{ message: 'Expected "glyph"', line: 2, column: 14, endLine: 2, endColumn: 18 }],
+			warnings: [{ message: 'Expected "glyph"', line: 3, column: 15, endLine: 3, endColumn: 19 }],
 			fixed: `
-				.card // the card
-				 [data-part="glyph"] { color: red; }
+				@scope (.card) to ([data-component]) {
+					:scope > // the part
+					 [data-part="glyph"] { color: red; }
+				}
 			`,
 		},
 		{
 			description: "two fixes in one selector, and a comment that stays",
 			code: `
-				.card [data-part="icon"] /* inside */ [data-part="icon"] { color: red; }
+				@scope (.card) to ([data-component]) { :scope > [data-part="icon"] /* inside */ [data-part="icon"] { color: red; } }
 			`,
 			warnings: [
-				{ message: 'Expected "glyph"', line: 1, column: 19, endLine: 1, endColumn: 23 },
-				{ message: 'Expected "glyph"', line: 1, column: 51, endLine: 1, endColumn: 55 },
+				{ message: 'Expected "glyph"', line: 1, column: 61, endLine: 1, endColumn: 65 },
+				{ message: 'Expected "glyph"', line: 1, column: 93, endLine: 1, endColumn: 97 },
 			],
 			fixed: `
-				.card [data-part="glyph"] /* inside */ [data-part="glyph"] { color: red; }
+				@scope (.card) to ([data-component]) { :scope > [data-part="glyph"] /* inside */ [data-part="glyph"] { color: red; } }
 			`,
 		},
 		{

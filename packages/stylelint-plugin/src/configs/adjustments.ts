@@ -18,11 +18,15 @@ export const statefulRules: Rules = Object.fromEntries(
 export const adjusted: Rules = {
 	// The methodology has no use for `!important`: states are ordered, and blocking states come last.
 	"declaration-no-important": true,
-	// A repeated native property works as a fallback for older browsers. `@supports` is the taught form, so the
-	// repeat is a warning, and only where both values have the same syntax.
+	// A repeated native property works as a fallback for older browsers. `@supports` is the taught form, so every
+	// repeat is a warning that says so. Its fix would delete the fallback, so it's off.
 	"declaration-block-no-duplicate-properties": [
 		true,
-		{ ignore: ["consecutive-duplicates-with-different-syntaxes"], severity: "warning" },
+		{
+			severity: "warning",
+			disableFix: true,
+			message: 'Unexpected duplicate "%s". Write the fallback with "@supports" instead.',
+		},
 	],
 	// It compares selectors across the file, and reports state blocks written in the methodology's order.
 	"no-descending-specificity": null,

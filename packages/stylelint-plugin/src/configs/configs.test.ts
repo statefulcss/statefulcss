@@ -42,13 +42,28 @@ describe.each(configs)("%s", (_name, config) => {
 		]);
 	});
 
-	it("warns about a repeated property, unless its two values have different syntaxes", async () => {
+	it("warns about every repeated property, a fallback included, and suggests @supports", async () => {
 		expect(await warningsOf(config, project(), ".page { color: red; color: blue; }")).toEqual([
 			"declaration-block-no-duplicate-properties: warning",
 		]);
-		expect(await warningsOf(config, project(), ".page { block-size: 100vh; block-size: 100dvh; }")).toEqual(
-			[],
-		);
+		const fallback = ".page { block-size: 100vh; block-size: 100dvh; }";
+		const { warnings } = await lint(sourceFor("css", { code: fallback }), project(), config);
+		expect(warnings.map((warning) => [warning.severity, warning.text])).toEqual([
+			[
+				"warning",
+				'Unexpected duplicate "block-size". Write the fallback with "@supports" instead. ' +
+					"(declaration-block-no-duplicate-properties)",
+			],
+		]);
+	});
+
+	it("leaves a repeated property as written under --fix, so the fallback stays", async () => {
+		const source = sourceFor("css", { code: ".page {\n\tblock-size: 100vh;\n\tblock-size: 100dvh;\n}" });
+		const fixed = await lint(source, project(), config, true);
+		expect(fixed.code).toBe(source.code);
+		expect(fixed.warnings.map((warning) => warning.rule)).toEqual([
+			"declaration-block-no-duplicate-properties",
+		]);
 	});
 
 	it("reports a longhand that its shorthand then discards", async () => {

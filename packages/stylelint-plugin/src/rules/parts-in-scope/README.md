@@ -19,7 +19,7 @@ Severity: error. Fixable: yes, for `&` and `:scope` before a part inside a scope
   - `& >` is written `:scope >`. `--fix` writes it;
   - `&` or `:scope` before a descendant (`:scope [data-part="icon"]`) is left out. `--fix` removes it;
   - `--fix` changes only what one written selector holds: it leaves a `&` that an outer rule wrote, and a comment between `:scope` and the next compound, for the author;
-  - `:scope` with a condition (`:scope:hover`, `:scope[data-size="small"] [data-part="icon"]`, `&:not(.quiet) >`) is a variant or a state of the root, even when it can't be told which. It belongs in the root block. The message quotes the whole condition, and `--fix` leaves it;
+  - `:scope` with a condition (`:scope:hover`, `:scope[data-size="small"] [data-part="icon"]`, `&:not(.quiet) >`) is a variant or a state of the root, even when it can't be told which. It belongs in the root block. The message quotes the whole condition as written, with every bracket it opens closed (`:hover:where(:not(:disabled))`), and `--fix` leaves it;
   - `:scope` on its own (`:scope { … }`, `:scope::after`), and declarations written directly in the scope, style the root. They belong in the root block.
 - The same holds for the scope's own root: a condition there (`@scope (.button:hover) to ([data-component])`) is a variant or state selecting the parts. It belongs in the root block, setting part variables that the parts read.
 - A `[data-part]` attribute on a component root's own compound (`.tab[data-part="tab"]`) is reported: an element is a component or a part, never both.

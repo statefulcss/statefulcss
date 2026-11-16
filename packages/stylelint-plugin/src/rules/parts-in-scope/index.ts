@@ -363,19 +363,67 @@ function checkBlocksInScopes(model: Model, report: Report): void {
 }
 
 /**
- * The conditions written on one compound, as one: in one selector, the whole text from the first to the last; across
- * nested rules, each one's text in order. Undefined when there are none.
+ * The conditions written on one compound, as one: in one selector, the whole text from the first to the last, with
+ * every bracket it opens or closes there too (`:hover:where(:not(:disabled))`); across nested rules, each one's text
+ * in order. Undefined when there are none.
  */
 function wholeCondition(conditions: readonly Condition[]): { text: string; at: Position } | undefined {
 	const [first] = conditions;
 	if (!first) return undefined;
 	if (conditions.every((condition) => condition.at.node === first.at.node)) {
-		const index = Math.min(...conditions.map((condition) => condition.at.index));
-		const endIndex = Math.max(...conditions.map((condition) => condition.at.endIndex));
-		const at = { node: first.at.node, index, endIndex };
+		const at = balanced({
+			node: first.at.node,
+			index: Math.min(...conditions.map((condition) => condition.at.index)),
+			endIndex: Math.max(...conditions.map((condition) => condition.at.endIndex)),
+		});
 		return { text: textAt(at), at };
 	}
 	return { text: conditions.map((condition) => condition.text).join(""), at: first.at };
+}
+
+/**
+ * A range widened until every bracket in it has its partner in it too, and a function's name with its opening
+ * bracket. Brackets inside quotes and escaped ones don't count.
+ */
+function balanced(at: Position): Position {
+	const text = valueOf(at.node);
+	const partners = new Map<number, number>();
+	const open: number[] = [];
+	for (let index = 0; index < text.length; index++) {
+		const char = text[index];
+		if (char === "\\") index++;
+		else if (char === '"' || char === "'") {
+			for (index++; index < text.length && text[index] !== char; index++) if (text[index] === "\\") index++;
+		} else if (char === "(" || char === "[") open.push(index);
+		else if (char === ")" || char === "]") {
+			const opener = open.pop();
+			if (opener === undefined) continue;
+			partners.set(opener, index);
+			partners.set(index, opener);
+		}
+	}
+	let { index, endIndex } = at;
+	for (let changed = true; changed;) {
+		changed = false;
+		for (let one = index; one < endIndex; one++) {
+			const partner = partners.get(one);
+			if (partner === undefined || (partner >= index && partner < endIndex)) continue;
+			if (partner < index) index = partner;
+			else endIndex = partner + 1;
+			changed = true;
+		}
+		// The name before an opening bracket at the start: `:where(`.
+		if (text[index] === "(") {
+			let start = index;
+			while (start > 0 && /[-\w]/.test(text[start - 1] ?? "")) start--;
+			while (start > 0 && text[start - 1] === ":") start--;
+			if (start < index) {
+				index = start;
+				changed = true;
+			}
+		}
+	}
+	return { node: at.node, index, endIndex };
 }
 
 /** Whether a block styles an element of a component's. Global, utility and foreign elements are no component's. */

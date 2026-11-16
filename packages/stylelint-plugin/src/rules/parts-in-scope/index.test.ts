@@ -798,6 +798,53 @@ testRule(partsInScope, {
 				},
 			],
 		},
+		// The condition quoted with every bracket it opens closed (N07); the unwrapped control is above.
+		{
+			description: "a condition inside :where() after a state, quoted with its brackets closed",
+			code: `
+				@scope (.card) to ([data-component]) { :scope:hover:where(:not(:disabled, [inert])) > [data-part="icon"] { color: red; } }
+				@scope (.button:hover:where(:not(:disabled, [inert]))) to ([data-component]) { [data-part="icon"] { color: red; } }
+			`,
+			warnings: [
+				{
+					message: `Unexpected ":hover:where(:not(:disabled, [inert]))" on the scope's root, selecting inside it. Write ":hover:where(:not(:disabled, [inert]))" in the root block, setting part variables that the parts read.`,
+					line: 1,
+					column: 46,
+					endLine: 1,
+					endColumn: 84,
+				},
+				{
+					message: `Unexpected ":hover:where(:not(:disabled, [inert]))" on the scope's root, selecting inside it. Write ":hover:where(:not(:disabled, [inert]))" in the root block, setting part variables that the parts read.`,
+					line: 2,
+					column: 16,
+					endLine: 2,
+					endColumn: 54,
+				},
+			],
+		},
+		{
+			description: "a condition inside :where() before a state, quoted from the start of :where(",
+			code: `
+				@scope (.card) to ([data-component]) { :scope:where(:not(:disabled, [inert])):hover > [data-part="icon"] { color: red; } }
+				@scope (.button:where(:not(:disabled, [inert])):hover) to ([data-component]) { [data-part="icon"] { color: red; } }
+			`,
+			warnings: [
+				{
+					message: `Unexpected ":where(:not(:disabled, [inert])):hover" on the scope's root, selecting inside it. Write ":where(:not(:disabled, [inert])):hover" in the root block, setting part variables that the parts read.`,
+					line: 1,
+					column: 46,
+					endLine: 1,
+					endColumn: 84,
+				},
+				{
+					message: `Unexpected ":where(:not(:disabled, [inert])):hover" on the scope's root, selecting inside it. Write ":where(:not(:disabled, [inert])):hover" in the root block, setting part variables that the parts read.`,
+					line: 2,
+					column: 16,
+					endLine: 2,
+					endColumn: 54,
+				},
+			],
+		},
 		// The selector is checked, not the body.
 		{
 			description: "a condition in the scope's own root, over a rule that holds only an @include",

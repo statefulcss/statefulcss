@@ -7,13 +7,13 @@ import { defineRule, type Edit, type Finding } from "../rule.js";
 
 const messages = {
 	outside: (part: string, scope: string) =>
-		`Unexpected "${part}" outside its component's scope. Move it into "${scope}".`,
+		`Unexpected ${part} outside its component's scope. Move it into "${scope}".`,
 	outsideAnyComponent: (part: string) =>
-		`Unexpected "${part}" outside a component's scope. Move it into the scope of the component it belongs to.`,
+		`Unexpected ${part} outside a component's scope. Move it into the scope of the component it belongs to.`,
 	partOnRoot: (part: string, root: string) =>
-		`Unexpected "${part}" on the component root "${root}". An element is a component or a part, so remove one of the two.`,
+		`Unexpected ${part} on the component root "${root}". An element is a component or a part, so remove one of the two.`,
 	placementPath: (part: string) =>
-		`Unexpected "${part}" on a placement path that doesn't step through parts with ">". Step from the root through parts, each with ">", into the slot.`,
+		`Unexpected ${part} on a placement path that doesn't step through parts with ">". Step from the root through parts, each with ">", into the slot.`,
 	limit: (limit: string, root: string, expected: string) =>
 		`Unexpected limit "${limit}" on the scope of "${root}". Limit it with "${expected}".`,
 	noLimit: (root: string, expected: string) =>
@@ -29,7 +29,7 @@ const messages = {
 	scopeDescendant: () =>
 		`Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own.`,
 	conditionSelecting: (condition: string) =>
-		`Unexpected "${condition}" on the scope's root, selecting inside it. Write "${condition}" in the root block, setting a part variable that the part reads.`,
+		`Unexpected "${condition}" on the scope's root, selecting inside it. Write "${condition}" in the root block, setting part variables that the parts read.`,
 	conditionOnRoot: (condition: string) =>
 		`Unexpected "${condition}" on the scope's root. Write the root's variants and states in its root block.`,
 	rootInScope: (written: string) =>
@@ -73,7 +73,8 @@ function checkReferences(model: Model, settings: Settings, report: Report): void
 		const blocks = reference.blocks.map((id) => model.blocks[id]).filter((block) => block !== undefined);
 		// What `:deep()` and the utilities layer select belongs to no component's rules.
 		if (blocks.length > 0 && blocks.every((block) => skipped(model, block))) continue;
-		const part = textAt(reference.at);
+		// A part is named by its name, `part "icon"`; a selector that names no one part, as written.
+		const part = reference.name === undefined ? `"${textAt(reference.at)}"` : `part "${reference.name}"`;
 		const component = reference.component === undefined ? undefined : model.components[reference.component];
 
 		if (reference.place === "outside") {
@@ -138,11 +139,18 @@ function checkBlocksInScopes(model: Model, report: Report): void {
 		const scope = model.scopes[block.scope];
 		if (scope?.component === undefined || scope.nested) continue;
 
+		// A condition in the scope's own root (`@scope (.button:hover)`) is a variant or state selecting everything
+		// inside it. Each block in the scope carries it; the report keeps one for each written place.
+		for (const condition of block.conditions) {
+			if (condition.at.node !== scope.node || condition.kind === "unknown") continue;
+			report({ message: "conditionSelecting", args: [condition.text], at: condition.at });
+		}
+
 		// The scope's root is the subject itself, the host of a pseudo-element, or a compound before the subject.
 		const subjectIsRoot = block.path.length === 1;
 		const ownRoot = model.elements[block.element]?.kind === "pseudo-element" ? "host" : "subject";
 		const onRoot = subjectIsRoot ? ownRoot : "root";
-		// A condition written in the scope's own prelude is the scope's business, not this block's.
+		// A condition written in the scope's own root was reported above, for the scope.
 		const condition = block.conditions.find(
 			(one) => one.on === onRoot && one.at.node !== scope.node && one.kind !== "unknown",
 		);

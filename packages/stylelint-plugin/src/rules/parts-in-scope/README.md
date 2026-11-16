@@ -17,6 +17,7 @@ Severity: error. Fixable: yes, for `&` and `:scope` before a part inside a scope
   - `&` or `:scope` before a descendant (`:scope [data-part="icon"]`) is left out. `--fix` removes it;
   - `:scope` with an attribute or a pseudo-class (`:scope:hover`, `:scope[data-size="small"] [data-part="icon"]`) is a variant or a state of the root. It belongs in the root block;
   - `:scope` on its own (`:scope { … }`, `:scope::after`), and declarations written directly in the scope, style the root. They belong in the root block.
+- The same holds for the scope's own root: a condition there (`@scope (.button:hover) to ([data-component])`) is a variant or state selecting the parts. It belongs in the root block, setting part variables that the parts read.
 - A `[data-part]` attribute on a component root's own compound (`.tab[data-part="tab"]`) is reported: an element is a component or a part, never both.
 - Foreign elements (`:deep()`, `:global()`) and utilities are skipped.
 
@@ -137,6 +138,38 @@ Fixed:
 
 	&:disabled {
 		--s-opacity: 0.5;
+	}
+}
+```
+
+### A state in the scope's own root
+
+It selects every part inside the scope.
+
+Reported:
+
+```css
+@scope (.button:hover) to ([data-component]) {
+	[data-part="icon"] {
+		opacity: 0.9;
+	}
+}
+```
+
+Fixed:
+
+```css
+.button {
+	--p-icon-opacity: 1;
+
+	&:hover {
+		--p-icon-opacity: 0.9;
+	}
+}
+
+@scope (.button) to ([data-component]) {
+	[data-part="icon"] {
+		opacity: var(--p-icon-opacity);
 	}
 }
 ```

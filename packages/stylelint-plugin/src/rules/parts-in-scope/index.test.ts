@@ -87,6 +87,13 @@ testRule(partsInScope, {
 			`,
 		},
 		{
+			description: "the root's state in the root block, setting a part variable the part reads",
+			code: `
+				.button { --p-icon-opacity: 1; &:hover { --p-icon-opacity: 0.9; } }
+				@scope (.button) to ([data-component]) { [data-part="icon"] { opacity: var(--p-icon-opacity); } }
+			`,
+		},
+		{
 			description: "the part alone, or :scope > for a direct child",
 			code: `
 				@scope (.button) to ([data-component]) {
@@ -121,7 +128,7 @@ testRule(partsInScope, {
 			code: `.button [data-part="icon"] { inline-size: 1em; }`,
 			warnings: [
 				{
-					message: `Unexpected "[data-part="icon"]" outside its component's scope. Move it into "${scope(".button")}".`,
+					message: `Unexpected part "icon" outside its component's scope. Move it into "${scope(".button")}".`,
 					line: 1,
 					column: 9,
 					endLine: 1,
@@ -347,11 +354,46 @@ testRule(partsInScope, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected "[data-size="small"]" on the scope's root, selecting inside it. Write "[data-size="small"]" in the root block, setting a part variable that the part reads.`,
+					message: `Unexpected "[data-size="small"]" on the scope's root, selecting inside it. Write "[data-size="small"]" in the root block, setting part variables that the parts read.`,
 					line: 2,
 					column: 8,
 					endLine: 2,
 					endColumn: 27,
+				},
+			],
+		},
+		{
+			description: "a state in the scope's own root, selecting every part inside it, reported once",
+			code: `
+				.button { color: red; }
+				@scope (.button:hover) to ([data-component]) {
+					[data-part="icon"] { opacity: 0.9; }
+					:scope > [data-part="label"] { color: blue; }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected ":hover" on the scope's root, selecting inside it. Write ":hover" in the root block, setting part variables that the parts read.`,
+					line: 2,
+					column: 16,
+					endLine: 2,
+					endColumn: 22,
+				},
+			],
+		},
+		{
+			description: "a variant in the scope's own root",
+			code: `
+				.button { color: red; }
+				@scope (.button[data-size="small"]) to ([data-component]) { [data-part="icon"] { inline-size: 12px; } }
+			`,
+			warnings: [
+				{
+					message: `Unexpected "[data-size="small"]" on the scope's root, selecting inside it. Write "[data-size="small"]" in the root block, setting part variables that the parts read.`,
+					line: 2,
+					column: 16,
+					endLine: 2,
+					endColumn: 35,
 				},
 			],
 		},
@@ -432,7 +474,7 @@ testRule(partsInScope, {
 			code: `.tab[data-part="tab"] { color: red; }`,
 			warnings: [
 				{
-					message: `Unexpected "[data-part="tab"]" on the component root ".tab". An element is a component or a part, so remove one of the two.`,
+					message: `Unexpected part "tab" on the component root ".tab". An element is a component or a part, so remove one of the two.`,
 					line: 1,
 					column: 5,
 					endLine: 1,
@@ -450,12 +492,12 @@ testRule(partsInScope, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected "[data-part="icon"]" outside its component's scope. Move it into "${scope(".button")}".`,
+					message: `Unexpected part "icon" outside its component's scope. Move it into "${scope(".button")}".`,
 					line: 2,
 					column: 4,
 				},
 				{
-					message: `Unexpected "[data-part="icon"]" outside its component's scope. Move it into "${scope(".button")}".`,
+					message: `Unexpected part "icon" outside its component's scope. Move it into "${scope(".button")}".`,
 					line: 3,
 					column: 27,
 				},
@@ -466,7 +508,7 @@ testRule(partsInScope, {
 			code: `[data-component="tabs"] > [data-part="list"] { display: flex; }`,
 			warnings: [
 				{
-					message: `Unexpected "[data-part="list"]" outside its component's scope. Move it into "${scope('[data-component="tabs"]')}".`,
+					message: `Unexpected part "list" outside its component's scope. Move it into "${scope('[data-component="tabs"]')}".`,
 					line: 1,
 					column: 27,
 				},
@@ -477,7 +519,7 @@ testRule(partsInScope, {
 			code: `main [data-part="title"] { color: red; }`,
 			warnings: [
 				{
-					message: `Unexpected "[data-part="title"]" outside a component's scope. Move it into the scope of the component it belongs to.`,
+					message: `Unexpected part "title" outside a component's scope. Move it into the scope of the component it belongs to.`,
 					line: 1,
 					column: 6,
 				},
@@ -488,7 +530,7 @@ testRule(partsInScope, {
 			code: `.card, .button { & [data-part="icon"] { inline-size: 1em; } }`,
 			warnings: [
 				{
-					message: `Unexpected "[data-part="icon"]" outside its component's scope. Move it into "${scope(".card")}".`,
+					message: `Unexpected part "icon" outside its component's scope. Move it into "${scope(".card")}".`,
 					line: 1,
 					column: 20,
 				},
@@ -499,7 +541,7 @@ testRule(partsInScope, {
 			code: `.card { & [data-part="footer"] [data-slot="action"] { justify-self: end; } }`,
 			warnings: [
 				{
-					message: `Unexpected "[data-part="footer"]" on a placement path that doesn't step through parts with ">". Step from the root through parts, each with ">", into the slot.`,
+					message: `Unexpected part "footer" on a placement path that doesn't step through parts with ">". Step from the root through parts, each with ">", into the slot.`,
 					line: 1,
 					column: 11,
 					endLine: 1,
@@ -517,17 +559,17 @@ testRule(partsInScope, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected "[data-part="footer"]" on a placement path that doesn't step through parts with ">". Step from the root through parts, each with ">", into the slot.`,
+					message: `Unexpected part "footer" on a placement path that doesn't step through parts with ">". Step from the root through parts, each with ">", into the slot.`,
 					line: 2,
 					column: 12,
 				},
 				{
-					message: `Unexpected "[data-part="header"]" outside its component's scope. Move it into "${scope(".card")}".`,
+					message: `Unexpected part "header" outside its component's scope. Move it into "${scope(".card")}".`,
 					line: 3,
 					column: 6,
 				},
 				{
-					message: `Unexpected "[data-part="body"]" on a placement path that doesn't step through parts with ">". Step from the root through parts, each with ">", into the slot.`,
+					message: `Unexpected part "body" on a placement path that doesn't step through parts with ">". Step from the root through parts, each with ">", into the slot.`,
 					line: 3,
 					column: 29,
 				},
@@ -576,7 +618,7 @@ testRule(partsInScope, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected "[data-piece="list"]" outside its component's scope. Move it into "@scope (.tabs) to ([data-ui])".`,
+					message: `Unexpected part "list" outside its component's scope. Move it into "@scope (.tabs) to ([data-ui])".`,
 					line: 2,
 					column: 9,
 				},

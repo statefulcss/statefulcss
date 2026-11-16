@@ -151,6 +151,10 @@ testRule(noUndeclaredStateVariables, {
 			description: "tokens and component variables come from outside",
 			code: `.card { color: var(--c-card-color, var(--t-color-text)); }`,
 		},
+		{
+			description: "a utility reading a state variable it never declares, which belongs to no component",
+			code: `@layer utilities { .stack { color: var(--s-color); } }`,
+		},
 		// Across files.
 		{
 			description: "parts styled from another file read part variables this file can't see",
@@ -355,6 +359,19 @@ testRule(noUndeclaredStateVariables, {
 					message: `Unexpected "--s-color" read on "a" but never declared there. Declare its default in the block of "a".`,
 					line: 2,
 					column: 12,
+				},
+			],
+		},
+		{
+			description: "a class reading a state variable it never declares, outside the utilities layer",
+			code: `.stack { color: var(--s-color); }`,
+			warnings: [
+				{
+					message: `Unexpected "--s-color" read on ".stack" but never declared there. Declare its default in the block of ".stack".`,
+					line: 1,
+					column: 17,
+					endLine: 1,
+					endColumn: 31,
 				},
 			],
 		},

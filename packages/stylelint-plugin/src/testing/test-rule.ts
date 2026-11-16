@@ -42,7 +42,7 @@ export interface ExpectedWarning {
 
 export interface RejectCase extends Case {
 	warnings: ExpectedWarning[];
-	/** What `--fix` writes, for a rule with a fix. */
+	/** What `--fix` writes, for a rule with a fix. Left out, `--fix` must leave the code byte for byte. */
 	fixed?: string;
 }
 
@@ -55,7 +55,10 @@ export interface RuleTests {
 	reject?: RejectCase[];
 }
 
-/** Tests one rule: every `accept` case reports nothing, and every `reject` case reports exactly its warnings. */
+/**
+ * Tests one rule: every `accept` case reports nothing, and every `reject` case reports exactly its warnings. A `reject`
+ * case is fixed to its `fixed` in one run, or left byte for byte when it has none.
+ */
 export function testRule(definition: RuleDefinition, tests: RuleTests): void {
 	const ruleName = ruleNameOf(definition);
 	// A fault of the plugin's own fails the test, where a project would get a warning.
@@ -106,11 +109,20 @@ export function testRule(definition: RuleDefinition, tests: RuleTests): void {
 					};
 				}
 
-				if (one.fixed === undefined) return;
+				// A case with no `fixed` is one the author repairs by hand: `--fix` leaves it byte for byte.
 				const fixed = await lint(source, project(), config, true);
 				expect(fixed.invalid).toEqual([]);
+				if (one.fixed === undefined) {
+					expect(fixed.code).toBe(source.code);
+					return;
+				}
 				expect(fixed.code).toBe(source.wrap(dedent(one.fixed)));
 				const output = { ...source, code: fixed.code ?? "" };
+
+				// The fix is finished in one run: a second `--fix` changes nothing.
+				const twice = await lint(output, project(), config, true);
+				expect(twice.invalid).toEqual([]);
+				expect(twice.code).toBe(output.code);
 
 				// The fix did what it said: linted again, the output has the problems the fix left, and no other.
 				const again = await lint(output, project(), config);

@@ -401,12 +401,37 @@ describe("what a nested rule writes before &", () => {
 
 describe("a rule with no declarations", () => {
 	for (const body of ["", "@include theme;"]) {
-		inEverySyntax(`names its part with no blocks (${body || "empty"})`, ({ read }) => {
+		inEverySyntax(`names its part through a block with no declarations (${body || "empty"})`, ({ read }) => {
 			const model = read(`.card [data-part="x"] { ${body} }`);
-			expect(references(model)).toEqual([["x", "outside", false, []]]);
+			expect(references(model)).toEqual([["x", "outside", false, [0]]]);
+			expect(model.blocks.map((block) => [block.selector, block.declarations])).toEqual([
+				['.card [data-part="x"]', []],
+			]);
 			expect(model.partReferences[0]?.at.index).toBe(6);
 		});
 	}
+
+	inEverySyntax("keeps its selector's facts: the scope's condition, :scope, and the steps", ({ read }) => {
+		const model = read(`
+			.card { color: red; & > div > [data-part="footer"] > [data-slot="action"] { @include place; } }
+			@scope (.card:hover) to ([data-component]) { :scope [data-part="icon"] { @include paint; } }
+			@layer utilities { .stack [data-part="icon"] { @include paint; } }
+		`);
+		// The rule with no declarations doesn't split the Card's run, so its block comes first.
+		const [placement, , scoped, utility] = model.blocks;
+		expect(placement?.path.map((step) => [step.combinator, step.names])).toEqual([
+			[undefined, "root"],
+			[">", "other"],
+			[">", "part"],
+			[">", "slot"],
+		]);
+		expect(scoped?.conditions.map((condition) => [condition.text, condition.at.node.type])).toEqual([
+			[":hover", "atrule"],
+		]);
+		expect([scoped?.scopeRoot, scoped?.scopeRootAt?.index]).toEqual([":scope", 0]);
+		expect(model.elements[utility?.element ?? -1]?.kind).toBe("utility");
+		expect(model.blocks.map((block) => block.declarations.length)).toEqual([0, 1, 0, 0]);
+	});
 
 	inEverySyntax("names it once more when the same rule declares too", ({ read }) => {
 		const model = read('.card [data-part="x"] { @include theme; color: red; }');
@@ -427,7 +452,8 @@ describe("a rule with no declarations", () => {
 			["root", ".card"],
 			["part", '.card [data-part="title"]'],
 		]);
-		expect(model.elements[1]?.blocks).toEqual([]);
+		expect(model.elements[1]?.blocks).toEqual([1]);
+		expect(model.blocks[1]?.declarations).toEqual([]);
 		expect(model.variables[0]?.namedFor.map((id) => keyOf(model, id))).toEqual(['.card [data-part="title"]']);
 	});
 
@@ -439,7 +465,10 @@ describe("a rule with no declarations", () => {
 		expect(model.unknowns.map((unknown) => unknown.elements.map((id) => keyOf(model, id)))).toEqual([
 			['.card [data-part="icon"]'],
 		]);
-		expect(model.blocks).toEqual([]);
+		expect(model.blocks.map((block) => [keyOf(model, block.element), block.declarations])).toEqual([
+			[".card", []],
+			['.card [data-part="icon"]', []],
+		]);
 	});
 });
 

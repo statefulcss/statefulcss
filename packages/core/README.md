@@ -65,7 +65,7 @@ An element belongs to at most one component: the one whose root block or scope s
 
 ### Blocks
 
-A block has its resolved selector, its element, the path from the component root to its subject, and how it reaches the element: directly, inside a scope, or from the root block with a combinator.
+A rule whose body is empty, or holds only what core can't read such as an `@include`, is a block with no declarations, so its selector is read like any other. A block has its resolved selector, its element, the path from the component root to its subject, and how it reaches the element: directly, inside a scope, or from the root block with a combinator.
 
 Its kind is `own` (no condition), `variant`, `state` with its groups (`context`, `interaction`, `semantic`, `blocking`, `visited`), `supports`, or `unknown`. Each condition of its selector has its own kind and says which compound it's written on. The queries around a block list the style queries they make.
 

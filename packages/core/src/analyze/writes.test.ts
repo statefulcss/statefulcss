@@ -106,7 +106,11 @@ describe("declarations around a nested rule", () => {
 				background: white;
 			}
 		`);
-		expect(blocks(model)).toEqual([[".card", "own", ["red", "white"]]]);
+		// The empty slot rule is a block with no declarations, before the run it doesn't split.
+		expect(blocks(model)).toEqual([
+			['.card > [data-slot="action"]', "own", []],
+			[".card", "own", ["red", "white"]],
+		]);
 	});
 });
 

@@ -197,7 +197,8 @@ interface BlockBase {
 /**
  * Where declarations sit: one resolved selector of one rule, inside its at-rules. A rule whose declarations are
  * written around a nested rule that declares something makes one block for each run, so blocks, declarations and
- * a variable's writes are all in the order the file writes them.
+ * a variable's writes are all in the order the file writes them. A rule with nothing in it, or only what core can't
+ * read (an `@include`), is a block with no declarations, so its selector is still read; it splits no run.
  */
 export type Block = BlockBase &
 	(
@@ -342,8 +343,8 @@ export interface PartReference {
 	/** Under a selector list naming two components (`.card, .button { & > [data-part="x"] { } }`), each has its own. */
 	readonly component: Id | undefined;
 	/**
-	 * Every block whose selector names it there: a rule nested in the one that writes it names it too. Empty when the
-	 * rule declares nothing itself, as with only an `@include` inside.
+	 * Every block whose selector names it there: a rule nested in the one that writes it names it too. A rule with only
+	 * an `@include` inside, or nothing, has a block with no declarations.
 	 */
 	readonly blocks: readonly Id[];
 	/**

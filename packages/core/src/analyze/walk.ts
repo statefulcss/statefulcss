@@ -46,7 +46,8 @@ export interface WalkedRule {
 
 /**
  * One resolved selector of one run of declarations. A rule's declarations are one run, unless a nested rule that
- * declares something is written among them: then each run is a block of its own, in the order they're written.
+ * declares something is written among them: then each run is a block of its own, in the order they're written. A rule
+ * with nothing in it, or a run with something core can't read (`@include`), is a block too, with what it can see.
  */
 export interface WalkedBlock {
 	/** The rule, or the at-rule when declarations sit directly in a nested `@media` or in an `@scope`. */
@@ -214,8 +215,10 @@ export function walk(root: Root | Document, partAttribute = defaults.partAttribu
  */
 function walkContainer(container: Container, context: Context, found: Found, declares?: Rule | AtRule): void {
 	let run: Declaration[] = [];
-	const blocksOf = (declarations: readonly Declaration[]): WalkedBlock[] =>
-		declares && declarations.length > 0
+	// The run holds something core can't read, such as an `@include`, that may declare anything.
+	let unread = false;
+	const blocksOf = (declarations: readonly Declaration[], always: boolean): WalkedBlock[] =>
+		declares && (declarations.length > 0 || always)
 			? (context.parents ?? []).map((parent) => blockOf(declares, parent, context, declarations))
 			: [];
 
@@ -227,19 +230,33 @@ function walkContainer(container: Container, context: Context, found: Found, dec
 			} else if (node.type === "comment") visitComment(node, context, found);
 			else {
 				const before = found.blocks.length;
+				const unknownsBefore = found.unknowns.length;
 				if (node.type === "rule") visitRule(node, context, found);
 				else visitAtRule(node, context, found);
-				// Only what declares something splits a run: the run goes before the blocks it made.
-				if (found.blocks.length > before && run.length > 0) {
-					found.blocks.splice(before, 0, ...blocksOf(run));
+				if (
+					node.type === "atrule" &&
+					found.unknowns
+						.slice(unknownsBefore)
+						.some((one) => one.node === node && one.reason === "unknown-at-rule")
+				)
+					unread = true;
+				// Only what declares something splits a run: the run goes before the blocks it made. A block with no
+				// declarations splits nothing, so the run's block comes after it.
+				const declared = found.blocks.slice(before).some((block) => block.declarations.length > 0);
+				if (declared && (run.length > 0 || unread)) {
+					found.blocks.splice(before, 0, ...blocksOf(run, unread));
 					run = [];
+					unread = false;
 				}
 			}
 		} catch (error) {
 			unknown(found, context, node, "internal", error instanceof Error ? error.message : String(error));
 		}
 	}
-	found.blocks.push(...blocksOf(run));
+	// A rule with nothing in it, or only what core can't read, is still a block: its selector is written, with no
+	// declarations core can see.
+	const empty = (container.nodes ?? []).every((node) => node.type === "comment");
+	found.blocks.push(...blocksOf(run, unread || (empty && container.type === "rule")));
 }
 
 function visitRule(rule: Rule, context: Context, found: Found): void {

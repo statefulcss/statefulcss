@@ -83,7 +83,8 @@ describe("rules", () => {
 			[[".card:hover"], 4, undefined, "components"],
 		]);
 		expect(walked.scopes.map((scope) => [scope.order, scope.layer])).toEqual([[1, undefined]]);
-		expect(selectors(walked)).toEqual(['.button [data-part="icon"]', ".card:hover"]);
+		// The empty `.button` is a block too, with no declarations; `.card` only holds a nested rule.
+		expect(selectors(walked)).toEqual([".button", '.button [data-part="icon"]', ".card:hover"]);
 	});
 });
 

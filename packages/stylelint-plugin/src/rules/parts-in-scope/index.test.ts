@@ -120,6 +120,31 @@ testRule(partsInScope, {
 			description: "a part that only :deep() selects",
 			code: `.card :deep([data-part="title"]) { color: red; }`,
 		},
+		{
+			description: "a utility selecting a part, which belongs to no component",
+			code: `@layer utilities { .stack [data-part="icon"] { inline-size: 1em; } }`,
+		},
+		// Only a component's scopes and parts are checked, whatever the rule's body holds.
+		{
+			description: "a utility selecting a part with only an @include",
+			code: `@layer utilities { .stack [data-part="icon"] { @include paint; } }`,
+		},
+		{
+			description: "a part in a rule that names no component, which is a global element's",
+			code: `main [data-part="title"] { color: red; }`,
+		},
+		{
+			description: "scopes nested in rules of no component's: a global element, a utility, :global()",
+			code: `
+				main { @scope (section) { p { color: red; } } }
+				@layer utilities { .stack { @scope (&) { p { color: red; } } } }
+				:global(.wrapper) { @scope (&) { p { color: red; } } }
+			`,
+		},
+		{
+			description: "a state on a part reached from the root block with >",
+			code: `.field:has(> :where([data-part="input"]):disabled) { opacity: 0.6; }`,
+		},
 	],
 	reject: [
 		// The rules page's Reported cases.
@@ -224,11 +249,15 @@ testRule(partsInScope, {
 					message: `Unexpected "@scope" inside a rule. Write the component's scope after its root block.`,
 					line: 1,
 					column: 30,
+					endLine: 1,
+					endColumn: 51,
 				},
 				{
 					message: `Unexpected "@scope" inside a rule. Write the component's scope after its root block.`,
 					line: 2,
 					column: 28,
+					endLine: 2,
+					endColumn: 58,
 				},
 			],
 		},
@@ -286,10 +315,11 @@ testRule(partsInScope, {
 					endColumn: 24,
 				},
 			],
+			// A comment between "&" and the part is the author's: that one is left for them.
 			fixed: `
 				@scope (.button) to ([data-component]) {
 					[data-part="icon"] { inline-size: 1em; }
-					[data-part="badge"], [data-part="label"] { color: red; }
+					[data-part="badge"], &  /* note */  [data-part="label"] { color: red; }
 				}
 			`,
 		},
@@ -341,6 +371,8 @@ testRule(partsInScope, {
 					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own.`,
 					line: 1,
 					column: 42,
+					endLine: 1,
+					endColumn: 48,
 				},
 			],
 			fixed: `@scope (.button) to ([data-component]) { :scope :where([data-part="icon"]) { inline-size: 1em; } }`,
@@ -411,16 +443,22 @@ testRule(partsInScope, {
 					message: `Unexpected "[data-size="small"]" on the scope's root. Write the root's variants and states in its root block.`,
 					line: 2,
 					column: 8,
+					endLine: 2,
+					endColumn: 27,
 				},
 				{
 					message: `Unexpected ":hover" on the scope's root. Write the root's variants and states in its root block.`,
 					line: 3,
 					column: 8,
+					endLine: 3,
+					endColumn: 14,
 				},
 				{
 					message: `Unexpected ":focus-visible" on the scope's root. Write the root's variants and states in its root block.`,
 					line: 4,
 					column: 37,
+					endLine: 4,
+					endColumn: 51,
 				},
 			],
 		},
@@ -437,6 +475,8 @@ testRule(partsInScope, {
 					message: `Unexpected scope of ".card" before its root block. Move it after the root block.`,
 					line: 1,
 					column: 8,
+					endLine: 1,
+					endColumn: 37,
 				},
 				{
 					message: `Unexpected ":scope" without ">" inside a scope. Move its declarations to the root block.`,
@@ -461,11 +501,15 @@ testRule(partsInScope, {
 					message: `Unexpected ":scope" without ">" inside a scope. Move its declarations to the root block.`,
 					line: 3,
 					column: 2,
+					endLine: 3,
+					endColumn: 8,
 				},
 				{
 					message: "Unexpected declarations directly inside a scope. Move them to the root block.",
 					line: 4,
 					column: 2,
+					endLine: 4,
+					endColumn: 13,
 				},
 			],
 		},
@@ -495,11 +539,15 @@ testRule(partsInScope, {
 					message: `Unexpected part "icon" outside its component's scope. Move it into "${scope(".button")}".`,
 					line: 2,
 					column: 4,
+					endLine: 2,
+					endColumn: 22,
 				},
 				{
 					message: `Unexpected part "icon" outside its component's scope. Move it into "${scope(".button")}".`,
 					line: 3,
 					column: 27,
+					endLine: 3,
+					endColumn: 45,
 				},
 			],
 		},
@@ -511,28 +559,54 @@ testRule(partsInScope, {
 					message: `Unexpected part "list" outside its component's scope. Move it into "${scope('[data-component="tabs"]')}".`,
 					line: 1,
 					column: 27,
+					endLine: 1,
+					endColumn: 45,
 				},
 			],
 		},
 		{
-			description: "a part in a rule that names no component",
-			code: `main [data-part="title"] { color: red; }`,
+			description: "the same class selecting a part outside the utilities layer, where it's a component",
+			code: `
+				.stack [data-part="icon"] { inline-size: 1em; }
+				.stack [data-part="label"] { @include paint; }
+			`,
 			warnings: [
 				{
-					message: `Unexpected part "title" outside a component's scope. Move it into the scope of the component it belongs to.`,
+					message: `Unexpected part "icon" outside its component's scope. Move it into "${scope(".stack")}".`,
 					line: 1,
-					column: 6,
+					column: 8,
+					endLine: 1,
+					endColumn: 26,
+				},
+				{
+					message: `Unexpected part "label" outside its component's scope. Move it into "${scope(".stack")}".`,
+					line: 2,
+					column: 8,
+					endLine: 2,
+					endColumn: 27,
 				},
 			],
 		},
 		{
-			description: "a part under a selector list that names two components, reported once",
-			code: `.card, .button { & [data-part="icon"] { inline-size: 1em; } }`,
+			description: "a part under a selector list that names two components, reported once, naming both",
+			code: `
+				.card, .button { & [data-part="icon"] { inline-size: 1em; } }
+				.card, .button { &[data-part="x"] { color: red; } }
+			`,
 			warnings: [
 				{
-					message: `Unexpected part "icon" outside its component's scope. Move it into "${scope(".card")}".`,
+					message: `Unexpected part "icon" outside its components' scopes. Write it in each of "${scope(".card")}" and "${scope(".button")}".`,
 					line: 1,
 					column: 20,
+					endLine: 1,
+					endColumn: 38,
+				},
+				{
+					message: `Unexpected part "x" on the component roots ".card" and ".button". An element is a component or a part, so remove one of the two.`,
+					line: 2,
+					column: 19,
+					endLine: 2,
+					endColumn: 34,
 				},
 			],
 		},
@@ -550,7 +624,8 @@ testRule(partsInScope, {
 			],
 		},
 		{
-			description: "a placement path through a plain element, and one through a sibling",
+			description:
+				"a placement path through a plain element, and one through a sibling, each where it goes wrong",
 			code: `
 				.card {
 					& > div > [data-part="footer"] > [data-slot="action"] { justify-self: end; }
@@ -559,19 +634,261 @@ testRule(partsInScope, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected part "footer" on a placement path that doesn't step through parts with ">". Step from the root through parts, each with ">", into the slot.`,
+					message: `Unexpected "div" on a placement path that doesn't step through parts with ">". Step from the root through parts, each with ">", into the slot.`,
 					line: 2,
-					column: 12,
+					column: 6,
+					endLine: 2,
+					endColumn: 9,
 				},
 				{
-					message: `Unexpected part "header" outside its component's scope. Move it into "${scope(".card")}".`,
+					message: `Unexpected part "header" on a placement path that doesn't step through parts with ">". Step from the root through parts, each with ">", into the slot.`,
 					line: 3,
 					column: 6,
+					endLine: 3,
+					endColumn: 26,
+				},
+			],
+		},
+		{
+			description: "a placement path through two parts that reaches the slot without >, reported once",
+			code: `.card { & > [data-part="body"] > [data-part="footer"] [data-slot="action"] { justify-self: end; } }`,
+			warnings: [
+				{
+					message: `Unexpected slot "action" on a placement path that doesn't step through parts with ">". Step from the root through parts, each with ">", into the slot.`,
+					line: 1,
+					column: 55,
+					endLine: 1,
+					endColumn: 75,
+				},
+			],
+		},
+		{
+			description: "a placement path that ends on the slot's pseudo-element",
+			code: `.card { & > [data-part="footer"] > [data-slot="action"]::after { color: red; } }`,
+			warnings: [
+				{
+					message: `Unexpected "::after" at the end of a placement path. The path ends on slot "action" itself, so style its "::after" in the component's scope.`,
+					line: 1,
+					column: 56,
+					endLine: 1,
+					endColumn: 63,
+				},
+			],
+		},
+		{
+			description: "a part named in :has() on the root, reached as a sibling",
+			code: `
+				.field:has(+ :where([data-part="input"]):disabled) { opacity: 0.6; }
+				.field:has(~ [data-part="input"]) { opacity: 0.6; }
+			`,
+			warnings: [
+				{
+					message: `Unexpected part "input" reached with "+" inside ":has()" on the component root. That's a sibling of the root, so reach a part inside it, as a descendant or with ">".`,
+					line: 1,
+					column: 21,
+					endLine: 1,
+					endColumn: 40,
 				},
 				{
-					message: `Unexpected part "body" on a placement path that doesn't step through parts with ">". Step from the root through parts, each with ">", into the slot.`,
+					message: `Unexpected part "input" reached with "~" inside ":has()" on the component root. That's a sibling of the root, so reach a part inside it, as a descendant or with ">".`,
+					line: 2,
+					column: 14,
+					endLine: 2,
+					endColumn: 33,
+				},
+			],
+		},
+		{
+			description: "a part named in :has() on a rule that styles the root's pseudo-element",
+			code: `.field:has(:where([data-part="input"]):disabled)::after { opacity: 0.6; }`,
+			warnings: [
+				{
+					message: `Unexpected part "input" inside ":has()" on a rule that styles "::after". Write the state on the root, setting a part variable that "::after" reads.`,
+					line: 1,
+					column: 19,
+					endLine: 1,
+					endColumn: 38,
+				},
+			],
+		},
+		// A condition of any kind, and all of it, with no fix.
+		{
+			description: "a condition core can't classify on the scope's root, in the scope and in its prelude",
+			code: `
+				@scope (.card) to ([data-component]) { &:not(.quiet) > [data-part="icon"] { color: red; } }
+				@scope (.button:not(.quiet)) to ([data-component]) { [data-part="icon"] { color: red; } }
+			`,
+			warnings: [
+				{
+					message: `Unexpected ":not(.quiet)" on the scope's root, selecting inside it. Write ":not(.quiet)" in the root block, setting part variables that the parts read.`,
+					line: 1,
+					column: 41,
+					endLine: 1,
+					endColumn: 53,
+				},
+				{
+					message: `Unexpected ":not(.quiet)" on the scope's root, selecting inside it. Write ":not(.quiet)" in the root block, setting part variables that the parts read.`,
+					line: 2,
+					column: 16,
+					endLine: 2,
+					endColumn: 28,
+				},
+			],
+		},
+		{
+			description: "two conditions on the scope's root, quoted whole, in the scope and in its prelude",
+			code: `
+				@scope (.card) to ([data-component]) { :scope[data-tone="muted"]:hover [data-part="icon"] { color: red; } }
+				@scope (.button[data-tone="muted"]:hover) to ([data-component]) { [data-part="icon"] { color: red; } }
+			`,
+			warnings: [
+				{
+					message: `Unexpected "[data-tone="muted"]:hover" on the scope's root, selecting inside it. Write "[data-tone="muted"]:hover" in the root block, setting part variables that the parts read.`,
+					line: 1,
+					column: 46,
+					endLine: 1,
+					endColumn: 71,
+				},
+				{
+					message: `Unexpected "[data-tone="muted"]:hover" on the scope's root, selecting inside it. Write "[data-tone="muted"]:hover" in the root block, setting part variables that the parts read.`,
+					line: 2,
+					column: 16,
+					endLine: 2,
+					endColumn: 41,
+				},
+			],
+		},
+		// The selector is checked, not the body.
+		{
+			description: "a condition in the scope's own root, over a rule that holds only an @include",
+			code: `@scope (.card:hover) to ([data-component]) { [data-part="icon"] { @include paint; } }`,
+			warnings: [
+				{
+					message: `Unexpected ":hover" on the scope's root, selecting inside it. Write ":hover" in the root block, setting part variables that the parts read.`,
+					line: 1,
+					column: 14,
+					endLine: 1,
+					endColumn: 20,
+				},
+			],
+		},
+		{
+			description: ":scope before a part, with only an @include, and with nothing",
+			code: `
+				@scope (.card) to ([data-component]) {
+					:scope [data-part="icon"] { @include paint; }
+					:scope [data-part="label"] { }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own.`,
+					line: 2,
+					column: 2,
+					endLine: 2,
+					endColumn: 8,
+				},
+				{
+					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own.`,
 					line: 3,
-					column: 29,
+					column: 2,
+					endLine: 3,
+					endColumn: 8,
+				},
+			],
+			fixed: `
+				@scope (.card) to ([data-component]) {
+					[data-part="icon"] { @include paint; }
+					[data-part="label"] { }
+				}
+			`,
+		},
+		{
+			description: "a placement path through a plain element, with only an @include",
+			code: `.card { & > div > [data-part="footer"] > [data-slot="action"] { @include place; } }`,
+			warnings: [
+				{
+					message: `Unexpected "div" on a placement path that doesn't step through parts with ">". Step from the root through parts, each with ">", into the slot.`,
+					line: 1,
+					column: 13,
+					endLine: 1,
+					endColumn: 16,
+				},
+			],
+		},
+		// --fix touches only what one written selector holds.
+		{
+			description:
+				"a comment between :scope and the part, which --fix leaves for the author, and one after &",
+			code: `
+				@scope (.card) to ([data-component]) {
+					:scope /* keep */ [data-part="icon"] { color: red; }
+					& /* keep */ > [data-part="tab"] { color: red; }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own.`,
+					line: 2,
+					column: 2,
+					endLine: 2,
+					endColumn: 8,
+				},
+				{
+					message: `Expected ":scope >" instead of "& >" inside a scope.`,
+					line: 3,
+					column: 2,
+					endLine: 3,
+					endColumn: 3,
+				},
+			],
+			fixed: `
+				@scope (.card) to ([data-component]) {
+					:scope /* keep */ [data-part="icon"] { color: red; }
+					:scope /* keep */ > [data-part="tab"] { color: red; }
+				}
+			`,
+		},
+		{
+			description: "a line comment between :scope and the part",
+			code: `
+				@scope (.card) to ([data-component]) {
+					:scope // keep
+					[data-part="icon"] { color: red; }
+				}
+			`,
+			skip: { css: "a line comment is SCSS", vue: "a line comment is SCSS" },
+			warnings: [
+				{
+					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own.`,
+					line: 2,
+					column: 2,
+					endLine: 2,
+					endColumn: 8,
+				},
+			],
+		},
+		{
+			description: "an & written in an outer rule, which --fix leaves for the author",
+			code: `
+				@scope (.card) to ([data-component]) {
+					& { & [data-part="icon"] { color: red; } & > [data-part="tab"] { color: red; } }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "&" before a descendant inside a scope. Remove "& " and select the descendant on its own.`,
+					line: 2,
+					column: 2,
+					endLine: 2,
+					endColumn: 3,
+				},
+				{
+					message: `Expected ":scope >" instead of "& >" inside a scope.`,
+					line: 2,
+					column: 2,
+					endLine: 2,
+					endColumn: 3,
 				},
 			],
 		},
@@ -589,11 +906,15 @@ testRule(partsInScope, {
 					message: `Unexpected ":hover" on the scope's root. Write the root's variants and states in its root block.`,
 					line: 3,
 					column: 25,
+					endLine: 3,
+					endColumn: 31,
 				},
 				{
 					message: `Unexpected ":focus" on the scope's root. Write the root's variants and states in its root block.`,
 					line: 4,
 					column: 8,
+					endLine: 4,
+					endColumn: 14,
 				},
 			],
 		},
@@ -621,11 +942,15 @@ testRule(partsInScope, {
 					message: `Unexpected part "list" outside its component's scope. Move it into "@scope (.tabs) to ([data-ui])".`,
 					line: 2,
 					column: 9,
+					endLine: 2,
+					endColumn: 28,
 				},
 				{
 					message: `Unexpected limit "to ([data-component])" on the scope of ".tabs". Limit it with "to ([data-ui])".`,
 					line: 3,
 					column: 16,
+					endLine: 3,
+					endColumn: 37,
 				},
 			],
 		},

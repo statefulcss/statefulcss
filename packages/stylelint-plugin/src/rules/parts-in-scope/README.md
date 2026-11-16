@@ -7,19 +7,22 @@ Severity: error. Fixable: yes, for `&` and `:scope` before a part inside a scope
 ## Checks
 
 - A `[data-part]` selector appears only inside its component's scope. `root` is the component's class or `[data-component="name"]`.
+- Only a component's scopes and parts are checked. A part or a scope in a rule of no component's (`main [data-part="title"]`, `main { @scope (section) { … } }`, a utility, `:deep()`, `:global()`) is skipped.
+- The selector is checked, not the body: a rule that holds only an `@include`, or nothing, is checked like any other.
 - Two exceptions, both in the root block:
-  - a placement path that steps from the root through parts, each with `>`, and ends in a slot: `& > [data-part="footer"] > [data-slot="action"]`. A plain element or a sibling on the way takes it outside the exception;
-  - a part named inside `:has()`, to reach a state or a variant that lives on it: `&:has(:where([data-part="input"]):disabled)`, also inside the guard's `:not()`.
+  - a placement path that steps from the root through parts, each with `>`, and ends on a slot itself: `& > [data-part="footer"] > [data-slot="action"]`. A plain element or a sibling on the way, or the slot's `::after`, takes it outside the exception. The path is reported once, where it first goes wrong;
+  - a part named inside `:has()`, to reach a state or a variant that lives on it: `&:has(:where([data-part="input"]):disabled)`, also inside the guard's `:not()`. `:has()` reaches into the root, as a descendant or with `>`, never a sibling with `+` or `~`.
 - A component's scope has `to ([data-component])` as its limit: no other limit, and not none.
 - A component's scope is written after its root block, not before it and not inside it.
 - Inside a scope, `:scope` appears only as `:scope >`:
   - `& >` is written `:scope >`. `--fix` writes it;
   - `&` or `:scope` before a descendant (`:scope [data-part="icon"]`) is left out. `--fix` removes it;
-  - `:scope` with an attribute or a pseudo-class (`:scope:hover`, `:scope[data-size="small"] [data-part="icon"]`) is a variant or a state of the root. It belongs in the root block;
+  - `--fix` changes only what one written selector holds: it leaves a `&` that an outer rule wrote, and a comment between `:scope` and the next compound, for the author;
+  - `:scope` with a condition (`:scope:hover`, `:scope[data-size="small"] [data-part="icon"]`, `&:not(.quiet) >`) is a variant or a state of the root, even when it can't be told which. It belongs in the root block. The message quotes the whole condition, and `--fix` leaves it;
   - `:scope` on its own (`:scope { … }`, `:scope::after`), and declarations written directly in the scope, style the root. They belong in the root block.
 - The same holds for the scope's own root: a condition there (`@scope (.button:hover) to ([data-component])`) is a variant or state selecting the parts. It belongs in the root block, setting part variables that the parts read.
 - A `[data-part]` attribute on a component root's own compound (`.tab[data-part="tab"]`) is reported: an element is a component or a part, never both.
-- Foreign elements (`:deep()`, `:global()`) and utilities are skipped.
+- One finding for each written thing: a selector list under two components (`.card, .button { & [data-part="icon"] { … } }`) gets one finding that names both scopes.
 
 ## Why
 
@@ -207,7 +210,8 @@ Fixed, by `--fix`:
 ### Not reported
 
 - Placement from the root block through parts into a slot: `.card { & > [data-part="footer"] > [data-slot="action"] { justify-self: end; } }`.
-- A state on a part reached from the root block: `.field { &:has(:where([data-part="input"]):disabled) { --s-opacity: 0.6; } }`, and the same state inside the guard's `:not()`.
+- A state on a part reached from the root block: `.field { &:has(:where([data-part="input"]):disabled) { --s-opacity: 0.6; } }`, with `>` too, and the same state inside the guard's `:not()`.
+- A part or a scope in a rule of no component's: `main [data-part="title"] { … }`, `main { @scope (section) { … } }`, and a utility: `@layer utilities { .stack [data-part="icon"] { @include paint; } }`.
 - A file that styles another file's component's parts: `@scope ([data-component="tabs"]) to ([data-component]) { [data-part="list"] { … } }`.
 - Bare elements and other classes inside a scope (`[data-part="body"] p`, `.hljs-keyword`): the scope stops at components, so they're the author's call.
 

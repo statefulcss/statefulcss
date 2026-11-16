@@ -52,6 +52,8 @@ function place(edit: Edit): Placed | undefined {
 		const lined = lineUp(value, written);
 		const range = lined && rangeIn(lined, start, end);
 		if (!range) return undefined;
+		// An edit never removes what the author wrote between its ends, such as a comment.
+		if (written.slice(range[0], range[1]) !== value.slice(start, end)) return undefined;
 		raws[form] = written.slice(0, range[0]) + edit.text + written.slice(range[1]);
 	}
 	return { live, start, end, text: edit.text, raws };

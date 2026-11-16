@@ -1,8 +1,6 @@
 import { describe, expect } from "vitest";
 
 import type { Model } from "../model.js";
-import { noUndeclaredStateVariables } from "../testing/no-undeclared-state-variables.js";
-import { partsInScope } from "../testing/parts-in-scope.js";
 import { inEverySyntax } from "../testing/syntaxes.js";
 
 const keyOf = (model: Model, id: number | undefined) =>
@@ -21,8 +19,14 @@ const sources = (model: Model) =>
 		read.name,
 		read.source === undefined ? undefined : keyOf(model, model.variables[read.source]?.element),
 	]);
-const placement = (model: Model) => partsInScope(model).map((finding) => finding.problem);
-const undeclared = (model: Model) => noUndeclaredStateVariables(model).map((finding) => finding.problem);
+/** The reads on a component's own elements that reach no variable: what rule 4 reports as undeclared. */
+const unreached = (model: Model) =>
+	model.reads
+		.filter((read) => read.source === undefined && model.elements[read.element]?.kind !== "foreign")
+		.map((read) => read.name);
+/** Whether every block steps from the root with `>`, as the placement path rule 9 accepts does. */
+const stepsWithChild = (model: Model) =>
+	model.blocks.every((block) => block.path.every((step, index) => index === 0 || step.combinator === ">"));
 
 describe("a part named by a selector list", () => {
 	const paths = ['& > [data-slot="action"]', '& [data-slot="action"]'];
@@ -30,7 +34,7 @@ describe("a part named by a selector list", () => {
 		inEverySyntax(`a placement path taken twice (${list}) is checked on both blocks`, ({ read }) => {
 			const model = read(`.card { & > [data-part="footer"] { ${list} { color: red; } } }`);
 			expect(references(model)).toEqual([["footer", "placement-path", false, [0, 1]]]);
-			expect(placement(model)).toEqual(["placement-path-not-direct"]);
+			expect(stepsWithChild(model)).toBe(false);
 		});
 	}
 
@@ -40,7 +44,7 @@ describe("a part named by a selector list", () => {
 		for (const rules of [`${direct} ${descendant}`, `${descendant} ${direct}`]) {
 			const model = read(`.card { & > [data-part="footer"] { ${rules} } }`);
 			expect(references(model)).toEqual([["footer", "placement-path", false, [0, 1]]]);
-			expect(placement(model)).toEqual(["placement-path-not-direct"]);
+			expect(stepsWithChild(model)).toBe(false);
 		}
 	});
 
@@ -49,7 +53,7 @@ describe("a part named by a selector list", () => {
 			'.card { & > [data-part="footer"] { & > [data-slot="a"], & > [data-slot="b"] { color: red; } } }',
 		);
 		expect(references(model)).toEqual([["footer", "placement-path", false, [0, 1]]]);
-		expect(placement(model)).toEqual([]);
+		expect(stepsWithChild(model)).toBe(true);
 	});
 });
 
@@ -98,7 +102,7 @@ describe("a list of parts inside :is()", () => {
 				['.card [data-part="x"]', "--s-c", '.card [data-part="x"]'],
 				['.card [data-part="y"]', "--s-c", '.card [data-part="y"]'],
 			]);
-			expect(undeclared(model)).toEqual([]);
+			expect(unreached(model)).toEqual([]);
 			expect(model.partReferences.slice(0, 2).map((reference) => [reference.name, reference.place])).toEqual(
 				order.map((name) => [name, "scope"]),
 			);
@@ -142,7 +146,6 @@ describe("a part named inside a selector function", () => {
 				["part", `.field [data-part="${second}"]`],
 			]);
 			expect(model.blocks[0]).toMatchObject({ kind: "state", groups: ["blocking"] });
-			expect(placement(model)).toEqual([]);
 		});
 	}
 
@@ -176,7 +179,6 @@ describe("a part named inside a selector function", () => {
 				["secret", "outside", false, [1]],
 			]);
 			expect(model.blocks.map((block) => block.kind)).toEqual(["variant", "unknown"]);
-			expect(placement(model)).toEqual(["part-outside-scope", "part-outside-scope"]);
 		},
 	);
 
@@ -192,7 +194,6 @@ describe("a part named inside a selector function", () => {
 			expect(model.blocks[0]?.conditions.map((condition) => [condition.text, condition.kind])).toEqual([
 				['[data-part="footer"] +', "variant"],
 			]);
-			expect(placement(model)).toEqual(["part-outside-scope"]);
 		},
 	);
 
@@ -204,7 +205,6 @@ describe("a part named inside a selector function", () => {
 			["tab", "scope", false, [0]],
 			["tab", "scope", false, [0]],
 		]);
-		expect(placement(model)).toEqual([]);
 	});
 });
 
@@ -226,7 +226,6 @@ describe("the :has() exception is for a block that writes on the root", () => {
 			".field .label",
 			".field::after",
 		]);
-		expect(placement(model)).toEqual(["part-outside-scope", "part-outside-scope"]);
 	});
 });
 
@@ -268,7 +267,7 @@ describe("a part named inside :where()", () => {
 			["icon", "scope"],
 			["icon", "scope"],
 		]);
-		expect(undeclared(model)).toEqual([]);
+		expect(unreached(model)).toEqual([]);
 	});
 
 	inEverySyntax("a component named inside :where() or :is() is that component", ({ read }) => {
@@ -302,7 +301,7 @@ describe("& inside a selector function", () => {
 			[".card", "--s-color", ".card"],
 			[".card", "--s-color", ".card"],
 		]);
-		expect(undeclared(model)).toEqual([]);
+		expect(unreached(model)).toEqual([]);
 	});
 
 	inEverySyntax(
@@ -384,7 +383,7 @@ describe("what a nested rule writes before &", () => {
 			[".card", "--s-color", ".card"],
 			[".card", "--s-color", ".card"],
 		]);
-		expect(undeclared(model)).toEqual([]);
+		expect(unreached(model)).toEqual([]);
 	});
 
 	inEverySyntax("written flat, the same selector starts from the class it starts with", ({ read }) => {
@@ -396,7 +395,7 @@ describe("what a nested rule writes before &", () => {
 		]);
 		expect(model.blocks[1]).toMatchObject({ selector: ".dark .card", kind: "own", reach: "descendant" });
 		expect(sources(model)).toEqual([[".dark .card", "--s-color", undefined]]);
-		expect(undeclared(model)).toEqual(["undeclared"]);
+		expect(unreached(model)).toEqual(["--s-color"]);
 	});
 });
 
@@ -406,7 +405,6 @@ describe("a rule with no declarations", () => {
 			const model = read(`.card [data-part="x"] { ${body} }`);
 			expect(references(model)).toEqual([["x", "outside", false, []]]);
 			expect(model.partReferences[0]?.at.index).toBe(6);
-			expect(placement(model)).toEqual(["part-outside-scope"]);
 		});
 	}
 
@@ -461,7 +459,7 @@ describe("a foreign subject inside a transparent wrapper", () => {
 			"foreign",
 			"content",
 		]);
-		expect(undeclared(model)).toEqual(["undeclared"]);
+		expect(unreached(model)).toEqual(["--s-c"]);
 	});
 
 	const mixed = [".local", ":global(.y)"];
@@ -480,7 +478,7 @@ describe("a foreign subject inside a transparent wrapper", () => {
 					[".card :is(.local, .other)", "own"],
 				]);
 				expect(model.elements.map((element) => element.kind)).not.toContain("foreign");
-				expect(undeclared(model)).toEqual(["undeclared", "undeclared"]);
+				expect(unreached(model)).toEqual(["--s-c", "--s-c"]);
 			},
 		);
 	}
@@ -492,7 +490,7 @@ describe("an escape that only tests something", () => {
 			const model = read(`.card${test} { color: var(--s-c); }`);
 			expect(elements(model)).toEqual([["root", ".card"]]);
 			expect(sources(model)).toEqual([[".card", "--s-c", undefined]]);
-			expect(undeclared(model)).toEqual(["undeclared"]);
+			expect(unreached(model)).toEqual(["--s-c"]);
 		});
 	}
 });
@@ -533,7 +531,7 @@ describe("an attribute scope and class roots of its name", () => {
 			["class", "foo-bar"],
 		]);
 		expect(sources(model)).toEqual([['.fooBar [data-part="icon"]', "--_icon-color", ".fooBar"]]);
-		expect(undeclared(model)).toEqual([]);
+		expect(unreached(model)).toEqual([]);
 	});
 });
 
@@ -597,8 +595,7 @@ describe("a component inside a global @scope", () => {
 			]);
 			expect(references(model)).toEqual([["x", "outside", false, [1]]]);
 			expect(sources(model)).toEqual([[".card", "--s-color", ".card"]]);
-			expect(undeclared(model)).toEqual([]);
-			expect(placement(model)).toEqual(["part-outside-scope"]);
+			expect(unreached(model)).toEqual([]);
 		}
 		expect(facts(flat).map(([selector, , reach, scope]) => [selector, reach, scope])).toEqual([
 			["main .card", "direct", undefined],
@@ -618,7 +615,7 @@ describe("a component inside a global @scope", () => {
 			["main .card", ".card", "direct", 0, []],
 			[".dark main .card", ".card", "direct", 0, [[".dark", "context"]]],
 		]);
-		expect(undeclared(model)).toEqual([]);
+		expect(unreached(model)).toEqual([]);
 	});
 
 	inEverySyntax("a global element in it stays one", ({ read }) => {

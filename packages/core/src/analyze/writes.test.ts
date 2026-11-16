@@ -1,7 +1,6 @@
 import { describe, expect } from "vitest";
 
 import type { Model } from "../model.js";
-import { noUndeclaredStateVariables } from "../testing/no-undeclared-state-variables.js";
 import { inEverySyntax } from "../testing/syntaxes.js";
 
 const keyOf = (model: Model, id: number | undefined) =>
@@ -21,7 +20,11 @@ const blocks = (model: Model) =>
 		block.kind,
 		block.declarations.map((id) => valueOf(model, id)),
 	]);
-const undeclared = (model: Model) => noUndeclaredStateVariables(model).map((finding) => finding.problem);
+/** The reads on a component's own elements that reach no variable: what rule 4 reports as undeclared. */
+const unreached = (model: Model) =>
+	model.reads
+		.filter((read) => read.source === undefined && model.elements[read.element]?.kind !== "foreign")
+		.map((read) => read.name);
 
 describe("declarations around a nested rule", () => {
 	inEverySyntax("are in the order they're written, and so are a variable's writes", ({ read }) => {
@@ -119,7 +122,7 @@ describe("a layer inside a rule", () => {
 		expect(
 			model.reads.map((one) => [one.name, keyOf(model, model.variables[one.source ?? -1]?.element)]),
 		).toEqual([["--s-color", ".card"]]);
-		expect(undeclared(model)).toEqual([]);
+		expect(unreached(model)).toEqual([]);
 	});
 
 	inEverySyntax("is under the layers around the rule, and around what's nested in it", ({ read }) => {
@@ -215,7 +218,7 @@ describe("quoted text in a value", () => {
 			["quotes", false],
 		]);
 		expect(model.reads.map((one) => one.name)).toEqual(["--s-missing"]);
-		expect(undeclared(model)).toEqual(["undeclared"]);
+		expect(unreached(model)).toEqual(["--s-missing"]);
 	});
 
 	inEverySyntax(

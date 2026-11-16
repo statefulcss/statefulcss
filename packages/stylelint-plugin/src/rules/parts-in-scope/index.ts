@@ -8,6 +8,8 @@ import { defineRule, type Edit, type Finding } from "../rule.js";
 const messages = {
 	outside: (part: string, scope: string) =>
 		`Unexpected ${part} outside its component's scope. Move it into "${scope}".`,
+	outsideAnyComponent: (part: string) =>
+		`Unexpected ${part} outside a component's scope. Move it into the scope of the component it belongs to.`,
 	outsideEach: (part: string, scopes: string) =>
 		`Unexpected ${part} outside its components' scopes. Write it in each of ${scopes}.`,
 	partOnRoot: (part: string, root: string) =>
@@ -78,8 +80,8 @@ export default defineRule<Record<never, never>, Key>({
 type Report = (finding: Finding<Key>) => void;
 
 /**
- * Every place a selector names a part outside its component's scope, or inside `:has()` on the root. Only a
- * component's parts are checked: a part a global element, a utility or a foreign selector names is no component's.
+ * Every place a selector names a part outside its component's scope, or inside `:has()` on the root. A part selected
+ * with no component is reported too, unless a utility or a foreign selector names it.
  * What one written selector says about two components (`.card, .button { & [data-part="x"] { } }`) is one finding.
  */
 function checkReferences(
@@ -99,12 +101,18 @@ function checkReferences(
 
 	for (const reference of model.partReferences) {
 		const component = reference.component === undefined ? undefined : model.components[reference.component];
-		if (!component) continue;
 		const blocks = reference.blocks.map((id) => model.blocks[id]).filter((block) => block !== undefined);
-		// What `:deep()` selects belongs to another component's rules.
-		if (blocks.length > 0 && !blocks.some((block) => owned(model, block))) continue;
 		// A part is named by its name, `part "icon"`; a selector that names no one part, as written.
 		const part = reference.name === undefined ? `"${textAt(reference.at)}"` : `part "${reference.name}"`;
+		if (!component) {
+			// A part selected with no component, on its own or from a global element, reaches into every component
+			// with a part of that name. A utility and what `:global()` selects are outside the rule.
+			if (blocks.length > 0 && blocks.every((block) => skipped(model, block))) continue;
+			report({ message: "outsideAnyComponent", args: [part], at: reference.at });
+			continue;
+		}
+		// What `:deep()` selects belongs to another component's rules.
+		if (blocks.length > 0 && !blocks.some((block) => owned(model, block))) continue;
 		const verdict = { at: reference.at, part, component };
 
 		if (reference.place === "has") {
@@ -374,6 +382,12 @@ function wholeCondition(conditions: readonly Condition[]): { text: string; at: P
 function owned(model: Model, block: Block): boolean {
 	const element = model.elements[block.element];
 	return element !== undefined && ownedElement(element);
+}
+
+/** Whether a block styles a utility, or what `:deep()`, `:global()` and the like select. */
+function skipped(model: Model, block: Block): boolean {
+	const kind = model.elements[block.element]?.kind;
+	return kind === "foreign" || kind === "utility";
 }
 
 function ownedElement(element: Element): boolean {

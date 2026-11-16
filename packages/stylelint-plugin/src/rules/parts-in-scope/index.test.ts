@@ -130,10 +130,6 @@ testRule(partsInScope, {
 			code: `@layer utilities { .stack [data-part="icon"] { @include paint; } }`,
 		},
 		{
-			description: "a part in a rule that names no component, which is a global element's",
-			code: `main [data-part="title"] { color: red; }`,
-		},
-		{
 			description: "scopes nested in rules of no component's: a global element, a utility, :global()",
 			code: `
 				main { @scope (section) { p { color: red; } } }
@@ -561,6 +557,50 @@ testRule(partsInScope, {
 					column: 27,
 					endLine: 1,
 					endColumn: 45,
+				},
+			],
+		},
+		{
+			description: "a part selected with no component: on its own, from a global element, in a global scope",
+			code: `
+				[data-part="title"] { }
+				main [data-part="title"] { color: red; }
+				@scope (main) { [data-part="title"] { @include paint; } }
+			`,
+			warnings: [
+				{
+					message: `Unexpected part "title" outside a component's scope. Move it into the scope of the component it belongs to.`,
+					line: 1,
+					column: 1,
+					endLine: 1,
+					endColumn: 20,
+				},
+				{
+					message: `Unexpected part "title" outside a component's scope. Move it into the scope of the component it belongs to.`,
+					line: 2,
+					column: 6,
+					endLine: 2,
+					endColumn: 25,
+				},
+				{
+					message: `Unexpected part "title" outside a component's scope. Move it into the scope of the component it belongs to.`,
+					line: 3,
+					column: 17,
+					endLine: 3,
+					endColumn: 36,
+				},
+			],
+		},
+		{
+			description: "a part that names no one part, with no component",
+			code: `main > [data-part] { color: red; }`,
+			warnings: [
+				{
+					message: `Unexpected "[data-part]" outside a component's scope. Move it into the scope of the component it belongs to.`,
+					line: 1,
+					column: 8,
+					endLine: 1,
+					endColumn: 19,
 				},
 			],
 		},

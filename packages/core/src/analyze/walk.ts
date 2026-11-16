@@ -4,7 +4,7 @@ import { defaults } from "@statefulcss/config";
 import type { AtRule, ChildNode, Comment, Container, Declaration, Document, Node, Root, Rule } from "postcss";
 import type parser from "postcss-selector-parser";
 
-import type { OtherAtRule, ScopeRootForm, UnknownReason } from "../model.js";
+import type { OtherAtRule, Position, ScopeRootForm, UnknownReason } from "../model.js";
 import { type SheetKind, sheetKind } from "./files.js";
 import {
 	closingParenthesis,
@@ -63,6 +63,8 @@ export interface WalkedBlock {
 	readonly scope: number | undefined;
 	/** How it writes its scope's root, when it does: `:scope > …` or `& > …`. */
 	readonly scopeRoot: ScopeRootForm | undefined;
+	/** Where that `:scope` or `&` is written: in this rule, or in the rule around it that wrote it. */
+	readonly scopeRootAt: Position | undefined;
 	readonly sheet: number;
 }
 
@@ -125,7 +127,13 @@ const otherAtRules = new Set([
 /** A selector that rules nested in it resolve against. */
 interface Parent {
 	readonly selector: Complex;
-	readonly scopeRoot: ScopeRootForm | undefined;
+	readonly scopeRoot: WrittenScopeRoot | undefined;
+}
+
+/** How a rule directly in a scope writes the scope's root, and where. */
+interface WrittenScopeRoot {
+	readonly form: ScopeRootForm;
+	readonly at: Position;
 }
 
 interface Context {
@@ -259,7 +267,7 @@ function visitRule(rule: Rule, context: Context, found: Found): void {
 			unknown(found, context, rule, "unparsable-selector", "& outside a rule");
 			continue;
 		}
-		const written = context.scopeTop ? scopeRootForm(selector) : undefined;
+		const written = context.scopeTop ? scopeRootOf(selector, rule) : undefined;
 		for (const alternative of expandPartLists(own, context.partAttribute))
 			for (const parent of context.parents ?? [undefined]) {
 				const complex = resolve(alternative, parent?.selector);
@@ -347,7 +355,8 @@ function blockOf(
 		atRules: context.atRules,
 		layer: layerOf(context),
 		scope: context.scope,
-		scopeRoot: parent.scopeRoot,
+		scopeRoot: parent.scopeRoot?.form,
+		scopeRootAt: parent.scopeRoot?.at,
 		sheet: context.sheet,
 	};
 }
@@ -380,11 +389,19 @@ function isDocComment(comment: Comment): boolean {
 	return !inline && comment.text.startsWith("*");
 }
 
-/** How a selector written directly in a scope names the scope's root. */
-function scopeRootForm(selector: parser.Selector): ScopeRootForm | undefined {
-	if (selector.nodes.some((node) => node.type === "pseudo" && node.value.toLowerCase() === ":scope"))
-		return ":scope";
-	return selector.nodes.some((node) => node.type === "nesting") ? "&" : undefined;
+/** How a selector written directly in a scope names the scope's root, and where in the rule's selector. */
+function scopeRootOf(selector: parser.Selector, rule: Rule): WrittenScopeRoot | undefined {
+	const scope = selector.nodes.find(
+		(node) => node.type === "pseudo" && node.value.toLowerCase() === ":scope",
+	);
+	const nesting = selector.nodes.find((node) => node.type === "nesting");
+	const written = scope ?? nesting;
+	if (!written) return undefined;
+	const index = written.sourceIndex ?? 0;
+	return {
+		form: scope ? ":scope" : "&",
+		at: { node: rule, index, endIndex: index + String(written).trim().length },
+	};
 }
 
 interface ScopePrelude {

@@ -173,6 +173,11 @@ interface BlockBase {
 	readonly scope: Id | undefined;
 	/** How a block inside a scope writes the scope's root, when it does. */
 	readonly scopeRoot: ScopeRootForm | undefined;
+	/**
+	 * Where that `:scope` or `&` is written, when the block writes it: in the block's own rule, or in the rule around it
+	 * that wrote it (`:scope { &:hover { } }`).
+	 */
+	readonly scopeRootAt: Position | undefined;
 	/** From the component root to the subject. Sibling context is a position variant, not a step. */
 	readonly path: readonly Step[];
 	/** From the selector. */

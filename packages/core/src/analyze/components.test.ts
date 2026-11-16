@@ -522,6 +522,9 @@ describe("parts, slots and content", () => {
 		]);
 		expect(find(model, '.article [data-part="icon"]')?.blocks).toEqual([3, 4]);
 		expect(model.blocks[5]).toMatchObject({ element: 0, reach: "scope", scopeRoot: ":scope" });
+		expect(model.blocks[5]?.scopeRootAt).toMatchObject({ index: 0, endIndex: 6 });
+		expect(model.blocks[4]?.scopeRootAt).toMatchObject({ index: 0, endIndex: 6 });
+		expect(model.blocks[3]?.scopeRootAt).toBeUndefined();
 	});
 
 	// Sources: the rules page, rules 3 and 4; the parts page, the tab's `::after`.

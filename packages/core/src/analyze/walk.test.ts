@@ -241,6 +241,40 @@ describe("scopes", () => {
 		]);
 	});
 
+	inEverySyntax("where a block writes its scope's root", ({ parse }) => {
+		const walked = walk(
+			parse(`
+				@scope (.button) to ([data-component]) {
+					:scope > [data-part="icon"] { inline-size: 1em; &:hover { color: red; } }
+					[data-part="badge"], & > [data-part="label"] { color: red; }
+					.dark /* note */ :SCOPE [data-part="title"] { color: red; }
+					:scope:hover { @media (width > 40rem) { color: red; } }
+				}
+				.card { @scope (&) to ([data-component]) { & [data-part="body"] { margin: 0; } } }
+			`),
+		);
+		expect(
+			walked.blocks.map((block) => {
+				const at = block.scopeRootAt;
+				const rule = at?.node.type === "rule" ? at.node : undefined;
+				return [
+					complexToString(block.selector),
+					rule?.selector.slice(at?.index, at?.endIndex),
+					rule?.selector,
+				];
+			}),
+		).toEqual([
+			['.button > [data-part="icon"]', ":scope", ':scope > [data-part="icon"]'],
+			['.button > [data-part="icon"]:hover', ":scope", ':scope > [data-part="icon"]'],
+			['.button [data-part="badge"]', undefined, undefined],
+			['.button > [data-part="label"]', "&", '[data-part="badge"], & > [data-part="label"]'],
+			// PostCSS leaves the comment out of the selector, which is what the offsets count in.
+			['.dark .button [data-part="title"]', ":SCOPE", '.dark  :SCOPE [data-part="title"]'],
+			[".button:hover", ":scope", ":scope:hover"],
+			['.card [data-part="body"]', "&", '& [data-part="body"]'],
+		]);
+	});
+
 	inEverySyntax("a query around the rules of a scope", ({ parse }) => {
 		const walked = walk(
 			parse(`

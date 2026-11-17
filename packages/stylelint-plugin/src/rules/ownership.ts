@@ -21,6 +21,16 @@ export interface Ownership {
 	 * the root. Content is not a part, so no owner declares part variables for it.
 	 */
 	owner(reader: Id, name: string, role: "state" | "private" | "part"): Id | undefined;
+	/**
+	 * The owner whose name for an element the reader stands in starts the variable's name, with no fallback: the one
+	 * that declares it for this reader by name. Undefined when the name is for no element in the reader's chain.
+	 */
+	namedOwner(reader: Id, name: string): Id | undefined;
+	/**
+	 * The elements an owner's name for them starts the variable's name with, by its longest matching name: the root's
+	 * `tab-after` before its `tab`. Empty when the owner names none of them.
+	 */
+	named(owner: Id, name: string): readonly Id[];
 	/** The variable of that name an element writes. */
 	variable(element: Id, name: string): Variable | undefined;
 	/**
@@ -109,23 +119,20 @@ function build(model: Model): Ownership {
 	}
 	const variable = (element: Id, name: string): Variable | undefined => variables.get(element)?.get(name);
 
+	const named = (owner: Id, name: string): readonly Id[] => {
+		const given = names.get(owner);
+		const match = given && namedFor(name, given.names);
+		return (match !== undefined && given?.elements.get(match)) || [];
+	};
+
 	// One decision for each reader and name: the owner whose name for the reader starts the variable's name.
-	const named = new Map<string, Id | undefined>();
+	const namedOwners = new Map<string, Id | undefined>();
 	const namedOwner = (reader: Id, name: string): Id | undefined => {
 		const key = `${reader}\n${name}`;
-		if (named.has(key)) return named.get(key);
-		let found: Id | undefined;
+		if (namedOwners.has(key)) return namedOwners.get(key);
 		const readerChain = chain(reader);
-		for (const owner of owners(reader)) {
-			const given = names.get(owner);
-			if (!given) continue;
-			const match = namedFor(name, given.names);
-			if (match !== undefined && (given.elements.get(match) ?? []).some((id) => readerChain.includes(id))) {
-				found = owner;
-				break;
-			}
-		}
-		named.set(key, found);
+		const found = owners(reader).find((owner) => named(owner, name).some((id) => readerChain.includes(id)));
+		namedOwners.set(key, found);
 		return found;
 	};
 
@@ -177,7 +184,7 @@ function build(model: Model): Ownership {
 		return consumersById.get(one.id) ?? [];
 	};
 
-	return { component, chain, owners, owner, variable, supplier, taken, consumers };
+	return { component, chain, owners, owner, namedOwner, named, variable, supplier, taken, consumers };
 }
 
 /**

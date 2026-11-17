@@ -4,6 +4,7 @@
 import type { Settings } from "@statefulcss/config";
 import type { Block, Declaration, Element, Id, Model, Read, Variable } from "@statefulcss/core";
 
+import { listOf, nameOf } from "../names.js";
 import { ownershipOf, type Ownership } from "../ownership.js";
 import { defineRule, type Finding } from "../rule.js";
 
@@ -328,33 +329,4 @@ function whereOf(block: Block | undefined): string {
 	if (block.queries.length > 0)
 		return block.queries.map((query) => `@${query.name} ${query.params}`).join(" ");
 	return block.selector;
-}
-
-/** Each distinct text once, joined: `a`, `a and b`, `a, b and c`. */
-function listOf(texts: readonly string[]): string {
-	const distinct = [...new Set(texts)];
-	return distinct.length < 2
-		? distinct.join("")
-		: `${distinct.slice(0, -1).join(", ")} and ${distinct.at(-1) ?? ""}`;
-}
-
-/**
- * An element as a message names it: a part or a slot by its name (`part "icon"`), a part's pseudo-element on it
- * (`"::after" of part "tab"`), and anything else as its selector is written (`".link::after"`).
- */
-function nameOf(model: Model, settings: Settings, id: Id): string {
-	const element = model.elements[id];
-	if (!element) return "the element";
-	if (element.kind === "part" || element.kind === "slot") return `${element.kind} "${element.name}"`;
-	if (element.kind === "pseudo-element") {
-		const host = model.elements[element.host];
-		if (host?.kind === "part" || host?.kind === "slot")
-			return `"::${element.name}" of ${nameOf(model, settings, host.id)}`;
-	}
-	if (element.kind === "root") {
-		const identity = ownershipOf(model).component(element)?.identity;
-		if (identity?.kind === "class") return `".${identity.className}"`;
-		if (identity) return `"[${settings.componentAttribute}="${identity.value}"]"`;
-	}
-	return `"${element.key}"`;
 }

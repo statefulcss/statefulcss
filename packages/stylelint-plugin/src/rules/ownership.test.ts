@@ -40,6 +40,22 @@ describe("ownershipOf", () => {
 		expect(ownership.owner(after, "--p-other", "part")).toBe(tab);
 	});
 
+	it("names what an owner's longest matching name is for, and the owner that names it for a reader", () => {
+		const model = modelOf(css);
+		const ownership = ownershipOf(model);
+		const root = elementOf(model, ".card");
+		const tab = elementOf(model, '[data-part="tab"]');
+		const after = elementOf(model, '[data-part="tab"]::after');
+		expect(ownership.named(root, "--p-tab-color")).toEqual([tab]);
+		expect(ownership.named(root, "--p-tab-after-color")).toEqual([after]);
+		expect(ownership.named(tab, "--p-after-color")).toEqual([after]);
+		expect(ownership.named(root, "--p-other")).toEqual([]);
+		expect(ownership.namedOwner(after, "--p-tab-color")).toBe(root);
+		expect(ownership.namedOwner(after, "--p-after-color")).toBe(tab);
+		expect(ownership.namedOwner(tab, "--p-tab-after-color")).toBeUndefined();
+		expect(ownership.namedOwner(tab, "--p-other")).toBeUndefined();
+	});
+
 	it("follows an inherit to the variable that supplies the value", () => {
 		const model = modelOf(`
 			.card { --_icon-color: red; }

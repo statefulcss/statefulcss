@@ -73,13 +73,27 @@ export type Place =
 	| { readonly node: Declaration; readonly part?: "property" | "value" }
 	| { readonly node: Rule | AtRule | Comment };
 
+/** One change to the tree: text replaced in a selector or parameters, or rules moved into a new rule. */
+export type Edit = ReplaceEdit | WrapEdit;
+
 /**
- * One change to the tree. `replace` puts `text` where `expects` is written, in a rule's selector or an at-rule's
- * parameters. It names the text it expects, so an edit that another fix has overtaken is left alone.
+ * Puts `text` where `expects` is written, in a rule's selector or an at-rule's parameters. It names the text it
+ * expects, so an edit that another fix has overtaken is left alone.
  */
-export interface Edit {
+export interface ReplaceEdit {
 	readonly kind: "replace";
 	readonly at: Position;
 	readonly expects: string;
 	readonly text: string;
+}
+
+/**
+ * Moves rules that follow each other in one parent into a new rule with `selector`, written where the first of them
+ * stood, one level deeper: `&:hover { }` into `&:where(:not(:disabled)) { &:hover { } }`. Only rules with nothing
+ * between them but space are moved.
+ */
+export interface WrapEdit {
+	readonly kind: "wrap";
+	readonly rules: readonly Rule[];
+	readonly selector: string;
 }

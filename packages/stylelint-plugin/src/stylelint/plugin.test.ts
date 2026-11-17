@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import type { Rule } from "postcss";
 import stylelint from "stylelint";
 import { afterAll, describe, expect, it } from "vitest";
 
@@ -241,6 +242,162 @@ testRule(rename, {
 	],
 });
 
+/**
+ * Wraps each run of nested `&:hover` and `&:active` rules with no guard in `&:where(:not(:disabled))`. Every rule of a
+ * run reports, and carries the same wrap.
+ */
+const guard: RuleDefinition<Record<never, never>, "unguarded"> = defineRule({
+	name: "test-guard",
+	severity: "error",
+	fixable: true,
+	messages: { unguarded: () => "Expected a guard" },
+	check(model) {
+		const unguarded = new Set(
+			model.blocks.flatMap((block) =>
+				block.node.type === "rule" &&
+				block.guard === undefined &&
+				/^&:(?:hover|active)$/.test(block.node.selector)
+					? [block.node]
+					: [],
+			),
+		);
+		const findings: Finding<"unguarded">[] = [];
+		for (const rule of unguarded) {
+			const siblings = rule.parent?.nodes ?? [];
+			let start = siblings.indexOf(rule);
+			while (start > 0 && unguarded.has(siblings[start - 1] as Rule)) start -= 1;
+			let end = siblings.indexOf(rule);
+			while (unguarded.has(siblings[end + 1] as Rule)) end += 1;
+			const rules = siblings.slice(start, end + 1) as Rule[];
+			findings.push({
+				message: "unguarded",
+				args: [],
+				at: { node: rule },
+				edits: [{ kind: "wrap", rules, selector: "&:where(:not(:disabled))" }],
+			});
+		}
+		return findings;
+	},
+});
+
+testRule(guard, {
+	reject: [
+		{
+			description: "rules on lines of their own move one level deeper, in their order",
+			code: `
+				.button {
+					--s-color: red;
+					color: var(--s-color);
+
+					&:hover { --s-color: blue; }
+					&:active {
+						--s-color: green;
+					}
+					&:focus-visible { --s-color: black; }
+				}
+			`,
+			warnings: [
+				{ message: "Expected a guard", line: 5, column: 2 },
+				{ message: "Expected a guard", line: 6, column: 2 },
+			],
+			fixed: `
+				.button {
+					--s-color: red;
+					color: var(--s-color);
+
+					&:where(:not(:disabled)) {
+						&:hover { --s-color: blue; }
+						&:active {
+							--s-color: green;
+						}
+					}
+					&:focus-visible { --s-color: black; }
+				}
+			`,
+		},
+		{
+			description: "rules on one line stay on it",
+			code: `
+				.button { --s-color: red; color: var(--s-color); &:hover { --s-color: blue; } }
+			`,
+			warnings: [{ message: "Expected a guard", line: 1, column: 50 }],
+			fixed: `
+				.button { --s-color: red; color: var(--s-color); &:where(:not(:disabled)) { &:hover { --s-color: blue; } } }
+			`,
+		},
+		{
+			description: "indentation of two spaces, inside a media query",
+			code: `
+				.button {
+				  --s-color: red;
+				  color: var(--s-color);
+				  @media (hover: hover) {
+				    &:hover { --s-color: blue; }
+				  }
+				}
+			`,
+			warnings: [{ message: "Expected a guard", line: 5, column: 5 }],
+			fixed: `
+				.button {
+				  --s-color: red;
+				  color: var(--s-color);
+				  @media (hover: hover) {
+				    &:where(:not(:disabled)) {
+				      &:hover { --s-color: blue; }
+				    }
+				  }
+				}
+			`,
+		},
+		{
+			description: "two runs apart, each wrapped on its own",
+			code: `
+				.button {
+					--s-color: red;
+					color: var(--s-color);
+					&:hover { --s-color: blue; }
+					&[aria-pressed="true"] { --s-color: green; }
+					&:active { --s-color: black; }
+				}
+			`,
+			warnings: [
+				{ message: "Expected a guard", line: 4, column: 2 },
+				{ message: "Expected a guard", line: 6, column: 2 },
+			],
+			fixed: `
+				.button {
+					--s-color: red;
+					color: var(--s-color);
+					&:where(:not(:disabled)) {
+						&:hover { --s-color: blue; }
+					}
+					&[aria-pressed="true"] { --s-color: green; }
+					&:where(:not(:disabled)) {
+						&:active { --s-color: black; }
+					}
+				}
+			`,
+		},
+	],
+});
+
+/** Renames every part `icon` to `glyph` in one finding, wherever the file names it. */
+const renameAll: RuleDefinition<Record<never, never>, "renamed"> = defineRule({
+	name: "test-rename-all",
+	severity: "error",
+	fixable: true,
+	messages: { renamed: () => 'Expected "glyph"' },
+	check(model) {
+		const edits = model.partReferences.flatMap((reference) =>
+			reference.name === "icon" && reference.nameAt
+				? [{ kind: "replace" as const, at: reference.nameAt, expects: "icon", text: "glyph" }]
+				: [],
+		);
+		const [first] = edits;
+		return first ? [{ message: "renamed", args: [], at: first.at, edits }] : [];
+	},
+});
+
 describe("the glue", () => {
 	const project = temporaryProject();
 	const configFor = (...rules: RuleDefinition[]): stylelint.Config => ({
@@ -337,6 +494,45 @@ describe("the glue", () => {
 		expect((await lint(vue, project(), config, true)).code).toBe(
 			vue.wrap('.card [data-part="glyph"] { color: red; }'),
 		);
+	});
+
+	it("gives an editor one fix that holds every node the fix changes", async () => {
+		const editorFix = async (rule: RuleDefinition, code: string) => {
+			const source = sourceFor("css", { code });
+			const config = configFor(rule);
+			const { results } = await stylelint.lint({
+				code: source.code,
+				codeFilename: path.join(project(), source.file),
+				config,
+				computeEditInfo: true,
+			});
+			const fixes = (results[0]?.warnings ?? []).flatMap((warning) => (warning.fix ? [warning.fix] : []));
+			const edited = fixes.reduceRight(
+				(text, { range: [start, end], text: inserted }) => text.slice(0, start) + inserted + text.slice(end),
+				source.code,
+			);
+			return { count: fixes.length, edited, fixed: (await lint(source, project(), config, true)).code };
+		};
+
+		// One finding renames two rules (glue F12).
+		const renamed = await editorFix(
+			renameAll,
+			'.card [data-part="icon"] { color: red; }\n.link [data-part="icon"] { color: blue; }',
+		);
+		expect(renamed.edited).toBe(
+			'.card [data-part="glyph"] { color: red; }\n.link [data-part="glyph"] { color: blue; }',
+		);
+		expect(renamed).toMatchObject({ count: 1, fixed: renamed.edited });
+
+		// A wrap changes the rule around the rules it moves; two findings carry it, and the first gets the fix.
+		const wrapped = await editorFix(
+			guard,
+			".button {\n\t&:hover { color: blue; }\n\t&:active { color: red; }\n}",
+		);
+		expect(wrapped.edited).toBe(
+			".button {\n\t&:where(:not(:disabled)) {\n\t\t&:hover { color: blue; }\n\t\t&:active { color: red; }\n\t}\n}",
+		);
+		expect(wrapped).toMatchObject({ count: 1, fixed: wrapped.edited });
 	});
 
 	it("honours a disable comment", async () => {

@@ -4,7 +4,7 @@ import { defaults } from "@statefulcss/config";
 import stylelint from "stylelint";
 
 import type { Finding, Message, RuleDefinition } from "../rules/rule.js";
-import { apply, canApply, overlap } from "./edits.js";
+import { apply, canApply, enclosing, overlap } from "./edits.js";
 import { liveOf, load } from "./load.js";
 import { type Span, spanOf } from "./positions.js";
 
@@ -121,6 +121,11 @@ export function toPlugin(
 				finding.edits?.length && !withheld && !overlap(finding.edits) && canApply(finding.edits)
 					? finding.edits
 					: undefined;
+			// An editor gets the text of one node with the fix made in it, so the node holds every edit; with none
+			// that does, only `--fix` makes it.
+			const editorNode = edits && enclosing(edits);
+			const fix =
+				edits && (editorNode ? { apply: () => apply(edits), node: editorNode } : () => apply(edits));
 			utils.report({
 				ruleName,
 				result,
@@ -131,9 +136,7 @@ export function toPlugin(
 				message: safely(message),
 				messageArgs: [...finding.args],
 				...(finding.severity ? { severity: finding.severity } : {}),
-				...(edits
-					? { fix: { apply: () => apply(edits), node: liveOf(edits[0]?.at.node ?? span.node) ?? root } }
-					: {}),
+				...(fix ? { fix } : {}),
 			});
 		}
 	};

@@ -1,7 +1,15 @@
 // `variable-role-prefix` (rule 1): every custom property a stylesheet declares or registers starts with one of the six
 // role prefixes and a name, unless it's a library's variable the component's doc comment lists in `@sets`.
-import { type Declaration, type Element, type Model, rolePrefixes } from "@statefulcss/core";
+import {
+	type Declaration,
+	type Element,
+	type Model,
+	type Read,
+	rolePrefixes,
+	type Variable,
+} from "@statefulcss/core";
 
+import { ownershipOf } from "../ownership.js";
 import { isNamePattern, matchesAny, type NamePattern } from "../patterns.js";
 import { defineRule, type Finding } from "../rule.js";
 
@@ -57,14 +65,7 @@ export default defineRule<Options, Key>({
 	},
 	check(model, { options }) {
 		const ignored = (name: string): boolean => matchesAny(name, options.ignoreProperties);
-		const suggestions = new Map<string, Suggestion>();
-		const suggestionFor = (name: string): Suggestion => {
-			const known = suggestions.get(name);
-			if (known) return known;
-			const suggestion = suggest(model, name);
-			suggestions.set(name, suggestion);
-			return suggestion;
-		};
+		const uses = usesOf(model);
 		const findings: Finding<Key>[] = [];
 
 		// A selector list writes a declaration once: its branches are judged together, and it's reported once.
@@ -73,7 +74,9 @@ export default defineRule<Options, Key>({
 			if (declaration.role === undefined || ignored(declaration.property)) continue;
 			const element = elementOf(model, declaration);
 			if (!element || skipped(element)) continue;
-			branches.set(declaration.written, [...(branches.get(declaration.written) ?? []), declaration]);
+			const written = branches.get(declaration.written);
+			if (written) written.push(declaration);
+			else branches.set(declaration.written, [declaration]);
 		}
 		for (const written of branches.values()) {
 			const [first] = written;
@@ -87,7 +90,7 @@ export default defineRule<Options, Key>({
 			// One branch with no role is enough. A branch in a component may be a library's variable.
 			const unnamed = written.filter((declaration) => declaration.role === "none");
 			if (unnamed.length > 0) {
-				const suggestion = suggestionFor(name);
+				const suggestion = strongest(unnamed.map((declaration) => uses.suggest(declaration)));
 				const inComponent = unnamed.some(
 					(declaration) => componentOf(elementOf(model, declaration)) !== undefined,
 				);
@@ -103,18 +106,22 @@ export default defineRule<Options, Key>({
 			if (unset) findings.push({ message: "readsOnly", args: [name], at });
 		}
 
-		// `@property` registers a name for the whole page: no doc comment makes a library's name one to register.
+		// `@property` registers a name for the whole page: no doc comment makes a library's name one to register. A
+		// name with SCSS or Less interpolation can't be read, as with a declaration's.
 		for (const registration of model.registrations) {
 			const { name, node } = registration;
-			if (ignored(name)) continue;
+			if (ignored(name) || unreadable.test(name)) continue;
 			const index = node.params.indexOf(name);
 			if (index === -1) continue;
 			const at = { node, index, endIndex: index + name.length };
 			if (hasNoName(name)) {
 				findings.push({ message: "noName", args: [name], at });
 			} else if (registration.role === "none") {
-				const declared = model.declarations.some((declaration) => declaration.property === name);
-				const suggestion = declared ? suggestionFor(name) : undefined;
+				const declared = uses.declarations(name);
+				const suggestion =
+					declared.length > 0
+						? strongest(declared.map((declaration) => uses.suggest(declaration)))
+						: undefined;
 				findings.push(
 					suggestion
 						? { message: suggestion, args: [name, suggested(name, suggestion)], at }
@@ -126,38 +133,88 @@ export default defineRule<Options, Key>({
 	},
 });
 
+/** Interpolation in a name: SCSS's `#{}`, Less's `@{}`, a template's `${}` or `{{ }}`. */
+const unreadable = /#\{|@\{|\$\{|\{\{/;
+
+/** The suggestions in the order they win: a selector list's branches, or a registered name's declarations. */
+const order: readonly Suggestion[] = ["query", "state", "token", "page", "component", "private"];
+
+function strongest(suggestions: readonly Suggestion[]): Suggestion {
+	return order.find((one) => suggestions.includes(one)) ?? "private";
+}
+
+interface Uses {
+	/** The role one declaration's own use suggests. */
+	suggest(declaration: Declaration): Suggestion;
+	/** The declarations of a name on elements the rule checks. */
+	declarations(name: string): readonly Declaration[];
+}
+
 /**
- * The role a name's use in this file suggests: queried with `@container style()`, a query variable; changed by a
- * variant or state, a state variable; declared in a theme, or on `:root` or `html`, a token; read by a component and
- * set outside it, a component variable; otherwise a private. What `:root` changes in a query (a dark color scheme)
- * stays a token.
+ * What the file says about each name, gathered in one pass, and the role a declaration's own use suggests from it:
+ * queried with `@container style()`, a query variable; changed by a variant or state of its own element, or by one
+ * that takes its default from outside, a state variable; declared in a theme, a token; declared on the document
+ * element, in any form, a token for the whole page; read by a component that doesn't declare it, and written outside
+ * that component, a component variable; otherwise a private. What the document element changes in a query (a dark
+ * color scheme) stays a token.
  */
-function suggest(model: Model, name: string): Suggestion {
-	if (model.reads.some((read) => read.name === name && read.via === "style-query")) return "query";
-	const writers = model.declarations
-		.filter((declaration) => declaration.property === name)
-		.flatMap((declaration) => elementOf(model, declaration) ?? [])
-		.filter((element) => !skipped(element));
-	const changed = model.variables.some((variable) => {
+function usesOf(model: Model): Uses {
+	const ownership = ownershipOf(model);
+	const queried = new Set<string>();
+	/** Reads with `var()` that reach no variable in their component. */
+	const fromOutside = new Map<string, Read[]>();
+	/** Variables a variant or state changes with no default of their own: their default comes from outside. */
+	const changedFromOutside = new Map<string, Variable[]>();
+	const declarations = new Map<string, Declaration[]>();
+	/** Written on the document element, in any form (`html.dark` is read as a component's root). */
+	const onPage = (declaration: Declaration): boolean =>
+		isPage(model.blocks[declaration.block]?.selector ?? "");
+	/** A variant or state changes it, but not the document element in a query (a dark color scheme). */
+	const changes = (variable: Variable): boolean =>
+		variable.changes.some((id) => {
+			const change = model.declarations[id];
+			return change !== undefined && !onPage(change);
+		});
+	const push = <Value>(map: Map<string, Value[]>, name: string, value: Value): void => {
+		const list = map.get(name);
+		if (list) list.push(value);
+		else map.set(name, [value]);
+	};
+
+	for (const read of model.reads) {
+		if (read.via === "style-query") queried.add(read.name);
+		else if (read.source === undefined) push(fromOutside, read.name, read);
+	}
+	for (const variable of model.variables) {
 		const element = model.elements[variable.element];
-		return (
-			variable.name === name &&
-			variable.changes.length > 0 &&
-			element !== undefined &&
-			!skipped(element) &&
-			!isPage(element)
-		);
-	});
-	if (changed) return "state";
-	if (writers.some((element) => element.kind === "global" && element.themeScope !== undefined))
-		return "token";
-	if (writers.some(isPage)) return "page";
-	const outside = model.reads.some((read) => {
-		if (read.name !== name || read.via !== "var") return false;
-		const reader = componentOf(model.elements[read.element]);
-		return reader !== undefined && writers.some((writer) => componentOf(writer) !== reader);
-	});
-	return outside ? "component" : "private";
+		if (!element || skipped(element)) continue;
+		if (variable.default === undefined && changes(variable))
+			push(changedFromOutside, variable.name, variable);
+	}
+	for (const declaration of model.declarations) {
+		const element = elementOf(model, declaration);
+		if (element && !skipped(element)) push(declarations, declaration.property, declaration);
+	}
+
+	const suggest = (declaration: Declaration): Suggestion => {
+		const name = declaration.property;
+		const element = elementOf(model, declaration);
+		if (!element) return "private";
+		if (queried.has(name)) return "query";
+		const page = onPage(declaration);
+		const own = ownership.variable(element.id, name);
+		if (own && changes(own)) return "state";
+		if (changedFromOutside.get(name)?.some((variable) => variable.element !== element.id)) return "state";
+		if (element.kind === "global" && element.themeScope !== undefined) return "token";
+		if (page) return "page";
+		const writer = componentOf(element);
+		const outside = fromOutside.get(name)?.some((read) => {
+			const reader = componentOf(model.elements[read.element]);
+			return reader !== undefined && reader !== writer;
+		});
+		return outside ? "component" : "private";
+	};
+	return { suggest, declarations: (name) => declarations.get(name) ?? [] };
 }
 
 /** The name with the suggested role's prefix: `--opacity` as a state variable is `--s-opacity`. */
@@ -192,9 +249,28 @@ function skipped(element: Element): boolean {
 	return element.kind === "foreign";
 }
 
-/** `:root` or `html`: what it declares is for the whole page. */
-function isPage(element: Element): boolean {
-	if (element.kind !== "global") return false;
-	const selector = element.selector.toLowerCase();
-	return selector === ":root" || selector === "html";
+/**
+ * A selector for the document element, in any form: `:root` or `html`, alone or with a class, an attribute or a
+ * pseudo-class on it (`:root[data-color-scheme="dark"]`, `html.dark`). What it declares is for the whole page.
+ */
+function isPage(written: string): boolean {
+	const selector = written.trim().toLowerCase();
+	const subject = /^(?::root|html)(?![\w-])/.exec(selector);
+	return subject !== null && !hasCombinator(selector.slice(subject[0].length));
+}
+
+/** Whether a selector steps to another element: a combinator outside brackets, parentheses and quotes. */
+function hasCombinator(selector: string): boolean {
+	let depth = 0;
+	let quote: string | undefined;
+	for (let index = 0; index < selector.length; index++) {
+		const char = selector.charAt(index);
+		if (char === "\\") index++;
+		else if (quote) quote = char === quote ? undefined : quote;
+		else if (char === '"' || char === "'") quote = char;
+		else if (char === "(" || char === "[") depth++;
+		else if (char === ")" || char === "]") depth--;
+		else if (depth === 0 && /[\s>+~,]/.test(char)) return true;
+	}
+	return false;
 }

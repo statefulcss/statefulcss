@@ -139,6 +139,14 @@ testRule(variableRolePrefix, {
 			`,
 			skip: { css: "SCSS interpolation", vue: "SCSS interpolation" },
 		},
+		{
+			description: "a registered property whose name is interpolated",
+			code: `
+				$role: t;
+				@property --#{$role}-scale { syntax: "<number>"; inherits: false; initial-value: 0; }
+			`,
+			skip: { css: "SCSS interpolation", vue: "SCSS interpolation" },
+		},
 	],
 	reject: [
 		// The rules page's Reported cases.
@@ -463,6 +471,224 @@ testRule(variableRolePrefix, {
 					column: 11,
 					endLine: 1,
 					endColumn: 14,
+				},
+			],
+		},
+		// The suggestion comes from this declaration's own use, not from every declaration of its spelling.
+		{
+			description: "two components each reading their own variable of one spelling: two privates",
+			code: `
+				.card { --gap: 1rem; gap: var(--gap); }
+				.tabs { --gap: 2rem; gap: var(--gap); }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--gap" with no role prefix. Name it "--_gap", a private, or list it in the component\'s "@sets" if a library reads it.',
+					line: 1,
+					column: 9,
+					endLine: 1,
+					endColumn: 14,
+				},
+				{
+					message:
+						'Unexpected "--gap" with no role prefix. Name it "--_gap", a private, or list it in the component\'s "@sets" if a library reads it.',
+					line: 2,
+					column: 9,
+					endLine: 2,
+					endColumn: 14,
+				},
+			],
+		},
+		{
+			description: "a state of another component doesn't make a static variable a state variable",
+			code: `
+				.card { --gap: 1rem; gap: var(--gap); }
+				.tabs { --gap: 2rem; gap: var(--gap); &:hover { --gap: 3rem; } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--gap" with no role prefix. Name it "--_gap", a private, or list it in the component\'s "@sets" if a library reads it.',
+					line: 1,
+					column: 9,
+					endLine: 1,
+					endColumn: 14,
+				},
+				{
+					message:
+						'Unexpected "--gap" with no role prefix. A variant or state changes it, so it\'s a state variable: name it "--s-gap".',
+					line: 2,
+					column: 9,
+					endLine: 2,
+					endColumn: 14,
+				},
+				{
+					message:
+						'Unexpected "--gap" with no role prefix. A variant or state changes it, so it\'s a state variable: name it "--s-gap".',
+					line: 2,
+					column: 49,
+					endLine: 2,
+					endColumn: 54,
+				},
+			],
+		},
+		// The document element in any form is the whole page.
+		{
+			description: "a variable on :root with an attribute: a token",
+			code: `
+				html[data-color-scheme="dark"] { --text: white; }
+				:root[data-color-scheme="dark"] { --text: white; }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--text" with no role prefix. Declared for the whole page, it\'s a token: name it "--t-text".',
+					line: 1,
+					column: 34,
+					endLine: 1,
+					endColumn: 40,
+				},
+				{
+					message:
+						'Unexpected "--text" with no role prefix. Declared for the whole page, it\'s a token: name it "--t-text".',
+					line: 2,
+					column: 35,
+					endLine: 2,
+					endColumn: 41,
+				},
+			],
+		},
+		{
+			description: "a variable on html with a class: a token",
+			code: `
+				html.dark { --text: white; }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--text" with no role prefix. Declared for the whole page, it\'s a token: name it "--t-text".',
+					line: 1,
+					column: 13,
+					endLine: 1,
+					endColumn: 19,
+				},
+			],
+		},
+		{
+			description:
+				"a variable :root declares and changes for a dark color scheme in a media query: still a token",
+			code: `
+				:root { --text: black; }
+				@media (prefers-color-scheme: dark) { :root[data-color-scheme="dark"] { --text: white; } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--text" with no role prefix. Declared for the whole page, it\'s a token: name it "--t-text".',
+					line: 1,
+					column: 9,
+					endLine: 1,
+					endColumn: 15,
+				},
+				{
+					message:
+						'Unexpected "--text" with no role prefix. Declared for the whole page, it\'s a token: name it "--t-text".',
+					line: 2,
+					column: 73,
+					endLine: 2,
+					endColumn: 79,
+				},
+			],
+		},
+		// Every empty prefix, and every registration in a file.
+		{
+			description: "each role prefix, and the two dashes, with no name",
+			code: `
+				main {
+					--t-: 1;
+					--c-: 1;
+					--s-: 1;
+					--p-: 1;
+					--_: 1;
+					--q-: 1;
+					--: 1;
+				}
+			`,
+			warnings: [
+				{
+					message: 'Unexpected "--t-" with no name after its prefix. Add a name that says what it holds.',
+					line: 2,
+					column: 2,
+					endLine: 2,
+					endColumn: 6,
+				},
+				{
+					message: 'Unexpected "--c-" with no name after its prefix. Add a name that says what it holds.',
+					line: 3,
+					column: 2,
+					endLine: 3,
+					endColumn: 6,
+				},
+				{
+					message: 'Unexpected "--s-" with no name after its prefix. Add a name that says what it holds.',
+					line: 4,
+					column: 2,
+					endLine: 4,
+					endColumn: 6,
+				},
+				{
+					message: 'Unexpected "--p-" with no name after its prefix. Add a name that says what it holds.',
+					line: 5,
+					column: 2,
+					endLine: 5,
+					endColumn: 6,
+				},
+				{
+					message: 'Unexpected "--_" with no name after its prefix. Add a name that says what it holds.',
+					line: 6,
+					column: 2,
+					endLine: 6,
+					endColumn: 5,
+				},
+				{
+					message: 'Unexpected "--q-" with no name after its prefix. Add a name that says what it holds.',
+					line: 7,
+					column: 2,
+					endLine: 7,
+					endColumn: 6,
+				},
+				{
+					message: 'Unexpected "--" with no name after its prefix. Add a name that says what it holds.',
+					line: 8,
+					column: 2,
+					endLine: 8,
+					endColumn: 4,
+				},
+			],
+		},
+		{
+			description: "two registered properties with no role in one file",
+			code: `
+				@property --scale { syntax: "<number>"; inherits: false; initial-value: 1; }
+				@property --angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--scale" registered with no role prefix. Name it with the prefix of its role: "--t-", "--c-", "--s-", "--p-", "--_" or "--q-".',
+					line: 1,
+					column: 11,
+					endLine: 1,
+					endColumn: 18,
+				},
+				{
+					message:
+						'Unexpected "--angle" registered with no role prefix. Name it with the prefix of its role: "--t-", "--c-", "--s-", "--p-", "--_" or "--q-".',
+					line: 2,
+					column: 11,
+					endLine: 2,
+					endColumn: 18,
 				},
 			],
 		},

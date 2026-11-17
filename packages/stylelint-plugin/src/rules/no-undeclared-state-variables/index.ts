@@ -196,9 +196,12 @@ function checkVariable(context: Context, variable: Variable): void {
 		});
 	}
 
-	// Renaming a part: a variable named for a part that no part reads.
+	// Renaming a part: a variable named for a part that no part reads. One whose every write is `inherit` only passes
+	// its supplier's value on, and what reads it counts for the supplier, so it's never the stale name.
 	const forPart =
-		(variable.role === "part" && byOwner) || (variable.role === "private" && variable.namedFor.length > 0);
+		((variable.role === "part" && byOwner) ||
+			(variable.role === "private" && variable.namedFor.length > 0)) &&
+		!writes.every((write) => write.inherits);
 	const declaredAt = fallback ?? first;
 	if (!forPart || !declaredAt || !partsInView(context, element, variable)) return;
 	if (readByPart(context, variable) || componentHasUnknown(context, element)) return;

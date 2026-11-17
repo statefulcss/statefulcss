@@ -887,6 +887,18 @@ testRule(noUndeclaredStateVariables, {
 			`,
 		},
 		{
+			description: "a part forwarding a private its pseudo-element takes with inherit, not a stale name",
+			code: `
+				.card { --_after-color: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="icon"] {
+						--_after-color: inherit;
+						&::after { --_after-color: inherit; color: var(--_after-color); }
+					}
+				}
+			`,
+		},
+		{
 			description: "with the root block in another file, a part forwarding a private with inherit",
 			code: `
 				@scope ([data-component="card"]) to ([data-component]) {

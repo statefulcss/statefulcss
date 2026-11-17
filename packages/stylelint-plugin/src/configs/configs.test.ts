@@ -147,9 +147,16 @@ describe("compatible", () => {
 describe.each(configs)("%s", (_name, config) => {
 	const project = temporaryProject();
 
-	it("leaves a repeated custom property to Stylelint until bind-once reports it", async () => {
+	it("reports a repeated custom property through bind-once, with Stylelint's own rule off", async () => {
 		expect(await warningsOf(config, project(), ".page { --s-color: red; --s-color: blue; }")).toEqual([
-			"declaration-block-no-duplicate-custom-properties: error",
+			"statefulcss/bind-once: error",
+		]);
+		const existing: stylelint.Config = {
+			rules: { "declaration-block-no-duplicate-custom-properties": true },
+		};
+		const extended: stylelint.Config = { extends: [existing, config] };
+		expect(await warningsOf(extended, project(), ".page { --s-color: red; --s-color: blue; }")).toEqual([
+			"statefulcss/bind-once: error",
 		]);
 	});
 });

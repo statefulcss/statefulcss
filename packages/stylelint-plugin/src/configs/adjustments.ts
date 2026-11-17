@@ -30,6 +30,8 @@ export const adjusted: Rules = {
 	],
 	// It compares selectors across the file, and reports state blocks written in the methodology's order.
 	"no-descending-specificity": null,
+	// `bind-once` reports a repeated custom property, with the `@supports` form that replaces it.
+	"declaration-block-no-duplicate-custom-properties": null,
 };
 
 /**
@@ -41,8 +43,6 @@ export const fromRecommended: Rules = {
 	"selector-no-invalid": true,
 	// A longhand followed by its shorthand, which always discards the longhand.
 	"declaration-block-no-shorthand-property-overrides": true,
-	// A repeated custom property can never be a fallback. Stylelint reports it until `bind-once` does.
-	"declaration-block-no-duplicate-custom-properties": true,
 };
 
 /** Rules a project's existing config may have on that contradict the methodology. `compatible` switches them off. */

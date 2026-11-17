@@ -18,7 +18,8 @@ export interface Ownership {
 	 * The one element that may declare a variable for a reader, chosen from the reader and the name: the owner whose
 	 * name for an element the reader stands in starts the variable's name. For a part variable no owner names for the
 	 * reader: a part's or a slot's is the root, a part's pseudo-element's is that part, a root's pseudo-element's is
-	 * the root. Content is not a part, so no owner declares part variables for it.
+	 * the root. Content is not a part, and a slot owns nothing, so no owner declares part variables for content or for
+	 * a slot's pseudo-element.
 	 */
 	owner(reader: Id, name: string, role: "state" | "private" | "part"): Id | undefined;
 	/**
@@ -142,8 +143,9 @@ function build(model: Model): Ownership {
 		const element = model.elements[reader];
 		if (element?.kind === "part" || element?.kind === "slot") return component(element)?.root;
 		if (element?.kind !== "pseudo-element") return undefined;
+		// A slot owns nothing: its pseudo-elements belong to the slotted component.
 		const host = model.elements[element.host];
-		if (host?.kind === "part" || host?.kind === "slot" || host?.kind === "root") return host.id;
+		if (host?.kind === "part" || host?.kind === "root") return host.id;
 		return undefined;
 	};
 
@@ -168,9 +170,13 @@ function build(model: Model): Ownership {
 	let consumersById: Map<Id, Consumer[]> | undefined;
 	const consumers = (one: Variable): readonly Consumer[] => {
 		if (!consumersById) {
-			consumersById = new Map();
+			const byId = new Map<Id, Consumer[]>();
+			consumersById = byId;
 			const add = (to: Variable | undefined, consumer: Consumer): void => {
-				if (to && consumersById) consumersById.set(to.id, [...(consumersById.get(to.id) ?? []), consumer]);
+				if (!to) return;
+				const list = byId.get(to.id);
+				if (list) list.push(consumer);
+				else byId.set(to.id, [consumer]);
 			};
 			for (const read of model.reads) {
 				const source = read.source === undefined ? undefined : model.variables[read.source];
@@ -189,7 +195,8 @@ function build(model: Model): Ownership {
 
 /**
  * The names each owner gives the elements it declares for: a root names its parts, its slots and its own
- * pseudo-elements, and its parts' pseudo-elements as `{part}-{pseudo}`; a part names its own pseudo-elements.
+ * pseudo-elements, and its parts' pseudo-elements as `{part}-{pseudo}`; a part names its own pseudo-elements. A slot
+ * names nothing, and nothing names its pseudo-elements.
  */
 function namesByOwner(
 	model: Model,
@@ -198,19 +205,20 @@ function namesByOwner(
 	const given = new Map<Id, Map<string, Id[]>>();
 	const add = (owner: Id | undefined, name: string, element: Id): void => {
 		if (owner === undefined) return;
-		const byName = given.get(owner) ?? new Map<string, Id[]>();
-		byName.set(name, [...(byName.get(name) ?? []), element]);
-		given.set(owner, byName);
+		let byName = given.get(owner);
+		if (!byName) given.set(owner, (byName = new Map<string, Id[]>()));
+		const elements = byName.get(name);
+		if (elements) elements.push(element);
+		else byName.set(name, [element]);
 	};
 	for (const element of model.elements) {
 		if (element.kind === "part" || element.kind === "slot")
 			add(component(element)?.root, element.name, element.id);
 		if (element.kind !== "pseudo-element") continue;
+		// A slot owns nothing, and its pseudo-elements are the slotted component's to style, so no one names them.
 		const host = model.elements[element.host];
-		if (host?.kind === "root" || host?.kind === "part" || host?.kind === "slot")
-			add(host.id, element.name, element.id);
-		if (host?.kind === "part" || host?.kind === "slot")
-			add(component(host)?.root, `${host.name}-${element.name}`, element.id);
+		if (host?.kind === "root" || host?.kind === "part") add(host.id, element.name, element.id);
+		if (host?.kind === "part") add(component(host)?.root, `${host.name}-${element.name}`, element.id);
 	}
 	return new Map(
 		[...given].map(([owner, byName]) => [owner, { names: [...byName.keys()], elements: byName }]),

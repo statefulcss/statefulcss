@@ -56,6 +56,21 @@ describe("ownershipOf", () => {
 		expect(ownership.namedOwner(tab, "--p-other")).toBeUndefined();
 	});
 
+	it("gives a slot nothing to own, and names none of its pseudo-elements", () => {
+		const model = modelOf(`
+			.card { color: red; & > [data-slot="action"] { &::after { color: red; } } }
+		`);
+		const ownership = ownershipOf(model);
+		const root = elementOf(model, ".card");
+		const slot = elementOf(model, '[data-slot="action"]');
+		const after = elementOf(model, '[data-slot="action"]::after');
+		expect(ownership.named(root, "--p-action-x")).toEqual([slot]);
+		expect(ownership.named(root, "--p-action-after-x")).toEqual([slot]);
+		expect(ownership.named(slot, "--p-after-x")).toEqual([]);
+		expect(ownership.owner(after, "--p-after-x", "part")).toBeUndefined();
+		expect(ownership.namedOwner(after, "--p-after-x")).toBeUndefined();
+	});
+
 	it("follows an inherit to the variable that supplies the value", () => {
 		const model = modelOf(`
 			.card { --_icon-color: red; }

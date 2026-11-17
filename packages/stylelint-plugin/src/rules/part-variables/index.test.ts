@@ -91,6 +91,25 @@ testRule(partVariables, {
 			`,
 		},
 		{
+			description: "a root writing a part variable named for nothing, left to the rename warning",
+			code: `.card { --p-heading-color: red; }`,
+		},
+		{
+			description: "a slot's placement through parts, each with >",
+			code: `.card { --p-action-x: 1; &:hover { --p-action-x: 2; } & > [data-part="footer"] > [data-slot="action"] { gap: var(--p-action-x); } }`,
+		},
+		{
+			description: "a slot's placement path through a part that goes wrong, left to parts-in-scope",
+			code: `.card { --p-action-x: 1; &:hover { --p-action-x: 2; } & [data-part="footer"] > [data-slot="action"] { gap: var(--p-action-x); } }`,
+		},
+		{
+			description: "a part variable with no property after the part's name",
+			code: `
+				.button { --p-icon: red; &:hover { --p-icon: blue; } }
+				@scope (.button) to ([data-component]) { [data-part="icon"] { color: var(--p-icon); } }
+			`,
+		},
+		{
 			description: "a global element, a utility and what :deep() selects",
 			code: `
 				main { --p-icon-color: red; color: var(--p-icon-color); }
@@ -318,7 +337,7 @@ testRule(partVariables, {
 			warnings: [
 				{
 					message:
-						'Unexpected "--p-title-color" read on ".card > p", which is under no part. Only a part, its pseudo-elements and the content under a part read part variables.',
+						'Unexpected "--p-title-color" read on ".card > p", which is under no part. Only a part, its pseudo-elements, the content under a part and a slot at the end of the root block\'s placement path read part variables.',
 					line: 4,
 					column: 22,
 					endLine: 4,
@@ -381,6 +400,252 @@ testRule(partVariables, {
 					column: 51,
 					endLine: 4,
 					endColumn: 71,
+				},
+			],
+		},
+		// A writer with no right to the variable, whether or not the file styles what it's named for.
+		{
+			description: "a part writes a part variable named for none of its pseudo-elements",
+			code: `
+				.card { color: red; }
+				@scope (.card) to ([data-component]) { [data-part="title"] { --p-heading-color: red; } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--p-heading-color" written on part "title", which writes only the part variables for its own pseudo-elements, such as "--p-after-*". Give part "title" a plain value or its own state variable.',
+					line: 2,
+					column: 62,
+					endLine: 2,
+					endColumn: 79,
+				},
+			],
+		},
+		{
+			description: "content under no part writes a part variable",
+			code: `
+				.card { color: red; }
+				@scope (.card) to ([data-component]) { p { --p-heading-color: red; } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--p-heading-color" written on ".card p", which declares no part variables. Only a component\'s root, and a part for its own pseudo-elements, write them, so give ".card p" a plain value or its own state variable.',
+					line: 2,
+					column: 44,
+					endLine: 2,
+					endColumn: 61,
+				},
+			],
+		},
+		{
+			description: "a part's pseudo-element writes a part variable named for nothing",
+			code: `
+				.card { color: red; }
+				@scope (.card) to ([data-component]) { [data-part="tab"]::after { --p-mystery-color: red; } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--p-mystery-color" written on "::after" of part "tab", which declares no part variables. Only a component\'s root, and a part for its own pseudo-elements, write them, so give "::after" of part "tab" a plain value or its own state variable.',
+					line: 2,
+					column: 67,
+					endLine: 2,
+					endColumn: 84,
+				},
+			],
+		},
+		{
+			description: "a slot in the root block writes a part variable named for nothing",
+			code: `
+				.card { color: red; & > [data-slot="action"] { --p-heading-color: red; } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--p-heading-color" written on slot "action", which declares no part variables. Only a component\'s root, and a part for its own pseudo-elements, write them, so give slot "action" a plain value or its own state variable.',
+					line: 1,
+					column: 48,
+					endLine: 1,
+					endColumn: 65,
+				},
+			],
+		},
+		{
+			description: "a slot writes its own part variable",
+			code: `
+				.card { --p-action-gap: 1; &:hover { --p-action-gap: 2; } & > [data-slot="action"] { --p-action-gap: 3; gap: var(--p-action-gap); } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--p-action-gap" written on slot "action", its own part variable. Only ".card" writes it, so give slot "action" a plain value or its own state variable.',
+					line: 1,
+					column: 86,
+					endLine: 1,
+					endColumn: 100,
+				},
+			],
+		},
+		// A slot reads only at the end of the root block's placement path, and owns nothing.
+		{
+			description: "a slot reads its part variable in the scope, which its limit leaves out",
+			code: `
+				.card { --p-action-x: 1; &:hover { --p-action-x: 2; } }
+				@scope (.card) to ([data-component]) { [data-slot="action"] { gap: var(--p-action-x); } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--p-action-x" read on slot "action" outside the root block\'s placement path. The scope\'s limit leaves the slotted component out, so read it in the root block, at "& > [data-slot="action"]" or through parts with ">".',
+					line: 2,
+					column: 68,
+					endLine: 2,
+					endColumn: 85,
+				},
+			],
+		},
+		{
+			description: "a slot reads its part variable as a descendant of the root",
+			code: `
+				.card { --p-action-x: 1; &:hover { --p-action-x: 2; } & [data-slot="action"] { gap: var(--p-action-x); } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--p-action-x" read on slot "action" outside the root block\'s placement path. The scope\'s limit leaves the slotted component out, so read it in the root block, at "& > [data-slot="action"]" or through parts with ">".',
+					line: 1,
+					column: 85,
+					endLine: 1,
+					endColumn: 102,
+				},
+			],
+		},
+		{
+			description: "a slot reads its part variable through a plain element",
+			code: `
+				.card { --p-action-x: 1; &:hover { --p-action-x: 2; } & > div > [data-slot="action"] { gap: var(--p-action-x); } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--p-action-x" read on slot "action" outside the root block\'s placement path. The scope\'s limit leaves the slotted component out, so read it in the root block, at "& > [data-slot="action"]" or through parts with ">".',
+					line: 1,
+					column: 93,
+					endLine: 1,
+					endColumn: 110,
+				},
+			],
+		},
+		{
+			description: "a slot writes a part variable for its own pseudo-element",
+			code: `
+				.card { color: red; & > [data-slot="action"] { --p-after-x: 1; &::after { gap: var(--p-after-x); } } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--p-after-x" written on slot "action", which declares no part variables. Only a component\'s root, and a part for its own pseudo-elements, write them, so give slot "action" a plain value or its own state variable.',
+					line: 1,
+					column: 48,
+					endLine: 1,
+					endColumn: 59,
+				},
+				{
+					message:
+						'Unexpected "--p-after-x" read on "::after" of slot "action", which belongs to the slotted component. A slot reads its part variables only at the end of the root block\'s placement path, and the slotted component styles its own pseudo-elements.',
+					line: 1,
+					column: 80,
+					endLine: 1,
+					endColumn: 96,
+				},
+			],
+		},
+		{
+			description: "a slot's pseudo-element reads what the root declares for it",
+			code: `
+				.card { --p-action-after-x: 1; &:hover { --p-action-after-x: 2; } & > [data-slot="action"]::after { gap: var(--p-action-after-x); } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--p-action-after-x" read on "::after" of slot "action", which belongs to the slotted component. A slot reads its part variables only at the end of the root block\'s placement path, and the slotted component styles its own pseudo-elements.',
+					line: 1,
+					column: 106,
+					endLine: 1,
+					endColumn: 129,
+				},
+			],
+		},
+		// One written declaration, one finding, each reader paired with its own owner.
+		{
+			description: "one write on two parts, one of them the part it's for",
+			code: `
+				.card { --p-icon-x: 0; &:hover { --p-icon-x: 2; } }
+				@scope (.card) to ([data-component]) { [data-part="icon"] { color: var(--p-icon-x); } [data-part=icon], [data-part=label] { --p-icon-x: 1 } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--p-icon-x" written on part "icon" and part "label", but it\'s the part variable for part "icon". Only ".card" writes it, in its own block, variants, states and queries.',
+					line: 2,
+					column: 125,
+					endLine: 2,
+					endColumn: 135,
+				},
+			],
+		},
+		{
+			description: "one write on two parts, the other way round",
+			code: `
+				.card { --p-icon-x: 0; &:hover { --p-icon-x: 2; } }
+				@scope (.card) to ([data-component]) { [data-part="icon"] { color: var(--p-icon-x); } [data-part=label], [data-part=icon] { --p-icon-x: 1 } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--p-icon-x" written on part "label" and part "icon", but it\'s the part variable for part "icon". Only ".card" writes it, in its own block, variants, states and queries.',
+					line: 2,
+					column: 125,
+					endLine: 2,
+					endColumn: 135,
+				},
+			],
+		},
+		{
+			description: "one read by the parts of two components, each prefix with its own root",
+			code: `
+				.card, .note { --p-title-color: red; &:hover { --p-title-color: blue; } }
+				@scope (.card) to ([data-component]) { [data-part="title"] { color: var(--p-title-color); } }
+				@scope (.note) to ([data-component]) { [data-part="title"] { color: var(--p-title-color); } }
+				.card [data-part="badge"], .note [data-part="meta"] { color: var(--p-title-color); }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--p-title-color" read on part "badge" and part "meta", but it\'s the part variable for part "title". Read "--p-badge-*", declared on ".card", and "--p-meta-*", declared on ".note", instead.',
+					line: 4,
+					column: 62,
+					endLine: 4,
+					endColumn: 82,
+				},
+			],
+		},
+		// A named part reads only its own, even under another part.
+		{
+			description: "a part under another part reads that part's variable",
+			code: `
+				.card { --p-body-color: red; &:hover { --p-body-color: blue; } }
+				@scope (.card) to ([data-component]) { [data-part="body"] { color: var(--p-body-color); } [data-part="body"] [data-part="link"] { color: var(--p-body-color); } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--p-body-color" read on part "link", but it\'s the part variable for part "body". Read "--p-link-*", declared on ".card", instead.',
+					line: 2,
+					column: 138,
+					endLine: 2,
+					endColumn: 157,
 				},
 			],
 		},

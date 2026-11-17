@@ -327,7 +327,8 @@ export interface Guard {
 	/** Its `inner` conditions are the list; a `:has()` state that joined it is one of them. */
 	readonly condition: Condition;
 	/**
-	 * The settings' blocking states it excludes, each on its own, for every way the block can match. A compound
+	 * The settings' blocking states it excludes, each on its own, for every way the block can match, as the settings
+	 * write them: `:not(:nth-child(2n + 1))` excludes the entry `:nth-child(2n+1)`. A compound
 	 * (`:not(:disabled[data-loading])`, `:not(:root:disabled)`) excludes neither state alone; `:is()` inside
 	 * (`:not(:is(:focus, :disabled))`) excludes each of its states, in any order.
 	 */

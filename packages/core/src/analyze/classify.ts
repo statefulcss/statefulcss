@@ -84,15 +84,31 @@ export interface Vocabulary {
 	readonly blocking: ReadonlySet<string>;
 	readonly interaction: ReadonlySet<string>;
 	readonly stateAttributes: ReadonlySet<string>;
+	/** Each entry of `blockingStates` as the settings write it, by the form a condition is compared in. */
+	readonly blockingEntries: ReadonlyMap<string, readonly string[]>;
 }
 
 export function vocabularyFrom(settings: Settings, names: Names): Vocabulary {
+	const blockingEntries = new Map<string, string[]>();
+	for (const entry of settings.blockingStates) {
+		const compared = normalize(entry);
+		blockingEntries.set(compared, [...(blockingEntries.get(compared) ?? []), entry]);
+	}
 	return {
 		names,
-		blocking: new Set(settings.blockingStates.map(normalize)),
+		blocking: new Set(blockingEntries.keys()),
 		interaction: new Set(settings.interactionStates.map(normalize)),
 		stateAttributes: new Set(settings.stateAttributes.map((name) => name.toLowerCase())),
+		blockingEntries,
 	};
+}
+
+/**
+ * The entries of `blockingStates` a blocking state's condition matches, as the settings write them:
+ * `.button:not(:nth-child(2n + 1))` matches the entry `:nth-child(2n+1)`.
+ */
+export function blockingEntriesOf(vocabulary: Vocabulary, condition: Condition): readonly string[] {
+	return vocabulary.blockingEntries.get(normalize(condition.text)) ?? [];
 }
 
 /** ARIA attributes that say what's happening to an element. Every other ARIA attribute says what it is. */

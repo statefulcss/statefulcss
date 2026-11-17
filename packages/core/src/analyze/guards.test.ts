@@ -1,3 +1,4 @@
+import { defaults } from "@statefulcss/config";
 import { describe, expect } from "vitest";
 
 import type { Model } from "../model.js";
@@ -90,6 +91,27 @@ describe("what a guard excludes", () => {
 			expect(kinds(model)).toEqual([["interaction"], ["interaction"], ["interaction"]]);
 		});
 	}
+
+	inEverySyntax("it lists the settings' entries as the settings write them", ({ read }) => {
+		const settings = {
+			...defaults,
+			blockingStates: [":nth-child(2n+1)", ":DISABLED", ":disabled", "[aria-busy='true']"],
+		};
+		const model = read(
+			`
+			.button:not(:nth-child(2n + 1)):hover { color: red; }
+			.button:where(:not(:disabled, [aria-busy="true"], :Disabled)):hover { color: red; }
+			.button:not(:nth-child(2n + 2)):hover { color: red; }
+		`,
+			{ settings },
+		);
+		expect(guards(model)).toEqual([
+			[".button", [":nth-child(2n+1)"], [0]],
+			[".button", [":DISABLED", ":disabled", "[aria-busy='true']"], [1]],
+		]);
+		// The condition keeps the text as written.
+		expect(model.guards[0]?.condition.inner.map((inner) => inner.text)).toEqual([":nth-child(2n + 1)"]);
+	});
 
 	inEverySyntax("a :has() state that joined the guard stays its own entry", ({ read }) => {
 		const model = read(`

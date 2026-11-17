@@ -4,14 +4,15 @@ import type { Settings } from "@statefulcss/config";
 import type { Model, Position } from "@statefulcss/core";
 import type { AtRule, Comment, Declaration, Rule } from "postcss";
 
-/** A rule's own options, as Stylelint's secondary options hold them: each with its default and a check of its value. */
+/**
+ * A rule's own options, as Stylelint's secondary options hold them: each with its default and a check of its value.
+ * An option whose default is a list is a list option: a config may give it one item on its own, as Stylelint's own
+ * rules allow (`ignoreProperties: "/^--swiper-/"`), and the check always gets a list.
+ */
 export type OptionsDefinition<Options> = {
 	readonly [Name in keyof Options]: {
 		readonly default: Options[Name];
-		/**
-		 * Whether a value from the Stylelint config is one this option takes. For a list, Stylelint asks about each
-		 * item on its own.
-		 */
+		/** Whether a value from the Stylelint config is one this option takes; for a list option, one item of it. */
 		readonly accepts: (value: unknown) => boolean;
 	};
 };

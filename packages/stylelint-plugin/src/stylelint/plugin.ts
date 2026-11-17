@@ -188,48 +188,91 @@ function validOptions(
 	secondary: unknown,
 ): boolean {
 	const ruleName = ruleNameOf(definition);
+	const invalid = (message: string): void => {
+		result.warn(message, { stylelintType: "invalidOption" });
+		result.stylelint.stylelintError = true;
+	};
 	const names = isRecord(secondary) ? Object.keys(secondary) : [];
 	const settings = names.filter((name) => settingNames.has(name));
 	for (const name of settings) {
-		result.warn(
+		invalid(
 			`"${name}" is a project setting, not an option of "${ruleName}". Set it in statefulcss.config.json instead`,
-			{ stylelintType: "invalidOption" },
 		);
-		result.stylelint.stylelintError = true;
 	}
 	if (settings.length > 0) return false;
+	// Like Stylelint's own checks, the rest are skipped when a run turns validation off. The check then gets each
+	// option's default in place of a value it doesn't take (`optionsFrom`).
+	if (!result.stylelint.config?.validate) return true;
 
-	const own: Record<string, ((value: unknown) => boolean)[]> = {};
-	for (const [name, option] of Object.entries(definition.options ?? {})) {
-		own[name] = [(option as { accepts: (value: unknown) => boolean }).accepts];
+	// Secondary options are named, so anything but an object is refused, as Stylelint words it, whether or not the
+	// rule has options of its own: Stylelint checks only a rule that has some.
+	if (secondary !== undefined && secondary !== null && !isRecord(secondary)) {
+		invalid(`Invalid option value ${quoted(secondary)} for rule "${ruleName}": should be an object`);
+		return false;
 	}
+
+	const options = optionDefinitions(definition);
 	// Stylelint refuses to check secondary options against a rule that has none, so that case is checked here.
-	if (Object.keys(own).length === 0) {
+	if (options.length === 0) {
 		const unknown = names.filter((name) => !stylelintOptions.has(name));
-		for (const name of unknown) {
-			result.warn(`Invalid option name "${name}" for rule "${ruleName}"`, { stylelintType: "invalidOption" });
-			result.stylelint.stylelintError = true;
-		}
+		for (const name of unknown) invalid(`Invalid option name "${name}" for rule "${ruleName}"`);
 		return (
 			unknown.length === 0 && utils.validateOptions(result, ruleName, { actual: primary, possible: [true] })
 		);
 	}
-	return utils.validateOptions(
-		result,
-		ruleName,
-		{ actual: primary, possible: [true] },
-		{ actual: secondary, possible: own, optional: true },
+	// Stylelint asks about each item of a list on its own, so a list given to an option that takes one value is
+	// refused here.
+	let shapes = true;
+	for (const [name, option] of options) {
+		const value = isRecord(secondary) ? secondary[name] : undefined;
+		if (Array.isArray(option.default) || !Array.isArray(value)) continue;
+		invalid(`Invalid value ${quoted(value)} for option "${name}" of rule "${ruleName}"`);
+		shapes = false;
+	}
+	const possible = Object.fromEntries(options.map(([name, option]) => [name, [option.accepts]]));
+	return (
+		utils.validateOptions(
+			result,
+			ruleName,
+			{ actual: primary, possible: [true] },
+			{ actual: secondary, possible, optional: true },
+		) && shapes
 	);
 }
 
-/** A rule's own options: what the Stylelint config gives, and the default for the rest. */
+interface OptionDefinition {
+	readonly default: unknown;
+	readonly accepts: (value: unknown) => boolean;
+}
+
+function optionDefinitions(definition: RuleDefinition): (readonly [string, OptionDefinition])[] {
+	return Object.entries(definition.options ?? {}).map(([name, option]) => [name, option as OptionDefinition]);
+}
+
+/**
+ * A rule's own options: what the Stylelint config gives, and the default for the rest. A list option given one item
+ * gets a list of it. A value the option doesn't take, which only a config with validation off can give, is the
+ * default, so a check always gets the type it declares.
+ */
 function optionsFrom(definition: RuleDefinition, secondary: unknown): Record<never, never> {
 	const given = isRecord(secondary) ? secondary : {};
 	const options: Record<string, unknown> = {};
-	for (const [name, option] of Object.entries(definition.options ?? {})) {
-		options[name] = given[name] ?? (option as { default: unknown }).default;
+	for (const [name, option] of optionDefinitions(definition)) {
+		const value = given[name];
+		if (Array.isArray(option.default)) {
+			const items = value === undefined || value === null ? undefined : [value].flat();
+			options[name] = items?.every(option.accepts) ? items : option.default;
+		} else {
+			const usable = value !== undefined && value !== null && !Array.isArray(value) && option.accepts(value);
+			options[name] = usable ? value : option.default;
+		}
 	}
 	return options;
+}
+
+/** A value as Stylelint quotes it in an invalid option's message. */
+function quoted(value: unknown): string {
+	return typeof value === "string" ? `"${value}"` : `"${JSON.stringify(value)}"`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -619,30 +619,35 @@ describe("a rule written with defineRule", () => {
 
 describe("a rule's options", () => {
 	const project = temporaryProject();
-	/** Reports every part whose name isn't in `ignoreParts`. */
-	const picky: RuleDefinition<{ ignoreParts: readonly string[] }, "part"> = {
+	/** Reports every part whose name isn't in `ignoreParts`, with `label` before its name. */
+	const picky: RuleDefinition<{ ignoreParts: readonly string[]; label: string }, "part"> = {
 		name: "test-options",
 		severity: "error",
 		fixable: false,
-		messages: { part: (name) => `Part "${name}"` },
+		messages: { part: (label, name) => `${label} "${name}"` },
 		options: {
 			ignoreParts: { default: [], accepts: (value) => typeof value === "string" },
+			label: { default: "Part", accepts: (value) => typeof value === "string" },
 		},
 		check(model, { options }) {
 			return model.partReferences
 				.filter((reference) => !options.ignoreParts.includes(reference.name ?? ""))
-				.map((reference) => ({ message: "part" as const, args: [reference.name ?? ""], at: reference.at }));
+				.map((reference) => ({
+					message: "part" as const,
+					args: [options.label, reference.name ?? ""],
+					at: reference.at,
+				}));
 		},
 	};
 	const source = sourceFor("css", {
 		code: '.card [data-part="title"] { color: red; } .card [data-part="body"] { color: red; }',
 	});
-	const withOptions = (options: unknown): stylelint.Config => ({
-		plugins: [toPlugin(picky, { failLoudly: true })],
-		rules: { "statefulcss/test-options": options === undefined ? true : [true, options] },
+	const withOptions = (options: unknown, rule: RuleDefinition = picky): stylelint.Config => ({
+		plugins: [toPlugin(rule, { failLoudly: true })],
+		rules: { [`statefulcss/${rule.name}`]: options === undefined ? true : [true, options] },
 	});
-	const texts = async (options: unknown) => {
-		const { warnings, invalid } = await lint(source, project(), withOptions(options));
+	const texts = async (options: unknown, rule: RuleDefinition = picky, from = source) => {
+		const { warnings, invalid } = await lint(from, project(), withOptions(options, rule));
 		return { warnings: warnings.map((warning) => warning.text), invalid };
 	};
 
@@ -654,8 +659,19 @@ describe("a rule's options", () => {
 	});
 
 	it("passes the rule's own options to its check, beside Stylelint's", async () => {
-		expect(await texts({ ignoreParts: ["title"], severity: "warning" })).toEqual({
-			warnings: ['Part "body" (statefulcss/test-options)'],
+		expect(await texts({ ignoreParts: ["title"], label: "Piece", severity: "warning" })).toEqual({
+			warnings: ['Piece "body" (statefulcss/test-options)'],
+			invalid: [],
+		});
+	});
+
+	it("takes one item where a list is expected, as a list of it", async () => {
+		// Passed on as the string, `"title".includes("itle")` would exempt a part named "itle" too.
+		const parts = sourceFor("css", {
+			code: '.card [data-part="title"] { color: red; } .card [data-part="itle"] { color: red; }',
+		});
+		expect(await texts({ ignoreParts: "title" }, picky, parts)).toEqual({
+			warnings: ['Part "itle" (statefulcss/test-options)'],
 			invalid: [],
 		});
 	});
@@ -665,10 +681,54 @@ describe("a rule's options", () => {
 			warnings: [],
 			invalid: ['Invalid value "1" for option "ignoreParts" of rule "statefulcss/test-options"'],
 		});
+		expect(await texts({ ignoreParts: [["title"]] })).toEqual({
+			warnings: [],
+			invalid: ['Invalid value "["title"]" for option "ignoreParts" of rule "statefulcss/test-options"'],
+		});
 		expect(await texts({ ignore: ["title"] })).toEqual({
 			warnings: [],
 			invalid: ['Invalid option name "ignore" for rule "statefulcss/test-options"'],
 		});
+	});
+
+	it("refuses a list given to an option that takes one value", async () => {
+		expect(await texts({ label: ["Piece"] })).toEqual({
+			warnings: [],
+			invalid: ['Invalid value "["Piece"]" for option "label" of rule "statefulcss/test-options"'],
+		});
+	});
+
+	it("refuses secondary options that aren't an object, whether the rule has options or not", async () => {
+		for (const rule of [picky, names]) {
+			const ruleName = `statefulcss/${rule.name}`;
+			expect(await texts(42, rule)).toEqual({
+				warnings: [],
+				invalid: [`Invalid option value "42" for rule "${ruleName}": should be an object`],
+			});
+			expect(await texts("ignored", rule)).toEqual({
+				warnings: [],
+				invalid: [`Invalid option value "ignored" for rule "${ruleName}": should be an object`],
+			});
+			expect(await texts(["title"], rule)).toEqual({
+				warnings: [],
+				invalid: [`Invalid option value "["title"]" for rule "${ruleName}": should be an object`],
+			});
+		}
+	});
+
+	it("gives the check its declared types when validation is off", async () => {
+		const { results } = await stylelint.lint({
+			code: source.code,
+			codeFilename: path.join(project(), source.file),
+			config: withOptions({ ignoreParts: [1, "title"], label: ["Piece"] }),
+			validate: false,
+		});
+		const [result] = results;
+		expect(result?.invalidOptionWarnings).toEqual([]);
+		expect(result?.warnings.map((warning) => warning.text)).toEqual([
+			'Part "title" (statefulcss/test-options)',
+			'Part "body" (statefulcss/test-options)',
+		]);
 	});
 
 	it("names the project setting when one is written as a rule option", async () => {

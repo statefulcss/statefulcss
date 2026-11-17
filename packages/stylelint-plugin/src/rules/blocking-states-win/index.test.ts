@@ -1,0 +1,775 @@
+import { testRule } from "../../testing/test-rule.js";
+import blockingStatesWin from "./index.js";
+
+const guard = '&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert]))';
+const unguarded = (condition: string, element: string, wanted = guard) =>
+	`Unexpected "${condition}" on ${element} outside a guard, so a blocked element still reacts to it. Write it inside "${wanted}".`;
+
+testRule(blockingStatesWin, {
+	accept: [
+		// The rules page's Fixed cases.
+		{
+			description: "hover isn't guarded",
+			code: `
+				.button {
+					--s-background-color: var(--_background-color);
+					--s-opacity: 1;
+					background-color: var(--s-background-color);
+					opacity: var(--s-opacity);
+					${guard} {
+						&:hover { --s-background-color: var(--_background-color-hover); }
+					}
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+		},
+		{
+			description: "a blocking state that sets back what hover changed",
+			code: `
+				.button {
+					--s-background-color: var(--_background-color);
+					--s-opacity: 1;
+					background-color: var(--s-background-color);
+					opacity: var(--s-opacity);
+					${guard} {
+						&:hover { --s-background-color: var(--_background-color-hover); }
+					}
+					&[aria-pressed="true"] { --s-background-color: var(--_background-color-pressed); }
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+		},
+		{
+			description: "focus written inside the guard",
+			code: `
+				.button {
+					--s-outline-width: 0;
+					--s-opacity: 1;
+					outline-width: var(--s-outline-width);
+					opacity: var(--s-opacity);
+					&:focus-visible { --s-outline-width: 2px; }
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+		},
+		// The decided form, and the rules page's Not reported cases.
+		{
+			description: "a semantic state with a guard, the decided form",
+			code: `
+				.button {
+					--s-background-color: var(--_background-color);
+					--s-opacity: 1;
+					background-color: var(--s-background-color);
+					opacity: var(--s-opacity);
+					${guard} {
+						&:hover { --s-background-color: var(--_background-color-hover); }
+					}
+					&[aria-pressed="true"] { --s-background-color: var(--_background-color-pressed); }
+					&:disabled, &[aria-disabled="true"], &[data-loading] { --s-opacity: 0.5; }
+				}
+			`,
+		},
+		{
+			description: "by default, an element with interaction states and no blocking state block",
+			code: `
+				.link {
+					--s-color: var(--t-color-link);
+					color: var(--s-color);
+					&:hover { --s-color: var(--t-color-link-hover); }
+					&:active { --s-color: var(--t-color-link-active); }
+				}
+			`,
+		},
+		{
+			description: "hover inside @media (hover: hover), inside or around the guard",
+			code: `
+				.button {
+					--s-background-color: var(--_background-color);
+					--s-opacity: 1;
+					background-color: var(--s-background-color);
+					opacity: var(--s-opacity);
+					@media (hover: hover) {
+						${guard} {
+							&:hover { --s-background-color: var(--_background-color-hover); }
+						}
+					}
+					${guard} {
+						@media (hover: hover) {
+							&:active { --s-background-color: var(--_background-color-active); }
+						}
+					}
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+		},
+		// The part and its component's query variable, from the rules page.
+		{
+			description: "a part whose component has blocking states waits for its query variable",
+			code: `
+				.tabs {
+					--q-tabs-blocked: false;
+					--s-opacity: 1;
+					--p-tab-color: var(--t-color-text-muted);
+					opacity: var(--s-opacity);
+					&[aria-disabled="true"] { --q-tabs-blocked: true; --s-opacity: 0.5; --p-tab-color: var(--t-color-text-disabled); }
+				}
+				@scope (.tabs) to ([data-component]) {
+					[data-part="tab"] {
+						--s-color: var(--p-tab-color);
+						color: var(--s-color);
+						${guard} {
+							@container style(--q-tabs-blocked: false) {
+								&:hover { --s-color: var(--t-color-text); }
+							}
+						}
+					}
+				}
+			`,
+		},
+		{
+			description: "a blocking state reached through :has(), listed in the root's guard",
+			code: `
+				.field {
+					--p-label-color: var(--t-color-foreground-base);
+					--s-opacity: 1;
+					--q-field-blocked: false;
+					opacity: var(--s-opacity);
+					&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert], :has(:where([data-part="input"]):disabled))) {
+						&:hover { --p-label-color: var(--t-color-foreground-strong); }
+					}
+					&:has(:where([data-part="input"]):disabled) { --s-opacity: 0.6; --q-field-blocked: true; }
+				}
+			`,
+		},
+		// Beyond the rules page.
+		{
+			description: "a :has() state in the guard, quoted differently from its block",
+			code: `
+				.field {
+					--s-color: var(--_color);
+					--s-opacity: 1;
+					color: var(--s-color);
+					opacity: var(--s-opacity);
+					&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert], :has(:where([data-part=input]):disabled))) {
+						&:hover { --s-color: var(--_color-hover); }
+					}
+					&:has(:where([data-part="input"]):disabled) { --s-opacity: 0.6; }
+				}
+			`,
+		},
+		{
+			description: "a guard written in a flat selector",
+			code: `
+				.button:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])):hover { --s-color: red; }
+				.button { --s-color: blue; color: var(--s-color); }
+				.button:disabled { --s-opacity: 0.5; }
+			`,
+		},
+		{
+			description: "a pseudo-element's interaction state, guarded on its host",
+			code: `
+				.button {
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					${guard} {
+						&:hover::after { --s-opacity: 1; }
+					}
+					&:disabled { --s-opacity: 0.5; }
+					&::after { --s-opacity: 0; content: ""; opacity: var(--s-opacity); }
+				}
+			`,
+		},
+		{
+			description: "a blocking state whose value differs from the default changes its own look",
+			code: `
+				.button {
+					--s-color: var(--_color);
+					color: var(--s-color);
+					${guard} {
+						&:hover { --s-color: var(--_color-hover); }
+					}
+					&:disabled { --s-color: var(--_color-disabled); }
+				}
+			`,
+		},
+		{
+			description: "a utility and a global element are left alone",
+			code: `
+				a:hover { color: red; }
+				a:disabled { opacity: 0.5; }
+				@layer utilities {
+					.u-link:hover { color: red; }
+					.u-link:disabled { opacity: 0.5; }
+				}
+			`,
+		},
+		{
+			description: "the look at rest, written with :not(:hover)",
+			code: `
+				.button {
+					--s-opacity: 1;
+					--s-color: var(--_color);
+					color: var(--s-color);
+					opacity: var(--s-opacity);
+					&:not(:hover) { --s-color: var(--_color-rest); }
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+		},
+		{
+			description: "a guard on the root doesn't make a part's focus sit inside a guard",
+			code: `
+				.tabs { --s-opacity: 1; opacity: var(--s-opacity); }
+				@scope (.tabs) to ([data-component]) {
+					[data-part="tab"] {
+						--s-outline-width: 0;
+						outline-width: var(--s-outline-width);
+						&:focus-visible { --s-outline-width: 2px; }
+					}
+				}
+			`,
+		},
+	],
+	reject: [
+		// The rules page's Reported cases.
+		{
+			description: "hover isn't guarded",
+			code: `
+				.button {
+					--s-background-color: var(--_background-color);
+					--s-opacity: 1;
+					background-color: var(--s-background-color);
+					opacity: var(--s-opacity);
+					&:hover { --s-background-color: var(--_background-color-hover); }
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+			warnings: [{ message: unguarded(":hover", '".button"'), line: 6, column: 3, endLine: 6, endColumn: 9 }],
+			fixed: `
+				.button {
+					--s-background-color: var(--_background-color);
+					--s-opacity: 1;
+					background-color: var(--s-background-color);
+					opacity: var(--s-opacity);
+					${guard} {
+						&:hover { --s-background-color: var(--_background-color-hover); }
+					}
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+		},
+		{
+			description: "the guard leaves a blocking state out",
+			code: `
+				.button {
+					--s-background-color: var(--_background-color);
+					--s-opacity: 1;
+					background-color: var(--s-background-color);
+					opacity: var(--s-opacity);
+					&:where(:not(:disabled, [aria-disabled="true"])) {
+						&:hover { --s-background-color: var(--_background-color-hover); }
+					}
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected guard on ".button" leaving out "[data-loading]" and "[inert]", so interaction states still apply while they hold. Add them to its ":not()".',
+					line: 6,
+					column: 10,
+					endLine: 6,
+					endColumn: 49,
+				},
+			],
+			fixed: `
+				.button {
+					--s-background-color: var(--_background-color);
+					--s-opacity: 1;
+					background-color: var(--s-background-color);
+					opacity: var(--s-opacity);
+					${guard} {
+						&:hover { --s-background-color: var(--_background-color-hover); }
+					}
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+		},
+		{
+			description: "a blocking state that sets back what hover changed",
+			code: `
+				.button {
+					--s-background-color: var(--_background-color);
+					--s-opacity: 1;
+					background-color: var(--s-background-color);
+					opacity: var(--s-opacity);
+					${guard} {
+						&:hover { --s-background-color: var(--_background-color-hover); }
+					}
+					&[aria-pressed="true"] { --s-background-color: var(--_background-color-pressed); }
+					&:disabled { --s-background-color: var(--_background-color); --s-opacity: 0.5; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--s-background-color" set back to its default in ":disabled", which ":hover" and "[aria-pressed="true"]" also write. Remove it: the guard keeps interaction states off, and a blocking state sets only its own look.',
+					line: 10,
+					column: 15,
+					endLine: 10,
+					endColumn: 62,
+				},
+			],
+		},
+		{
+			description: "focus written inside the guard",
+			code: `
+				.button {
+					--s-outline-width: 0;
+					--s-opacity: 1;
+					outline-width: var(--s-outline-width);
+					opacity: var(--s-opacity);
+					${guard} {
+						&:focus-visible { --s-outline-width: 2px; }
+					}
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected ":focus-visible" inside a guard on ".button": a blocked element that stays focusable loses its focus style. Write it outside the guard.',
+					line: 7,
+					column: 4,
+					endLine: 7,
+					endColumn: 18,
+				},
+			],
+		},
+		// Beyond the rules page.
+		{
+			description: "hover and active, which move into one guard in their order",
+			code: `
+				.button {
+					--s-color: var(--_color);
+					--s-opacity: 1;
+					color: var(--s-color);
+					opacity: var(--s-opacity);
+					&:hover { --s-color: var(--_color-hover); }
+					&:active { --s-color: var(--_color-active); }
+					&[data-loading] { --s-opacity: 0.5; }
+				}
+			`,
+			warnings: [
+				{ message: unguarded(":hover", '".button"'), line: 6, column: 3, endLine: 6, endColumn: 9 },
+				{ message: unguarded(":active", '".button"'), line: 7, column: 3, endLine: 7, endColumn: 10 },
+			],
+			fixed: `
+				.button {
+					--s-color: var(--_color);
+					--s-opacity: 1;
+					color: var(--s-color);
+					opacity: var(--s-opacity);
+					${guard} {
+						&:hover { --s-color: var(--_color-hover); }
+						&:active { --s-color: var(--_color-active); }
+					}
+					&[data-loading] { --s-opacity: 0.5; }
+				}
+			`,
+		},
+		{
+			description: "hover in @media (hover: hover) with no guard, wrapped inside the query",
+			code: `
+				.button {
+					--s-color: var(--_color);
+					--s-opacity: 1;
+					color: var(--s-color);
+					opacity: var(--s-opacity);
+					@media (hover: hover) {
+						&:hover { --s-color: var(--_color-hover); }
+					}
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+			warnings: [
+				{ message: unguarded(":hover", '".button"'), line: 7, column: 4, endLine: 7, endColumn: 10 },
+			],
+			fixed: `
+				.button {
+					--s-color: var(--_color);
+					--s-opacity: 1;
+					color: var(--s-color);
+					opacity: var(--s-opacity);
+					@media (hover: hover) {
+						${guard} {
+							&:hover { --s-color: var(--_color-hover); }
+						}
+					}
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+		},
+		{
+			description: "a flat selector with no guard, which --fix leaves to the author",
+			code: `
+				.button { --s-color: var(--_color); --s-opacity: 1; color: var(--s-color); opacity: var(--s-opacity); }
+				.button:hover { --s-color: var(--_color-hover); }
+				.button:disabled { --s-opacity: 0.5; }
+			`,
+			warnings: [
+				{ message: unguarded(":hover", '".button"'), line: 2, column: 8, endLine: 2, endColumn: 14 },
+			],
+		},
+		{
+			description: "a rule that lists hover with focus, which --fix leaves to the author",
+			code: `
+				.button {
+					--s-color: var(--_color);
+					--s-opacity: 1;
+					color: var(--s-color);
+					opacity: var(--s-opacity);
+					&:hover, &:focus-visible { --s-color: var(--_color-hover); }
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+			warnings: [{ message: unguarded(":hover", '".button"'), line: 6, column: 3, endLine: 6, endColumn: 9 }],
+		},
+		{
+			description: "a list that holds hover and focus, which --fix leaves to the author",
+			code: `
+				.button {
+					--s-color: var(--_color);
+					--s-opacity: 1;
+					color: var(--s-color);
+					opacity: var(--s-opacity);
+					&:is(:hover, :focus-visible) { --s-color: var(--_color-hover); }
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+			warnings: [
+				{
+					message: unguarded(":is(:hover, :focus-visible)", '".button"'),
+					line: 6,
+					column: 3,
+					endLine: 6,
+					endColumn: 30,
+				},
+			],
+		},
+		{
+			description: "a pseudo-element's hover on a blocked host",
+			code: `
+				.button {
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&::after { --s-opacity: 0; content: ""; opacity: var(--s-opacity); }
+					&:hover::after { --s-opacity: 1; }
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+			warnings: [
+				{
+					message: unguarded(":hover", '".button::after"'),
+					line: 5,
+					column: 3,
+					endLine: 5,
+					endColumn: 9,
+				},
+			],
+			fixed: `
+				.button {
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&::after { --s-opacity: 0; content: ""; opacity: var(--s-opacity); }
+					${guard} {
+						&:hover::after { --s-opacity: 1; }
+					}
+					&:disabled { --s-opacity: 0.5; }
+				}
+			`,
+		},
+		{
+			description: "a selector list of two components, reported once",
+			code: `
+				.card, .note {
+					--s-color: var(--_color);
+					--s-opacity: 1;
+					color: var(--s-color);
+					opacity: var(--s-opacity);
+					&:hover { --s-color: var(--_color-hover); }
+					&[inert] { --s-opacity: 0.5; }
+				}
+			`,
+			warnings: [
+				{
+					message: unguarded(":hover", '".card" and ".note"'),
+					line: 6,
+					column: 3,
+					endLine: 6,
+					endColumn: 9,
+				},
+			],
+			fixed: `
+				.card, .note {
+					--s-color: var(--_color);
+					--s-opacity: 1;
+					color: var(--s-color);
+					opacity: var(--s-opacity);
+					${guard} {
+						&:hover { --s-color: var(--_color-hover); }
+					}
+					&[inert] { --s-opacity: 0.5; }
+				}
+			`,
+		},
+		{
+			description: "a blocking state reached through :has() that the root's guard leaves out",
+			code: `
+				.field {
+					--s-color: var(--_color);
+					--s-opacity: 1;
+					color: var(--s-color);
+					opacity: var(--s-opacity);
+					${guard} {
+						&:hover { --s-color: var(--_color-hover); }
+					}
+					&:has(:where([data-part="input"]):disabled) { --s-opacity: 0.6; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected guard on ".field" leaving out ":has(:where([data-part="input"]):disabled)", so interaction states still apply while they hold. Add them to its ":not()".',
+					line: 6,
+					column: 10,
+					endLine: 6,
+					endColumn: 74,
+				},
+			],
+			fixed: `
+				.field {
+					--s-color: var(--_color);
+					--s-opacity: 1;
+					color: var(--s-color);
+					opacity: var(--s-opacity);
+					&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert], :has(:where([data-part="input"]):disabled))) {
+						&:hover { --s-color: var(--_color-hover); }
+					}
+					&:has(:where([data-part="input"]):disabled) { --s-opacity: 0.6; }
+				}
+			`,
+		},
+		{
+			description: "a part's guarded hover outside a style query on its component's query variable",
+			code: `
+				.tabs {
+					--q-tabs-blocked: false;
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&[aria-disabled="true"] { --q-tabs-blocked: true; --s-opacity: 0.5; }
+				}
+				@scope (.tabs) to ([data-component]) {
+					[data-part="tab"] {
+						--s-color: var(--t-color-text-muted);
+						color: var(--s-color);
+						${guard} {
+							&:hover { --s-color: var(--t-color-text); }
+						}
+					}
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected ":hover" on part "tab" outside a style query on "--q-tabs-blocked", so it applies while ".tabs" is blocked. Write it inside "@container style(--q-tabs-blocked: false)".',
+					line: 12,
+					column: 5,
+					endLine: 12,
+					endColumn: 11,
+				},
+			],
+		},
+		{
+			description: "a part's hover with no guard, whose component's blocking states set no query variable",
+			code: `
+				.tabs {
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&[aria-disabled="true"] { --s-opacity: 0.5; }
+				}
+				@scope (.tabs) to ([data-component]) {
+					[data-part="tab"] {
+						--s-color: var(--t-color-text-muted);
+						color: var(--s-color);
+						&:hover { --s-color: var(--t-color-text); }
+					}
+				}
+			`,
+			warnings: [
+				{ message: unguarded(":hover", 'part "tab"'), line: 10, column: 4, endLine: 10, endColumn: 10 },
+				{
+					message:
+						'Unexpected ":hover" on part "tab", which applies while ".tabs" is blocked: its blocking states set no query variable. Set "--q-tabs-blocked" in them, and write ":hover" inside a style query on it.',
+					line: 10,
+					column: 4,
+					endLine: 10,
+					endColumn: 10,
+				},
+			],
+			fixed: `
+				.tabs {
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&[aria-disabled="true"] { --s-opacity: 0.5; }
+				}
+				@scope (.tabs) to ([data-component]) {
+					[data-part="tab"] {
+						--s-color: var(--t-color-text-muted);
+						color: var(--s-color);
+						${guard} {
+							&:hover { --s-color: var(--t-color-text); }
+						}
+					}
+				}
+			`,
+		},
+		{
+			description: "a blocking query variable read with var(), and one with no default on the root",
+			code: `
+				.tabs {
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&[aria-disabled="true"] { --q-tabs-blocked: true; --s-opacity: 0.5; }
+				}
+				@scope (.tabs) to ([data-component]) {
+					[data-part="tab"] {
+						--s-color: var(--t-color-text-muted);
+						color: var(--s-color);
+						${guard} {
+							@container style(--q-tabs-blocked: false) {
+								&:hover { --s-color: var(--t-color-text); }
+							}
+						}
+						&::after { content: var(--q-tabs-blocked); }
+					}
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--q-tabs-blocked" set in "[aria-disabled="true"]" with no default on ".tabs". Declare its default in the block of ".tabs", so a nested component never inherits an outer one\'s value.',
+					line: 4,
+					column: 28,
+					endLine: 4,
+					endColumn: 44,
+				},
+				{
+					message:
+						'Unexpected "--q-tabs-blocked" read with "var()". A query variable that blocking states set is only queried, with "@container style()".',
+					line: 15,
+					column: 23,
+					endLine: 15,
+					endColumn: 44,
+				},
+			],
+		},
+	],
+});
+
+// The strict level: every element with an interaction state, whether or not it has a blocking state block.
+testRule(blockingStatesWin, {
+	settings: { strict: true },
+	accept: [
+		{
+			description: "in strict mode, a guarded hover with no blocking state block",
+			code: `
+				.link {
+					--s-color: var(--t-color-link);
+					color: var(--s-color);
+					${guard} {
+						&:hover { --s-color: var(--t-color-link-hover); }
+					}
+					&:focus-visible { --s-color: var(--t-color-link-focus); }
+				}
+			`,
+		},
+	],
+	reject: [
+		{
+			description: "in strict mode, hover with no guard and no blocking state block",
+			code: `
+				.link {
+					--s-color: var(--t-color-link);
+					color: var(--s-color);
+					&:hover { --s-color: var(--t-color-link-hover); }
+				}
+			`,
+			warnings: [{ message: unguarded(":hover", '".link"'), line: 4, column: 3, endLine: 4, endColumn: 9 }],
+			fixed: `
+				.link {
+					--s-color: var(--t-color-link);
+					color: var(--s-color);
+					${guard} {
+						&:hover { --s-color: var(--t-color-link-hover); }
+					}
+				}
+			`,
+		},
+	],
+});
+
+// The settings' own blocking states, compared as written in the config (core's B16).
+testRule(blockingStatesWin, {
+	settings: { blockingStates: [":nth-child(2n+1)", "[data-busy]"] },
+	accept: [
+		{
+			description: "a guard that lists the configured entry with other spacing",
+			code: `
+				.row {
+					--s-color: var(--_color);
+					color: var(--s-color);
+					&:where(:not(:nth-child(2n + 1), [data-busy])) {
+						&:hover { --s-color: var(--_color-hover); }
+					}
+					&[data-busy] { --s-opacity: 0.5; }
+				}
+			`,
+		},
+	],
+	reject: [
+		{
+			description: "a guard that leaves out a configured state",
+			code: `
+				.row {
+					--s-color: var(--_color);
+					color: var(--s-color);
+					&:where(:not(:nth-child(2n + 1))) {
+						&:hover { --s-color: var(--_color-hover); }
+					}
+					&[data-busy] { --s-opacity: 0.5; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected guard on ".row" leaving out "[data-busy]", so interaction states still apply while they hold. Add them to its ":not()".',
+					line: 4,
+					column: 10,
+					endLine: 4,
+					endColumn: 34,
+				},
+			],
+			fixed: `
+				.row {
+					--s-color: var(--_color);
+					color: var(--s-color);
+					&:where(:not(:nth-child(2n + 1), [data-busy])) {
+						&:hover { --s-color: var(--_color-hover); }
+					}
+					&[data-busy] { --s-opacity: 0.5; }
+				}
+			`,
+		},
+	],
+});

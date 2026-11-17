@@ -1,5 +1,6 @@
 import bindOnce from "./bind-once/index.js";
 import bindThroughStateVariables from "./bind-through-state-variables/index.js";
+import blockingStatesWin from "./blocking-states-win/index.js";
 import noUndeclaredStateVariables from "./no-undeclared-state-variables/index.js";
 import partVariables from "./part-variables/index.js";
 import partsInScope from "./parts-in-scope/index.js";
@@ -11,6 +12,7 @@ export const rules: readonly RuleDefinition[] = [
 	variableRolePrefix,
 	bindOnce,
 	bindThroughStateVariables,
+	blockingStatesWin,
 	noUndeclaredStateVariables,
 	partsInScope,
 	partVariables,

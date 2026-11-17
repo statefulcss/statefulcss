@@ -52,6 +52,9 @@ export function toPlugin(
 
 	const rule: stylelint.Rule = (primary: unknown, secondary: unknown) => async (root, result) => {
 		if (!validOptions(result, definition, primary, secondary)) return;
+		// Stylelint keeps a falsy secondary option (`[true, null]`, `[true, ""]`) as the rule's custom message, and then
+		// can't word any problem with it. Only an options object can carry a message, so the rule's own stand otherwise.
+		if (!isRecord(secondary)) delete result.stylelint.customMessages[ruleName];
 
 		const fault = (error: unknown): void => {
 			if (failLoudly) throw error;
@@ -205,8 +208,8 @@ function validOptions(
 	if (!result.stylelint.config?.validate) return true;
 
 	// Secondary options are named, so anything but an object is refused, as Stylelint words it, whether or not the
-	// rule has options of its own: Stylelint checks only a rule that has some.
-	if (secondary !== undefined && secondary !== null && !isRecord(secondary)) {
+	// rule has options of its own: Stylelint checks only a rule that has some. `null` and other falsy values too.
+	if (secondary !== undefined && !isRecord(secondary)) {
 		invalid(`Invalid option value ${quoted(secondary)} for rule "${ruleName}": should be an object`);
 		return false;
 	}

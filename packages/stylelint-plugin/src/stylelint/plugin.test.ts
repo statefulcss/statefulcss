@@ -716,6 +716,34 @@ describe("a rule's options", () => {
 		}
 	});
 
+	it("refuses falsy secondary options, and with validation off reports with the rule's own messages", async () => {
+		for (const rule of [picky, names]) {
+			const ruleName = `statefulcss/${rule.name}`;
+			for (const secondary of [null, false, 0, ""]) {
+				// Stylelint keeps a falsy container as the rule's custom message, which used to abort the whole lint.
+				expect(await texts(secondary, rule)).toEqual({
+					warnings: [],
+					invalid: [
+						`Invalid option value ${JSON.stringify(String(secondary))} for rule "${ruleName}": should be an object`,
+					],
+				});
+				const { results } = await stylelint.lint({
+					code: source.code,
+					codeFilename: path.join(project(), source.file),
+					config: withOptions(secondary, rule),
+					validate: false,
+				});
+				const [result] = results;
+				expect(result?.invalidOptionWarnings).toEqual([]);
+				expect(result?.warnings.map((warning) => warning.text)).toEqual(
+					rule === picky
+						? ['Part "title" (statefulcss/test-options)', 'Part "body" (statefulcss/test-options)']
+						: ['Part "title" (statefulcss/test-names)', 'Part "body" (statefulcss/test-names)'],
+				);
+			}
+		}
+	});
+
 	it("gives the check its declared types when validation is off", async () => {
 		const { results } = await stylelint.lint({
 			code: source.code,

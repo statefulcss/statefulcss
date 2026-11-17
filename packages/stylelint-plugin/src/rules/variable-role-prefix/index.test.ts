@@ -117,8 +117,12 @@ testRule(variableRolePrefix, {
 			`,
 		},
 		{
-			description: "a utility",
-			code: `@layer utilities { .u-stack { --gap: 1rem; gap: var(--gap); } }`,
+			description: "a utility's variable with no role",
+			code: `@layer utilities { .u-stack { --_gap: 1rem; gap: var(--_gap); } }`,
+		},
+		{
+			description: "a variable declared on :root: a token",
+			code: `:root { --t-space-4: 1rem; }`,
 		},
 		{
 			description: "what :deep() or :global() selects",
@@ -307,15 +311,112 @@ testRule(variableRolePrefix, {
 		},
 		{
 			description: "any other variable: a private",
-			code: `:root { --brand: blue; }`,
+			code: `main { --brand: blue; }`,
 			warnings: [
 				{
 					message:
 						'Unexpected "--brand" with no role prefix. Name it "--_brand", a private, if it\'s used only where it\'s declared.',
 					line: 1,
+					column: 8,
+					endLine: 1,
+					endColumn: 15,
+				},
+			],
+		},
+		{
+			description: "a utility's variable with no role",
+			code: `@layer utilities { .u-stack { --gap: 1rem; gap: var(--gap); } }`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--gap" with no role prefix. Name it "--_gap", a private, if it\'s used only where it\'s declared.',
+					line: 1,
+					column: 31,
+					endLine: 1,
+					endColumn: 36,
+				},
+			],
+		},
+		{
+			description: "a variable declared on :root: a token",
+			code: `:root { --space-4: 1rem; }`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--space-4" with no role prefix. Declared for the whole page, it\'s a token: name it "--t-space-4".',
+					line: 1,
 					column: 9,
 					endLine: 1,
-					endColumn: 16,
+					endColumn: 18,
+				},
+			],
+		},
+		{
+			description: "a variable declared on html, read by a component: a token, not a component variable",
+			code: `
+				html { --space-4: 1rem; }
+				.card { gap: var(--space-4); }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--space-4" with no role prefix. Declared for the whole page, it\'s a token: name it "--t-space-4".',
+					line: 1,
+					column: 8,
+					endLine: 1,
+					endColumn: 17,
+				},
+			],
+		},
+		{
+			description: "a variable :root changes for a dark color scheme: still a token",
+			code: `
+				:root {
+					--color-text: black;
+					@media (prefers-color-scheme: dark) { --color-text: white; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--color-text" with no role prefix. Declared for the whole page, it\'s a token: name it "--t-color-text".',
+					line: 2,
+					column: 2,
+					endLine: 2,
+					endColumn: 14,
+				},
+				{
+					message:
+						'Unexpected "--color-text" with no role prefix. Declared for the whole page, it\'s a token: name it "--t-color-text".',
+					line: 3,
+					column: 40,
+					endLine: 3,
+					endColumn: 52,
+				},
+			],
+		},
+		{
+			description: "a variable :root declares and a component changes in a state: a state variable",
+			code: `
+				:root { --opacity: 1; }
+				.button { &:hover { --opacity: 0.9; } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--opacity" with no role prefix. A variant or state changes it, so it\'s a state variable: name it "--s-opacity".',
+					line: 1,
+					column: 9,
+					endLine: 1,
+					endColumn: 18,
+				},
+				{
+					message:
+						'Unexpected "--opacity" with no role prefix. A variant or state changes it, so it\'s a state variable: name it "--s-opacity".',
+					line: 2,
+					column: 21,
+					endLine: 2,
+					endColumn: 30,
 				},
 			],
 		},
@@ -425,7 +526,7 @@ testRule(variableRolePrefix, {
 			warnings: [
 				{
 					message:
-						'Unexpected "--legacy-gap-2" with no role prefix. Name it "--_legacy-gap-2", a private, if it\'s used only where it\'s declared.',
+						'Unexpected "--legacy-gap-2" with no role prefix. Declared for the whole page, it\'s a token: name it "--t-legacy-gap-2".',
 					line: 1,
 					column: 9,
 					endLine: 1,

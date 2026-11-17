@@ -16,8 +16,8 @@ Severity: error. Fixable: no.
 - A prefix with nothing after it (`--t-`) is reported, and so is `--` alone.
 - `@property` registers a name for the whole page, so its name is checked the same way.
 - An unprefixed name is allowed only as a library's variable, which the component's doc comment names in `@sets`. `@sets` covers the component of the block right after it, its scope included; another component in the same file needs its own. A name listed only in `@reads` may be read, not written.
-- It applies everywhere: components, themes and global CSS. A utility, and what `:deep()` or `:global()` selects, belong to no component of the file, so they're left out.
-- The message suggests a role from how the file uses the name: queried with `@container style()`, a query variable; changed by a variant or a state, a state variable; declared in a theme, a token; read by a component and set outside it, a component variable; otherwise a private.
+- It applies everywhere: components, themes, utilities and global CSS. Only what `:deep()` or `:global()` selects is left out: a third party's element, whose names are the library's.
+- The message suggests a role from how the file uses the name: queried with `@container style()`, a query variable; changed by a variant or a state, a state variable; declared in a theme, or on `:root` or `html`, a token; read by a component and set outside it, a component variable; otherwise a private. What `:root` changes for a dark color scheme is still a token.
 - Casing after the prefix (`--_backgroundColor`) isn't checked: private names are the project's choice. The prefix itself is lowercase.
 
 ## Why
@@ -170,12 +170,54 @@ Fixed: `@sets` says the component writes it.
 }
 ```
 
+### A variable declared for the whole page
+
+Reported: `--space-4` has no role prefix. Declared on `:root`, it's a token.
+
+```css
+:root {
+	--space-4: 1rem;
+}
+```
+
+Fixed: `theme-tokens` then moves it into a theme.
+
+```css
+:root {
+	--t-space-4: 1rem;
+}
+```
+
+### A utility's variable
+
+Reported: a utility is the project's own CSS, so its names need roles too.
+
+```css
+@layer utilities {
+	.u-stack {
+		--gap: 1rem;
+		gap: var(--gap);
+	}
+}
+```
+
+Fixed:
+
+```css
+@layer utilities {
+	.u-stack {
+		--_gap: 1rem;
+		gap: var(--_gap);
+	}
+}
+```
+
 ### Not reported
 
 - Reading a library's variable: `.popup { max-inline-size: var(--available-width); }`. Reading is always allowed.
 - Writing a variable `ignoreProperties` matches (`["/^--swiper-/"]`), for a library used in many files.
 - A line with Stylelint's standard disable comment and a reason: `/* stylelint-disable-next-line statefulcss/variable-role-prefix -- Swiper reads this */`.
-- A utility, and what `:deep()` or `:global()` selects: `@layer utilities { .stack { --gap: 1rem; } }`.
+- What `:deep()` or `:global()` selects: `.gallery :deep(.swiper) { --swiper-theme-color: red; }`.
 
 ## Options
 

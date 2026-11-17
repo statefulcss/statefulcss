@@ -12,6 +12,8 @@ const messages = {
 		`Unexpected "${name}" with no role prefix. A style query reads it, so it's a query variable: name it "${suggested}".`,
 	token: (name: string, suggested: string) =>
 		`Unexpected "${name}" with no role prefix. A theme declares it, so it's a token: name it "${suggested}".`,
+	page: (name: string, suggested: string) =>
+		`Unexpected "${name}" with no role prefix. Declared for the whole page, it's a token: name it "${suggested}".`,
 	component: (name: string, suggested: string) =>
 		`Unexpected "${name}" with no role prefix. A component reads it and it's set from outside, so it's a component variable: name it "${suggested}".`,
 	private: (name: string, suggested: string) =>
@@ -34,12 +36,13 @@ interface Options {
 }
 
 /** The role a name's use suggests, as the key of its message. */
-type Suggestion = "state" | "query" | "token" | "component" | "private";
+type Suggestion = "state" | "query" | "token" | "page" | "component" | "private";
 
 const prefixOf: Readonly<Record<Suggestion, string>> = {
 	state: rolePrefixes.state,
 	query: rolePrefixes.query,
 	token: rolePrefixes.token,
+	page: rolePrefixes.token,
 	component: rolePrefixes.component,
 	private: rolePrefixes.private,
 };
@@ -125,8 +128,9 @@ export default defineRule<Options, Key>({
 
 /**
  * The role a name's use in this file suggests: queried with `@container style()`, a query variable; changed by a
- * variant or state, a state variable; declared in a theme, a token; read by a component and set outside it, a
- * component variable; otherwise a private.
+ * variant or state, a state variable; declared in a theme, or on `:root` or `html`, a token; read by a component and
+ * set outside it, a component variable; otherwise a private. What `:root` changes in a query (a dark color scheme)
+ * stays a token.
  */
 function suggest(model: Model, name: string): Suggestion {
 	if (model.reads.some((read) => read.name === name && read.via === "style-query")) return "query";
@@ -134,13 +138,20 @@ function suggest(model: Model, name: string): Suggestion {
 		.filter((declaration) => declaration.property === name)
 		.flatMap((declaration) => elementOf(model, declaration) ?? [])
 		.filter((element) => !skipped(element));
-	const changed = model.variables.some(
-		(variable) =>
-			variable.name === name && variable.changes.length > 0 && !skippedId(model, variable.element),
-	);
+	const changed = model.variables.some((variable) => {
+		const element = model.elements[variable.element];
+		return (
+			variable.name === name &&
+			variable.changes.length > 0 &&
+			element !== undefined &&
+			!skipped(element) &&
+			!isPage(element)
+		);
+	});
 	if (changed) return "state";
 	if (writers.some((element) => element.kind === "global" && element.themeScope !== undefined))
 		return "token";
+	if (writers.some(isPage)) return "page";
 	const outside = model.reads.some((read) => {
 		if (read.name !== name || read.via !== "var") return false;
 		const reader = componentOf(model.elements[read.element]);
@@ -176,12 +187,14 @@ function componentOf(element: Element | undefined): number | undefined {
 	return element && "component" in element ? element.component : undefined;
 }
 
-/** A utility, and what `:deep()` or `:global()` selects, belong to no component of this file. */
+/** What `:deep()` or `:global()` selects is a third party's element, whose names are the library's. */
 function skipped(element: Element): boolean {
-	return element.kind === "utility" || element.kind === "foreign";
+	return element.kind === "foreign";
 }
 
-function skippedId(model: Model, id: number): boolean {
-	const element = model.elements[id];
-	return !element || skipped(element);
+/** `:root` or `html`: what it declares is for the whole page. */
+function isPage(element: Element): boolean {
+	if (element.kind !== "global") return false;
+	const selector = element.selector.toLowerCase();
+	return selector === ":root" || selector === "html";
 }

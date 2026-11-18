@@ -49,7 +49,8 @@ export default defineRule<Record<never, never>, Key>({
 		const name = (id: Id): string => nameOf(model, settings, id);
 		const ownership = ownershipOf(model);
 
-		// One finding for each written declaration, name and message: a selector list is reported once.
+		// One finding for each written declaration, name, message and binding: a selector list is reported once for each
+		// variable it binds, so each binding keeps its own instruction.
 		const groups = new Map<string, Said[]>();
 		const report = (declaration: Declaration, key: string, said: Said): void => {
 			const group = groups.get(`${declaration.written}\n${key}\n${said.message}`);
@@ -76,7 +77,7 @@ export default defineRule<Record<never, never>, Key>({
 				const at = { node: declaration.node, part: "value" } as const;
 				report(
 					declaration,
-					read.name,
+					`${read.name}\n${binding.variable}`,
 					change.chain.length === 0
 						? {
 								message: "changingPrivate",

@@ -170,6 +170,41 @@ testRule(bindThroughStateVariables, {
 				}
 			`,
 		},
+		// Rule 3's advice, followed, brings no error here (stages 6b-9 audit B12 to B14).
+		{
+			description: "rule 3's fix for a selector list of two pseudo-elements",
+			code: `
+				.a {
+					--p-after-opacity: 0;
+					--p-before-opacity: 0;
+					&::after { opacity: var(--p-after-opacity); }
+					&::before { opacity: var(--p-before-opacity); }
+					&:hover { --p-after-opacity: 1; --p-before-opacity: 1; }
+				}
+			`,
+		},
+		{
+			description: "rule 3's fix for a pseudo-element a variant and a state change",
+			code: `
+				.a {
+					--_after-opacity: 0.5;
+					--p-after-opacity: var(--_after-opacity);
+					&::after { opacity: var(--p-after-opacity); }
+					&:hover { --p-after-opacity: 1; }
+					&[data-size="l"] { --_after-opacity: 0.8; }
+				}
+			`,
+		},
+		{
+			description: "rule 3's fix for a global element's pseudo-element",
+			code: `
+				a {
+					--p-after-opacity: 0.5;
+					&:hover { --p-after-opacity: 1; }
+				}
+				a::after { opacity: var(--p-after-opacity); }
+			`,
+		},
 	],
 	reject: [
 		// The rules page's Reported cases.
@@ -528,6 +563,74 @@ testRule(bindThroughStateVariables, {
 					endColumn: 22,
 				},
 			],
+		},
+		// B12: a selector list of pseudo-elements gets one instruction for each binding.
+		{
+			description: "a selector list of two pseudo-elements reading a changing private",
+			code: `
+				.a {
+					--_opacity: 0;
+					&:hover { --_opacity: 1; }
+					&::after, &::before { opacity: var(--_opacity); }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "opacity" reading "--_opacity", which changes in ":hover". Move this value into the default of "--p-after-opacity" on ".a", and read "var(--p-after-opacity)" instead.',
+					line: 4,
+					column: 33,
+					endLine: 4,
+					endColumn: 48,
+				},
+				{
+					message:
+						'Unexpected "opacity" reading "--_opacity", which changes in ":hover". Move this value into the default of "--p-before-opacity" on ".a", and read "var(--p-before-opacity)" instead.',
+					line: 4,
+					column: 33,
+					endLine: 4,
+					endColumn: 48,
+				},
+			],
+		},
+		{
+			description: "a state attribute the settings don't name is a variant",
+			code: `
+				.disclosure {
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&[data-state="open"] { --s-opacity: 0.9; }
+					&:hover { --s-opacity: 0.8; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--s-opacity" written by the variant "[data-state="open"]" while a state writes it too, in ":hover". Set "--_opacity" in the variant instead, and give "--s-opacity" the default "var(--_opacity)".',
+					line: 4,
+					column: 25,
+					endLine: 4,
+					endColumn: 36,
+				},
+			],
+		},
+	],
+});
+
+// The settings that tell a state from a variant change the result (the README's Options).
+testRule(bindThroughStateVariables, {
+	settings: { stateAttributes: ["data-state"] },
+	accept: [
+		{
+			description: "a state attribute the settings name is a state, not a variant",
+			code: `
+				.disclosure {
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&[data-state="open"] { --s-opacity: 0.9; }
+					&:hover { --s-opacity: 0.8; }
+				}
+			`,
 		},
 	],
 });

@@ -159,4 +159,4 @@ Fixed: the variant sets a private, and the hover reads it.
 
 ## Options
 
-None of its own. It reads `themeAttribute`, to skip theme scopes, and the names of components and their parts from `statefulcss.config`.
+None of its own. It reads `themeAttribute`, to skip theme scopes, and the names of components and their parts from `statefulcss.config`. It also reads the settings that tell a state from a variant: `stateAttributes`, `blockingStates` and `interactionStates`. With `stateAttributes: ["data-state"]`, `&[data-state="open"]` is a state, so a variable it writes beside a hover isn't a variant's write, and isn't reported.

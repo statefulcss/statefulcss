@@ -11,6 +11,7 @@ import type { AtRule, Node, Rule } from "postcss";
 import { listOf, nameOf } from "../names.js";
 import { isPage } from "../page.js";
 import { defineRule, type Finding } from "../rule.js";
+import { isColorToken } from "./colors.js";
 
 const messages = {
 	tokenOnPage: (name: string, place: string, scope: string) =>
@@ -21,6 +22,8 @@ const messages = {
 		`Unexpected token "${name}" declared on ${place}. Tokens are declared only in theme scopes: a value the element names for itself is a private, such as "${private_}".`,
 	tokenOnColorScheme: (name: string, place: string) =>
 		`Unexpected token "${name}" declared on ${place}: a color scheme picks a value, it isn't a set of tokens. Give the token both values with "light-dark()" in the theme scope, and set only "color-scheme" here.`,
+	tokenOnColorSchemeOther: (name: string, place: string) =>
+		`Unexpected token "${name}" declared on ${place}: a color scheme picks colors, and "${name}" isn't one. Move it, unchanged, into the theme scope, and set only "color-scheme" here.`,
 	colorSchemeOnly: (property: string, place: string) =>
 		`Unexpected "${property}" declared on ${place}. A "[data-color-scheme]" selector declares only "color-scheme".`,
 	themeScopeOnly: (property: string, place: string) =>
@@ -35,8 +38,10 @@ const messages = {
 		`Unexpected registration of token "${name}" outside the theme files. Its initial value is the token's global default, part of the base theme: register it in a file matching ${patterns}.`,
 	wrongFolder: (place: string, folder: string, owner: string, move: string) =>
 		`Unexpected ${place} in "${folder}", which holds ${owner}. Move it to "${move}".`,
+	wrongFolders: (places: string, folder: string, owner: string, moves: string) =>
+		`Unexpected ${places} in "${folder}", which holds ${owner}. Write each theme in its own folder: ${moves}.`,
 	baseNamed: (place: string, folder: string, base: string) =>
-		`Unexpected ${place} in "${folder}", the base theme's folder. The base theme is the unnamed scope: write ${base}.`,
+		`Unexpected ${place} in "${folder}", which holds the base theme. The base theme is the unnamed scope: write ${base}.`,
 	mixedThemes: (place: string, owner: string) =>
 		`Unexpected ${place} in a file of ${owner}. Write each theme in a file of its own.`,
 	notThemeContent: (place: string) =>
@@ -102,7 +107,10 @@ export default defineRule<Record<never, never>, Key>({
 		// project that lists no theme files doesn't keep its themes in any.
 		if (file === undefined || settings.themeFiles.length === 0) return findings;
 		const location = locationOf(file, settings);
-		const patterns = orList(settings.themeFiles.map((pattern) => `"${pattern}"`));
+		const patterns = listOf(
+			settings.themeFiles.map((pattern) => `"${pattern}"`),
+			"or",
+		);
 
 		// The rules that write a theme scope or a color scheme selector, each once, and the rules that write
 		// anything else.
@@ -134,7 +142,25 @@ export default defineRule<Record<never, never>, Key>({
 		for (const said of themeRules.values()) {
 			const byMessage = new Map<Key, Said[]>();
 			for (const one of said) byMessage.set(one.message, [...(byMessage.get(one.message) ?? []), one]);
-			for (const group of byMessage.values()) add(group);
+			for (const group of byMessage.values()) {
+				// A list of themes in another theme's folder: each theme goes to its own, so the rule is split.
+				const moves = new Set(group.map((one) => one.args[3]));
+				if (group[0]?.message !== "wrongFolder" || moves.size < 2) {
+					add(group);
+					continue;
+				}
+				const [first] = group;
+				findings.push({
+					message: "wrongFolders",
+					args: [
+						listOf(group.map((one) => one.args[0] ?? "")),
+						first.args[1] ?? "",
+						first.args[2] ?? "",
+						listOf(group.map((one) => `${one.args[0] ?? ""} in "${one.args[3] ?? ""}"`)),
+					],
+					at: first.at,
+				});
+			}
 		}
 
 		// Check 5: a token's registration.
@@ -209,9 +235,11 @@ function declarationSaid(
 
 	if (element.kind === "global" && element.colorScheme) {
 		if (property === "color-scheme") return undefined;
-		return role === "token"
+		if (role !== "token") return { message: "colorSchemeOnly", args: [property, place], at };
+		// `light-dark()` takes colors only: any other token moves as it is.
+		return isColorToken(model, declaration)
 			? { message: "tokenOnColorScheme", args: [property, place], at }
-			: { message: "colorSchemeOnly", args: [property, place], at };
+			: { message: "tokenOnColorSchemeOther", args: [property, place], at };
 	}
 	if (element.kind === "global" && element.themeScope) {
 		if (property === "color-scheme" || role === "token") return undefined;
@@ -263,7 +291,8 @@ function themeScopeSaid(
 	const theme = element.themeScope.theme;
 	const base = folder.name === undefined || folder.name === settings.baseTheme;
 	const here = folder.name === undefined ? `${folder.root}/` : `${folder.root}/${folder.name}/`;
-	if (base && theme !== undefined && theme === folder.name) {
+	// At the themes folder's root or in the base theme's folder, the base theme's name is dropped.
+	if (base && theme !== undefined && theme === settings.baseTheme) {
 		return { message: "baseNamed", args: [place, here, `"[${settings.themeAttribute}]"`], at };
 	}
 	if (base && theme !== undefined) {
@@ -392,14 +421,6 @@ function nameAt(registration: Registration): Finding<Key>["at"] {
 
 function sameArgs(a: readonly string[], b: readonly string[]): boolean {
 	return a.length === b.length && a.every((one, index) => one === b[index]);
-}
-
-/** Each distinct text once, joined with "or": `"a"`, `"a" or "b"`, `"a", "b" or "c"`. */
-function orList(texts: readonly string[]): string {
-	const distinct = [...new Set(texts)];
-	return distinct.length < 2
-		? distinct.join("")
-		: `${distinct.slice(0, -1).join(", ")} or ${distinct.at(-1) ?? ""}`;
 }
 
 function escapeRegExp(text: string): string {

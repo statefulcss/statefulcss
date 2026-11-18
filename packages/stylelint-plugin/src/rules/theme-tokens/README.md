@@ -1,6 +1,6 @@
 # theme-tokens
 
-Tokens and theme scopes belong together: a token is declared only in a theme scope, a theme scope declares only tokens, and themes are written only in the theme files.
+Tokens and theme scopes belong together: a token is declared only in a theme scope, a theme scope declares only tokens and `color-scheme`, and themes are written only in the theme files.
 
 Severity: error. Fixable: no.
 
@@ -8,9 +8,9 @@ Severity: error. Fixable: no.
 
 - **A token (`--t-*`) is declared only in a theme scope:** a selector whose own element carries the theme attribute (`[data-theme="espresso"]`, `html[data-theme]`), including the `@media` and `@supports` blocks nested inside it. A token on `:root` or `html` is reported, since switching the theme attribute wouldn't change it. So is a token on something inside a theme scope (`[data-theme="default"] .button`): that's a component, not the theme. A token anywhere else gets the advice to name the value as a private.
 - **A theme scope declares only tokens and `color-scheme`.** A component variable set there gets its own message: a theme sets tokens, and a component's default reads them.
-- **A `[data-color-scheme]` selector declares only `color-scheme`,** whether or not it also carries the theme attribute. A token there is reported: the token holds both values with `light-dark()`, and the color scheme only picks one.
+- **A `[data-color-scheme]` selector declares only `color-scheme`,** whether or not it also carries the theme attribute. A token there is reported. A color token holds both values with `light-dark()` in the theme scope, and the color scheme only picks one. `light-dark()` takes only colors, so any other token (`--t-space-2`) is told to move, unchanged, into the theme scope. A token is a color when its name has the word `color`, its value is a color (`#333`, `oklch()`, `black`, a `var()` of a color token), or its `@property` syntax is `<color>`.
 - **Theme scopes and `[data-color-scheme]` selectors are written only in the theme files,** the files matching `themeFiles`. A rule is reported once, on its selector, however many blocks it holds.
-- **Each theme in its own folder.** When a pattern ends in `**` (`**/styles/themes/**`), the folder it names is the themes folder. A file at its root, or in the base theme's folder (`base`), declares only the unnamed `[data-theme]` scope, so `[data-theme="base"]` there is told to drop its name; a file in any other folder, at any depth, declares only the theme that folder is named after. With a pattern that names no folder (`src/themes/*`), a file holds one theme: the first one it declares.
+- **Each theme in its own folder.** When a pattern ends in `**` (`**/styles/themes/**`), the folder it names is the themes folder. A file at its root, or in the base theme's folder (`base`), declares only the unnamed `[data-theme]` scope, so `[data-theme="base"]` in either place is told to write the unnamed `[data-theme]`; a file in any other folder, at any depth, declares only the theme that folder is named after. A selector list of themes in another theme's folder (`[data-theme="a"], [data-theme="b"]`) is told to split, with each theme's own folder. With a pattern that names no folder (`src/themes/*`), a file holds one theme: the first one it declares.
 - **A token's `@property` registration is written only in the theme files.** Its `initial-value` is the token's global default, part of the base theme.
 - **A theme file holds nothing else:** theme scopes, `[data-color-scheme]` selectors, token registrations, `@layer` and `@charset`, and `@import` of other theme files. A relative import (`./`, `../`) is checked against `themeFiles`; a package or a URL isn't, since the rule can't know its file. What core can't read, such as SCSS's `@use`, isn't reported.
 - It applies everywhere: components, page elements and utilities. What `:deep()` or `:global()` selects isn't read.

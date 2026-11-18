@@ -50,7 +50,11 @@ const registrationOutside = (name: string): string =>
 const wrongFolder = (place: string, folder: string, owner: string, move: string): string =>
 	`Unexpected ${place} in "${folder}", which holds ${owner}. Move it to "${move}".`;
 const baseNamed = (place: string, folder: string): string =>
-	`Unexpected ${place} in "${folder}", the base theme's folder. The base theme is the unnamed scope: write "[data-theme]".`;
+	`Unexpected ${place} in "${folder}", which holds the base theme. The base theme is the unnamed scope: write "[data-theme]".`;
+const tokenOnColorSchemeOther = (name: string, place: string): string =>
+	`Unexpected token "${name}" declared on ${place}: a color scheme picks colors, and "${name}" isn't one. Move it, unchanged, into the theme scope, and set only "color-scheme" here.`;
+const wrongFolders = (places: string, folder: string, owner: string, moves: string): string =>
+	`Unexpected ${places} in "${folder}", which holds ${owner}. Write each theme in its own folder: ${moves}.`;
 const mixedThemes = (place: string, owner: string): string =>
 	`Unexpected ${place} in a file of ${owner}. Write each theme in a file of its own.`;
 const notThemeContent = (place: string): string =>
@@ -493,6 +497,127 @@ testRule(themeTokens, {
 					code.themeAndScheme,
 					"--t-color-background-base",
 				),
+			],
+		},
+		// R07: `light-dark()` takes colors only. The case above, a color by its name, is the control.
+		{
+			description: "a [data-color-scheme] selector declaring a token that isn't a color",
+			code: `
+				[data-color-scheme="dark"] { --t-space-2: 0.75rem; --t-font-weight-body: 350; }
+			`,
+			file: themeFile("base"),
+			warnings: [
+				{
+					message: tokenOnColorSchemeOther("--t-space-2", '"[data-color-scheme="dark"]"'),
+					line: 1,
+					column: 30,
+					endLine: 1,
+					endColumn: 41,
+				},
+				{
+					message: tokenOnColorSchemeOther("--t-font-weight-body", '"[data-color-scheme="dark"]"'),
+					line: 1,
+					column: 52,
+					endLine: 1,
+					endColumn: 72,
+				},
+			],
+		},
+		{
+			description: "a [data-color-scheme] selector declaring colors told by their value or registration",
+			code: `
+				@property --t-surface { syntax: "<color>"; inherits: true; initial-value: white; }
+				[data-color-scheme="dark"] {
+					--t-ink: black;
+					--t-line: #333;
+					--t-shade: oklch(20% 0 0);
+					--t-edge: var(--t-color-gray-9);
+					--t-surface: var(--t-gray-9);
+				}
+			`,
+			file: themeFile("base"),
+			warnings: ["--t-ink", "--t-line", "--t-shade", "--t-edge", "--t-surface"].map((name, index) => ({
+				message: tokenOnColorScheme(name, '"[data-color-scheme="dark"]"'),
+				line: 3 + index,
+				column: 2,
+				endLine: 3 + index,
+				endColumn: 2 + name.length,
+			})),
+		},
+		// R06: a list of themes in another theme's folder.
+		{
+			description: "two themes in another theme's folder, each told its own folder",
+			code: `
+				[data-theme="a"], [data-theme="b"] { --t-space-2: 0.5rem; }
+			`,
+			file: themeFile("sea"),
+			warnings: [
+				{
+					message: wrongFolders(
+						'"[data-theme="a"]" and "[data-theme="b"]"',
+						"src/styles/themes/sea/",
+						'theme "sea"',
+						'"[data-theme="a"]" in "src/styles/themes/a/" and "[data-theme="b"]" in "src/styles/themes/b/"',
+					),
+					line: 1,
+					column: 1,
+					endLine: 1,
+					endColumn: 35,
+				},
+			],
+		},
+		{
+			description: "a list of the folder's theme and another, told only of the other",
+			code: `
+				[data-theme="sea"], [data-theme="b"] { --t-space-2: 0.5rem; }
+			`,
+			file: themeFile("sea"),
+			warnings: [
+				{
+					message: wrongFolder(
+						'"[data-theme="b"]"',
+						"src/styles/themes/sea/",
+						'theme "sea"',
+						"src/styles/themes/b/",
+					),
+					line: 1,
+					column: 1,
+					endLine: 1,
+					endColumn: 37,
+				},
+			],
+		},
+		// R13: the base theme named, at the themes folder's root, drops its name, as in its own folder.
+		{
+			description: "the base theme named at the root of the themes folder",
+			code: `
+				[data-theme="base"] { --t-space-2: 0.5rem; }
+			`,
+			file: "src/styles/themes/index.css",
+			warnings: [
+				{
+					message: baseNamed('"[data-theme="base"]"', "src/styles/themes/"),
+					line: 1,
+					column: 1,
+					endLine: 1,
+					endColumn: 20,
+				},
+			],
+		},
+		{
+			description: "the base theme named in its own folder",
+			code: `
+				[data-theme="base"] { --t-space-2: 0.5rem; }
+			`,
+			file: themeFile("base"),
+			warnings: [
+				{
+					message: baseNamed('"[data-theme="base"]"', "src/styles/themes/base/"),
+					line: 1,
+					column: 1,
+					endLine: 1,
+					endColumn: 20,
+				},
 			],
 		},
 		{

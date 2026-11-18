@@ -50,6 +50,40 @@ const passEverywhere = [
 		`,
 	},
 	{
+		description: "a selector list of two pseudo-elements, fixed: one part variable for each",
+		code: `
+			.a {
+				--p-after-opacity: 0;
+				--p-before-opacity: 0;
+				&::after { opacity: var(--p-after-opacity); }
+				&::before { opacity: var(--p-before-opacity); }
+				&:hover { --p-after-opacity: 1; --p-before-opacity: 1; }
+			}
+		`,
+	},
+	{
+		description: "a variant and a state change a pseudo-element, fixed: the variant sets a private",
+		code: `
+			.a {
+				--_after-opacity: 0.5;
+				--p-after-opacity: var(--_after-opacity);
+				&::after { opacity: var(--p-after-opacity); }
+				&:hover { --p-after-opacity: 1; }
+				&[data-size="l"] { --_after-opacity: 0.8; }
+			}
+		`,
+	},
+	{
+		description: "a global element's pseudo-element, fixed: the host's part variable",
+		code: `
+			a {
+				--p-after-opacity: 0.5;
+				&:hover { --p-after-opacity: 1; }
+			}
+			a::after { opacity: var(--p-after-opacity); }
+		`,
+	},
+	{
 		description: "an element with state variables declares a property directly in a state",
 		code: `
 			.button {
@@ -621,6 +655,148 @@ testRule(bindOnce, {
 					column: 46,
 					endLine: 2,
 					endColumn: 57,
+				},
+			],
+		},
+		// B12: a selector list of pseudo-elements gets one instruction for each binding.
+		{
+			description: "a selector list of two pseudo-elements gets one instruction for each binding",
+			code: `
+				.a {
+					&::after, &::before { opacity: 0; }
+					&:hover::after, &:hover::before { opacity: 1; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "opacity" declared on ".a::after" and again in ":hover". Bind it once with "opacity: var(--p-after-opacity)", and let ".a" declare "--p-after-opacity" and set it in ":hover".',
+					line: 3,
+					column: 36,
+					endLine: 3,
+					endColumn: 43,
+				},
+				{
+					message:
+						'Unexpected "opacity" declared on ".a::before" and again in ":hover". Bind it once with "opacity: var(--p-before-opacity)", and let ".a" declare "--p-before-opacity" and set it in ":hover".',
+					line: 3,
+					column: 36,
+					endLine: 3,
+					endColumn: 43,
+				},
+			],
+		},
+		{
+			description: "a selector list of two pseudo-elements binding one variable is reported once",
+			code: `
+				.a, .b {
+					&::after { opacity: 0; }
+					&:hover::after { opacity: 1; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "opacity" declared on ".a::after" and ".b::after" and again in ":hover". Bind it once with "opacity: var(--p-after-opacity)", and let ".a" and ".b" declare "--p-after-opacity" and set it in ":hover".',
+					line: 3,
+					column: 19,
+					endLine: 3,
+					endColumn: 26,
+				},
+			],
+		},
+		// B13: a variant beside a state sets a private that the owner's part variable reads.
+		{
+			description: "a variant and a state change a pseudo-element: the variant sets a private",
+			code: `
+				.a {
+					&::after { opacity: 0.5; }
+					&:hover::after { opacity: 1; }
+					&[data-size="l"]::after { opacity: 0.8; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "opacity" declared on ".a::after" and again in ":hover". Bind it once with "opacity: var(--p-after-opacity)", and let ".a" declare "--p-after-opacity" and set it in ":hover".',
+					line: 3,
+					column: 19,
+					endLine: 3,
+					endColumn: 26,
+				},
+				{
+					message:
+						'Unexpected "opacity" declared on ".a::after" in "[data-size="l"]", and a state changes it too. Bind it once with "opacity: var(--p-after-opacity)", let ".a" give "--p-after-opacity" the default "var(--_after-opacity)", and set "--_after-opacity" in "[data-size="l"]".',
+					line: 4,
+					column: 28,
+					endLine: 4,
+					endColumn: 35,
+				},
+			],
+		},
+		{
+			description: "two variants change a pseudo-element with no state: each sets the part variable",
+			code: `
+				.a {
+					&::after { opacity: 0.5; }
+					&[data-size="s"]::after { opacity: 0.3; }
+					&[data-size="l"]::after { opacity: 0.8; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "opacity" declared on ".a::after" and again in "[data-size="s"]". Bind it once with "opacity: var(--p-after-opacity)", and let ".a" declare "--p-after-opacity" and set it in "[data-size="s"]".',
+					line: 3,
+					column: 28,
+					endLine: 3,
+					endColumn: 35,
+				},
+				{
+					message:
+						'Unexpected "opacity" declared on ".a::after" and again in "[data-size="l"]". Bind it once with "opacity: var(--p-after-opacity)", and let ".a" declare "--p-after-opacity" and set it in "[data-size="l"]".',
+					line: 4,
+					column: 28,
+					endLine: 4,
+					endColumn: 35,
+				},
+			],
+		},
+		// B14: a global element owns its pseudo-elements' part variables, like a root.
+		{
+			description: "a global element's pseudo-element binds the host's part variable",
+			code: `
+				a::after { opacity: 0.5; }
+				a:hover::after { opacity: 1; }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "opacity" declared on "a::after" and again in ":hover". Bind it once with "opacity: var(--p-after-opacity)", and let "a" declare "--p-after-opacity" and set it in ":hover".',
+					line: 2,
+					column: 18,
+					endLine: 2,
+					endColumn: 25,
+				},
+			],
+		},
+		{
+			description: "content's pseudo-element binds its own state variable",
+			code: `
+				.card { }
+				@scope (.card) to ([data-component]) {
+					p::after { opacity: 0.5; }
+					p:hover::after { opacity: 1; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "opacity" declared on ".card p::after" and again in ":hover". Bind it once with "opacity: var(--s-opacity)" and set "--s-opacity" in ":hover".',
+					line: 4,
+					column: 19,
+					endLine: 4,
+					endColumn: 26,
 				},
 			],
 		},

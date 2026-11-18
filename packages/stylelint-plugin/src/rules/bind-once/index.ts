@@ -24,6 +24,15 @@ const messages = {
 		`Unexpected "${property}" declared on ${element} in ${place}, though ${element} changes through state variables. Bind it with "${property}: var(${variable})" in the block of ${element}, and set "${variable}" in ${place}.`,
 	ownerAgain: (property: string, element: string, place: string, variable: string, owner: string) =>
 		`Unexpected "${property}" declared on ${element} and again in ${place}. Bind it once with "${property}: var(${variable})", and let ${owner} declare "${variable}" and set it in ${place}.`,
+	ownerVariantAndState: (
+		property: string,
+		element: string,
+		place: string,
+		variable: string,
+		owner: string,
+		own: string,
+	) =>
+		`Unexpected "${property}" declared on ${element} in ${place}, and a state changes it too. Bind it once with "${property}: var(${variable})", let ${owner} give "${variable}" the default "var(${own})", and set "${own}" in ${place}.`,
 	ownerChanges: (
 		property: string,
 		element: string,
@@ -73,7 +82,8 @@ export default defineRule<Record<never, never>, Key>({
 			layer !== undefined &&
 			settings.ignoreLayers.some((ignored) => layer === ignored || layer.startsWith(`${ignored}.`));
 
-		// One finding for each written declaration and message: a selector list on two elements is reported once.
+		// One finding for each written declaration, message and binding: a selector list on two elements that bind one
+		// variable is reported once, and each binding keeps its own instruction.
 		const groups = new Map<string, Said[]>();
 		const report = (declaration: Declaration, said: Said, extra = ""): void => {
 			const key = `${declaration.written}\n${said.message}\n${extra}`;
@@ -100,39 +110,37 @@ export default defineRule<Record<never, never>, Key>({
 					const place = placeOf(one);
 					const binding = bindingOf(model, element, one, property);
 					const owner = binding.owner === undefined ? undefined : name(binding.owner);
+					// A variant beside a state sets a private that the variable's default reads (`--p-after-opacity` reads
+					// `--_after-opacity`), so the variant never writes a variable a state writes too.
+					const variantOnly = stateChanges && one.blocks.every((block) => block.kind === "variant");
+					const own = `--_${binding.variable.replace(/^--[sp]-/, "")}`;
+					const said = (message: Key, args: string[]): void =>
+						report(one.declaration, { message, args, at }, binding.variable);
 					if (places.size >= 2) {
 						const others = listOf(
 							changes.filter((other) => other.place !== one.place).map((other) => placeOf(other)),
 						);
-						if (owner !== undefined)
-							report(one.declaration, {
-								message: hasOwn ? "ownerAgain" : "ownerChanges",
-								args: hasOwn
+						if (owner !== undefined && variantOnly)
+							said("ownerVariantAndState", [property, name(element.id), place, binding.variable, owner, own]);
+						else if (owner !== undefined)
+							said(
+								hasOwn ? "ownerAgain" : "ownerChanges",
+								hasOwn
 									? [property, name(element.id), place, binding.variable, owner]
 									: [property, name(element.id), place, others, binding.variable, owner],
-								at,
-							});
-						else if (stateChanges && one.blocks.every((block) => block.kind === "variant"))
-							report(one.declaration, {
-								message: "variantAndState",
-								args: [property, name(element.id), place, binding.variable, `--_${property}`],
-								at,
-							});
+							);
+						else if (variantOnly)
+							said("variantAndState", [property, name(element.id), place, binding.variable, own]);
 						else
-							report(one.declaration, {
-								message: hasOwn ? "again" : "changes",
-								args: hasOwn
+							said(
+								hasOwn ? "again" : "changes",
+								hasOwn
 									? [property, name(element.id), place, binding.variable]
 									: [property, name(element.id), place, others, binding.variable],
-								at,
-							});
+							);
 						reported.add(one);
 					} else if (stateVariables && owner === undefined) {
-						report(one.declaration, {
-							message: "stateVariables",
-							args: [property, name(element.id), place, binding.variable],
-							at,
-						});
+						said("stateVariables", [property, name(element.id), place, binding.variable]);
 						reported.add(one);
 					}
 				}
@@ -160,11 +168,12 @@ export default defineRule<Record<never, never>, Key>({
 									args: [property, name(element.id), place, binding.variable, name(binding.owner)],
 									at,
 								},
+						binding.variable,
 					);
 				}
 			}
 
-			overlapsOf(model, element, byProperty, (later, earlier, variable) =>
+			overlapsOf(model, byProperty, (later, earlier, variable) =>
 				report(
 					later.declaration,
 					{
@@ -271,10 +280,10 @@ function placeText(block: Block): string {
 }
 
 /**
- * The variable a property binds, and the element that declares it when that's not the element itself. A part's or a
- * root's pseudo-element binds the part variable its host declares (`--p-after-opacity`), or the root's for a part's
- * pseudo-element (`--p-tab-after-opacity`) when the root's conditions change it. A part changed by the root's
- * conditions binds the root's part variable (`--p-icon-color`). Anything else binds its own state variable.
+ * The variable a property binds, and the element that declares it when that's not the element itself. A part's, a
+ * root's or a global element's pseudo-element binds the part variable its host declares (`--p-after-opacity`), or the
+ * root's for a part's pseudo-element (`--p-tab-after-opacity`) when the root's conditions change it. A part changed by
+ * the root's conditions binds the root's part variable (`--p-icon-color`). Anything else binds its own state variable.
  */
 function bindingOf(
 	model: Model,
@@ -290,7 +299,7 @@ function bindingOf(
 			if (root !== undefined)
 				return { variable: `--p-${host.name}-${element.name}-${property}`, owner: root };
 		}
-		if (host?.kind === "part" || host?.kind === "root")
+		if (host?.kind === "part" || host?.kind === "root" || host?.kind === "global")
 			return { variable: `--p-${element.name}-${property}`, owner: host.id };
 	}
 	if (element.kind === "part" && onRoot) {
@@ -307,18 +316,37 @@ function bindingOf(
  */
 function overlapsOf(
 	model: Model,
-	element: Element,
 	byProperty: Map<string, Written[] | "unknown">,
 	found: (later: Written, earlier: Written, variable: string) => void,
 ): void {
-	const all = [...byProperty.values()]
-		.filter((written): written is Written[] => written !== "unknown")
-		.flat()
-		.sort((a, b) => a.declaration.id - b.declaration.id);
-	const placeOfOne = (one: Written): string => (one.own ? "" : one.place);
-	for (const [index, later] of all.entries()) {
-		for (const earlier of all.slice(0, index)) {
-			if (placeOfOne(earlier) !== placeOfOne(later)) continue;
+	// Only declarations in one place can overlap, and only a place where something reads a state variable matters.
+	const byPlace = new Map<string, Written[]>();
+	for (const written of byProperty.values()) {
+		if (written === "unknown") continue;
+		for (const one of written) {
+			const key = one.own ? "" : one.place;
+			const list = byPlace.get(key);
+			if (list) list.push(one);
+			else byPlace.set(key, [one]);
+		}
+	}
+	for (const place of byPlace.values()) {
+		if (!place.some((one) => stateReadOf(model, one.declaration) !== undefined)) continue;
+		place.sort((a, b) => a.declaration.id - b.declaration.id);
+		overlapsIn(model, place, found);
+	}
+}
+
+/** The overlaps among declarations in one place, in written order: each later one reported once, at its first. */
+function overlapsIn(
+	model: Model,
+	place: readonly Written[],
+	found: (later: Written, earlier: Written, variable: string) => void,
+): void {
+	for (const [index, later] of place.entries()) {
+		for (let at = 0; at < index; at += 1) {
+			const earlier = place[at];
+			if (!earlier) continue;
 			const [a, b] = [earlier.declaration, later.declaration];
 			if (a.property === b.property || !overlaps(a.property, b.property)) continue;
 			const sameBlock = later.blocks.some((block) =>
@@ -358,6 +386,7 @@ function stateReadOf(model: Model, declaration: Declaration): string | undefined
  * message shows: the condition is a declaration on the same element that binds the variable, when there is one.
  */
 function repeatsOf(model: Model): [Declaration, string][] {
+	const binders = bindersOf(model);
 	const seen = new Map<string, Declaration>();
 	const nodes = new Map<object, number>();
 	const repeats: [Declaration, string][] = [];
@@ -375,7 +404,7 @@ function repeatsOf(model: Model): [Declaration, string][] {
 			seen.set(key, declaration);
 			continue;
 		}
-		const binder = bindersOf(model, block, declaration.property);
+		const binder = binders.get(`${block.element}\n${declaration.property}`);
 		const condition = binder ? `${binder}: ${declaration.value}` : "…";
 		repeats.push([
 			declaration,
@@ -385,13 +414,18 @@ function repeatsOf(model: Model): [Declaration, string][] {
 	return repeats;
 }
 
-/** The native property on a block's element whose whole value is `var()` of this name. */
-function bindersOf(model: Model, block: Block, name: string): string | undefined {
+/**
+ * For each element and variable name, the first native property on that element whose whole value is `var()` of it,
+ * gathered in one pass.
+ */
+function bindersOf(model: Model): Map<string, string> {
+	const binders = new Map<string, string>();
 	for (const read of model.reads) {
-		if (read.name !== name || read.element !== block.element || read.position !== "whole") continue;
-		if (read.declaration === undefined) continue;
+		if (read.position !== "whole" || read.declaration === undefined) continue;
+		const key = `${read.element}\n${read.name}`;
+		if (binders.has(key)) continue;
 		const declaration = model.declarations[read.declaration];
-		if (declaration && declaration.role === undefined) return declaration.property;
+		if (declaration && declaration.role === undefined) binders.set(key, declaration.property);
 	}
-	return undefined;
+	return binders;
 }

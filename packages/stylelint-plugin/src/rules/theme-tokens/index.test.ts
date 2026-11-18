@@ -13,6 +13,8 @@ const component = "src/styles/components/button.css";
  * A warning on the first written `text` of the case's code (the `occurrence`-th, counted from 0), from its start to
  * its end. Lines are counted in the case's CSS.
  */
+const scheme = '"[data-color-scheme="dark"]"';
+
 function on(message: string, code: string, text: string, occurrence = 0): ExpectedWarning {
 	const css = dedent(code);
 	let index = -1;
@@ -111,6 +113,22 @@ const code = {
 	utility: `
 		@layer utilities {
 			.gap-2 { --t-space-2: 0.5rem; }
+		}
+	`,
+	compositeTokens: `
+		@property --t-color-ring { syntax: "<color> | none"; inherits: true; initial-value: none; }
+		[data-color-scheme="dark"] {
+			--t-shadow: rgb(0 0 0 / .2) 0 2px 4px;
+			--t-border: var(--t-color-border) solid 1px;
+			--t-color-transition-duration: .2s;
+			--t-color-ring: none;
+		}
+	`,
+	wholeColorTokens: `
+		[data-color-scheme="dark"] {
+			--t-color-shadow: rgb(0 0 0 / .2);
+			--t-color-border: var(--brand-border);
+			--t-ink: CanvasText;
 		}
 	`,
 	pageForms: `
@@ -468,7 +486,7 @@ testRule(themeTokens, {
 			code: code.pageForms,
 			warnings: [
 				on(tokenOnPage("--t-space-2", '"html"'), code.pageForms, "--t-space-2"),
-				on(tokenOnPage("--t-space-3", '".dark"'), code.pageForms, "--t-space-3"),
+				on(tokenOnPage("--t-space-3", '"html"'), code.pageForms, "--t-space-3"),
 			],
 		},
 		// Beyond the rules page: what theme scopes and color scheme selectors declare.
@@ -521,6 +539,33 @@ testRule(themeTokens, {
 					endLine: 1,
 					endColumn: 72,
 				},
+			],
+		},
+		// Only a whole value that is one color gets "light-dark()". A shadow, a border shorthand
+		// and a duration move as they are, whatever their names hold.
+		{
+			description: "a [data-color-scheme] selector declaring a shadow, a border and a duration",
+			code: code.compositeTokens,
+			file: themeFile("base"),
+			warnings: [
+				on(tokenOnColorSchemeOther("--t-shadow", scheme), code.compositeTokens, "--t-shadow"),
+				on(tokenOnColorSchemeOther("--t-border", scheme), code.compositeTokens, "--t-border"),
+				on(
+					tokenOnColorSchemeOther("--t-color-transition-duration", scheme),
+					code.compositeTokens,
+					"--t-color-transition-duration",
+				),
+				on(tokenOnColorSchemeOther("--t-color-ring", scheme), code.compositeTokens, "--t-color-ring", 1),
+			],
+		},
+		{
+			description: "a [data-color-scheme] selector declaring whole colors, one of them a lone var()",
+			code: code.wholeColorTokens,
+			file: themeFile("base"),
+			warnings: [
+				on(tokenOnColorScheme("--t-color-shadow", scheme), code.wholeColorTokens, "--t-color-shadow"),
+				on(tokenOnColorScheme("--t-color-border", scheme), code.wholeColorTokens, "--t-color-border"),
+				on(tokenOnColorScheme("--t-ink", scheme), code.wholeColorTokens, "--t-ink"),
 			],
 		},
 		{
@@ -803,6 +848,51 @@ describe("settings", () => {
 						column: 35,
 						endLine: 1,
 						endColumn: 46,
+					},
+				],
+			},
+		],
+	});
+
+	// A local import is matched by its URL's path, without "?query" or "#fragment".
+	testRule(themeTokens, {
+		// One pattern for each syntax the case runs in, so the linted file is a theme file in each.
+		settings: { themeFiles: ["styles/themes/**/*.css", "styles/themes/**/*.scss", "styles/themes/**/*.vue"] },
+		accept: [
+			{
+				description: "imports of real theme files, with a query, a fragment, a space and url()",
+				code: `
+					@import "./tokens.css?v=2";
+					@import './colors.css#dark';
+					@import "./my theme.css" layer(themes);
+					@import url("./sizes%20large.css?v=3");
+					@import url(./spacing.css?v=4);
+				`,
+				file: "styles/themes/base/index.css",
+			},
+		],
+		reject: [
+			{
+				description: "an import outside the theme files, with a query and a space",
+				code: `
+					@import "../../components/my button.css?v=2";
+					@import url(../../components/card.scss#top);
+				`,
+				file: "styles/themes/base/index.css",
+				warnings: [
+					{
+						message: `Unexpected import of "../../components/my button.css?v=2" in a theme file. A theme file imports only other theme files, matching "styles/themes/**/*.css", "styles/themes/**/*.scss" or "styles/themes/**/*.vue".`,
+						line: 1,
+						column: 9,
+						endLine: 1,
+						endColumn: 45,
+					},
+					{
+						message: `Unexpected import of "../../components/card.scss#top" in a theme file. A theme file imports only other theme files, matching "styles/themes/**/*.css", "styles/themes/**/*.scss" or "styles/themes/**/*.vue".`,
+						line: 2,
+						column: 9,
+						endLine: 2,
+						endColumn: 44,
 					},
 				],
 			},

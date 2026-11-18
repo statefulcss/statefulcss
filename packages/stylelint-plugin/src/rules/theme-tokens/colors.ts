@@ -1,14 +1,19 @@
-// Whether a token holds a color, so `light-dark()` can give it both values. Judged from its name, its value and its
-// registration; a token the rule can't tell is treated as no color.
+// Whether a token holds one color, so `light-dark()` can give it both values. Judged from its registration, its value
+// and, for a lone `var()`, its name; a token the rule can't tell is treated as no color.
 import type { Declaration, Model } from "@statefulcss/core";
 
-/** Whether a token declaration holds a color. */
+/**
+ * Whether a token declaration holds one color, the whole value: `light-dark()` takes two colors, so a shadow, a border
+ * shorthand or a duration moves as it is, whatever its name says. A registration decides; then the value; a lone
+ * `var()` the value can't tell goes by the token's name.
+ */
 export function isColorToken(model: Model, declaration: Declaration): boolean {
-	const { property, value } = declaration;
-	if (namesColor(property)) return true;
+	const { property } = declaration;
+	const value = declaration.value.trim();
 	const syntax = model.registrations.find((registration) => registration.name === property)?.syntax;
-	if (syntax !== undefined && /<color>/i.test(syntax)) return true;
-	return isColor(value.trim());
+	if (syntax !== undefined) return /^\s*<color>\s*$/i.test(syntax);
+	if (isColor(value)) return true;
+	return wholeCall(value) === "var" && namesColor(property);
 }
 
 /** A name with `color` (or `colour`) among its words: `--t-color-text`, `--t-border-color`. */
@@ -19,20 +24,38 @@ function namesColor(name: string): boolean {
 		.some((word) => word === "color" || word === "colour");
 }
 
-/** A value that is a color: a hex color, a color function, a named color, or a `var()` of a color token. */
+/** A whole value that is one color: a hex color, a color function, a named color, or a `var()` of a color token. */
 function isColor(value: string): boolean {
 	if (/^#[\da-f]{3,8}$/i.test(value)) return true;
-	if (/^(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix|light-dark|contrast-color)\(/i.test(value))
-		return true;
+	const call = wholeCall(value);
+	if (call !== undefined && colorFunctions.has(call)) return true;
 	const variable = /^var\(\s*(--[\w-]+)/i.exec(value)?.[1];
-	if (variable !== undefined) return namesColor(variable);
+	if (call === "var" && variable !== undefined) return namesColor(variable);
 	return named.has(value.toLowerCase());
 }
 
-/** CSS's named colors, with `transparent` and `currentcolor`. */
+const colorFunctions: ReadonlySet<string> = new Set(
+	"rgb rgba hsl hsla hwb lab lch oklab oklch color color-mix light-dark contrast-color".split(" "),
+);
+
+/** The function's name, in lowercase, when the whole value is one call: `rgb(0 0 0 / 0.2)`, not `rgb(…) 0 2px`. */
+function wholeCall(value: string): string | undefined {
+	const name = /^([a-z-]+)\(/i.exec(value)?.[1];
+	if (name === undefined) return undefined;
+	let depth = 0;
+	for (let index = name.length; index < value.length; index++) {
+		const char = value[index];
+		if (char === "(") depth++;
+		else if (char === ")" && --depth === 0)
+			return index === value.length - 1 ? name.toLowerCase() : undefined;
+	}
+	return undefined;
+}
+
+/** CSS's named colors, with `transparent`, `currentcolor` and the system colors. */
 const named: ReadonlySet<string> = new Set(
 	[
-		"transparent currentcolor aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue",
+		"transparent currentcolor canvas canvastext linktext visitedtext activetext buttonface buttontext buttonborder field fieldtext highlight highlighttext selecteditem selecteditemtext mark marktext graytext accentcolor accentcolortext aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue",
 		"blueviolet brown burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue",
 		"darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta darkolivegreen darkorange darkorchid",
 		"darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink",

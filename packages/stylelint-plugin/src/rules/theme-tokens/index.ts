@@ -203,7 +203,7 @@ export default defineRule<Record<never, never>, Key>({
 			if (name === "import") {
 				const url = importedUrl(node.params);
 				if (url === undefined) continue;
-				const target = path.posix.normalize(path.posix.join(path.posix.dirname(file), url));
+				const target = path.posix.normalize(path.posix.join(path.posix.dirname(file), pathOf(url)));
 				if (isThemeFile(target, settings)) continue;
 				add([
 					{
@@ -379,13 +379,24 @@ function normalizePattern(pattern: string): string {
 }
 
 /**
- * The path a relative `@import` names: `./espresso/index.css` from `@import "./espresso/index.css" layer(themes)`.
- * Undefined for anything else (a package, an absolute path, a URL), whose file the rule can't know.
+ * The URL a relative `@import` names, as written: `./espresso/index.css` from `@import "./espresso/index.css"
+ * layer(themes)`, `./my theme.css?v=2` from `@import url("./my theme.css?v=2")`. Undefined for anything else (a
+ * package, an absolute path, a URL), whose file the rule can't know.
  */
 function importedUrl(params: string): string | undefined {
-	const match = /^\s*(?:url\(\s*)?(["']?)([^"')\s]+)\1/i.exec(params);
-	const url = match?.[2];
+	const match = /^\s*(?:url\(\s*)?(?:"([^"]*)"|'([^']*)'|([^"'()\s]+))/i.exec(params);
+	const url = match?.[1] ?? match?.[2] ?? match?.[3];
 	return url && /^\.\.?\//.test(url) ? url : undefined;
+}
+
+/** The file a URL names: without its `?query` or `#fragment`, with `%20` and the like decoded. */
+function pathOf(url: string): string {
+	const bare = url.replace(/[?#].*$/s, "");
+	try {
+		return decodeURI(bare);
+	} catch {
+		return bare;
+	}
 }
 
 /** The outermost rule a node is written in, itself included: the rule that writes a theme scope's attribute. */

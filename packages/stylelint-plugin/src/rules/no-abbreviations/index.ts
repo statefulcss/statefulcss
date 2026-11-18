@@ -68,6 +68,19 @@ export default defineRule<Options, Key>({
 			if (finding) findings.push(finding);
 		};
 
+		// A component variable starts with its component's name, which is checked where the class or attribute writes it:
+		// `pad` in `--c-signature-pad-color` names the Signature Pad, while `--c-card-pad` still gets "padding".
+		const components = model.components.map((component) => component.name.toLowerCase());
+		const from = (name: string, role: Role | undefined): number => {
+			const start = prefixLength(name);
+			if (role !== "component") return start;
+			const rest = name.slice(start).toLowerCase();
+			const own = components
+				.filter((component) => rest === component || rest.startsWith(`${component}-`))
+				.reduce((longest, component) => Math.max(longest, component.length), 0);
+			return start + own;
+		};
+
 		// Variable names, where they're declared or registered: a selector list writes a declaration once.
 		const reported = new Set<number>();
 		for (const declaration of model.declarations) {
@@ -77,13 +90,13 @@ export default defineRule<Options, Key>({
 			reported.add(declaration.written);
 			const name = declaration.property;
 			if (!unreadable.test(name))
-				report(name, prefixLength(name), { node: declaration.node, part: "property" }, true);
+				report(name, from(name, declaration.role), { node: declaration.node, part: "property" }, true);
 		}
 		for (const registration of model.registrations) {
 			const { name, node } = registration;
 			const index = node.params.indexOf(name);
 			if (!checked(registration.role) || unreadable.test(name) || index === -1) continue;
-			report(name, prefixLength(name), { node, index, endIndex: index + name.length }, true);
+			report(name, from(name, registration.role), { node, index, endIndex: index + name.length }, true);
 		}
 
 		// Component classes and `data-*` attributes, everywhere a selector writes them.

@@ -31,6 +31,15 @@ testRule(noAbbreviations, {
 			description: "an abbreviation in a component variable's name",
 			code: `.page { --c-card-padding: var(--t-space-1); }`,
 		},
+		// A word of the component's own name, in its public variables.
+		{
+			description: "the component's own name in its variables",
+			code: `
+				@property --c-signature-pad-color { syntax: "<color>"; inherits: true; initial-value: black; }
+				.signature-pad { --c-signature-pad-stroke-width: 2px; color: var(--c-signature-pad-color); }
+				[data-component="date-pad"] { --c-date-pad: 1rem; }
+			`,
+		},
 		{
 			description: "an attribute name and an attribute value the CSS selects on",
 			code: `
@@ -174,6 +183,20 @@ testRule(noAbbreviations, {
 			description: "an abbreviation in a component's class",
 			code: `.btn { display: flex; }`,
 			warnings: [on(`Unexpected abbreviation "btn" in ".btn". Write ".button" instead.`, 1, 1, 5)],
+		},
+		// Past the component's name, a word is checked as before.
+		{
+			description: "an abbreviation after the component's own name in its variables",
+			code: `.signature-pad { --c-signature-pad-btn-color: red; --c-signature-pads: 1; } .card { --c-card-pad: 1rem; }`,
+			warnings: [
+				on(
+					`Unexpected abbreviation "btn" in "--c-signature-pad-btn-color". Write "--c-signature-pad-button-color" instead.`,
+					1,
+					18,
+					45,
+				),
+				on(`Unexpected abbreviation "pad" in "--c-card-pad". Write "--c-card-padding" instead.`, 1, 85, 97),
+			],
 		},
 		{
 			description: "an abbreviation in a component variable's name",
@@ -323,18 +346,6 @@ testRule(noAbbreviations, {
 					22,
 				),
 				on(`Unexpected abbreviation "Dis". Write the full word, such as "Disabled" or "Display".`, 2, 24, 27),
-			],
-		},
-		{
-			description: "pad in a custom property's name, beside pad as a noun",
-			code: `.signature-pad { --c-signature-pad-gap: 1rem; }`,
-			warnings: [
-				on(
-					`Unexpected abbreviation "pad" in "--c-signature-pad-gap". Write "--c-signature-padding-gap" instead.`,
-					1,
-					18,
-					39,
-				),
 			],
 		},
 		{

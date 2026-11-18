@@ -49,6 +49,7 @@
 	"files": [
 		"dist",
 		"README.md",
+		"src/rules/*/README.md",
 		"LICENSE"
 	],
 	"scripts": {

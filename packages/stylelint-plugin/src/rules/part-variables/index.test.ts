@@ -3,7 +3,7 @@ import partVariables from "./index.js";
 
 testRule(partVariables, {
 	accept: [
-		// The rules page's Fixed cases.
+		// The README's Fixed cases.
 		{
 			description: "the icon writes its own part variable",
 			code: `
@@ -25,7 +25,7 @@ testRule(partVariables, {
 			description: "the root binds a part variable on itself",
 			code: `.button { --s-color: red; color: var(--s-color); }`,
 		},
-		// The rules page's Not reported cases.
+		// The README's Not reported cases.
 		{
 			description: "a part's pseudo-element reading what its part declares for it",
 			code: `
@@ -119,7 +119,7 @@ testRule(partVariables, {
 		},
 	],
 	reject: [
-		// The rules page's Reported cases.
+		// The README's Reported cases.
 		{
 			description: "the icon writes its own part variable",
 			code: `

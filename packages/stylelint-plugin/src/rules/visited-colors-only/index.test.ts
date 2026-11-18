@@ -21,7 +21,7 @@ function ignored(property: string, place: string, line: number, column: number):
 
 testRule(visitedColorsOnly, {
 	accept: [
-		// The rules page's Fixed case.
+		// The README's Fixed case.
 		{
 			description: ":visited ignores custom properties and text-decoration-line",
 			code: `
@@ -30,7 +30,7 @@ testRule(visitedColorsOnly, {
 				}
 			`,
 		},
-		// The rules page's Not reported cases.
+		// The README's Not reported cases.
 		{
 			description: "only color properties",
 			code: `
@@ -47,7 +47,7 @@ testRule(visitedColorsOnly, {
 				}
 			`,
 		},
-		// Beyond the rules page.
+		// Beyond the README's cases.
 		{
 			description: "every color property :visited applies, logical and prefixed forms included",
 			code: `
@@ -130,7 +130,7 @@ testRule(visitedColorsOnly, {
 		},
 	],
 	reject: [
-		// The rules page's Reported case.
+		// The README's Reported case.
 		{
 			description: ":visited ignores custom properties and text-decoration-line",
 			code: `
@@ -153,7 +153,7 @@ testRule(visitedColorsOnly, {
 				ignored("text-decoration-line", '":visited"', 4, 3),
 			],
 		},
-		// Beyond the rules page.
+		// Beyond the README's cases.
 		{
 			description: "a hover on a visited link that sets more than colors",
 			code: `
@@ -285,7 +285,7 @@ testRule(visitedColorsOnly, {
 				},
 			],
 		},
-		// R09: a custom property's advice names the property it's bound to, never one guessed from its name.
+		// A custom property's advice names the property it's bound to, never one guessed from its name.
 		{
 			description: "a private bound to background-color, though its name ends in color",
 			code: `

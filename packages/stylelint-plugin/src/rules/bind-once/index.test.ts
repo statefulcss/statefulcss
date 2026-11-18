@@ -1,7 +1,7 @@
 import { testRule } from "../../testing/test-rule.js";
 import bindOnce from "./index.js";
 
-/** Cases that pass in both modes: the rules page's Fixed cases and its Not reported list. */
+/** Cases that pass in both modes: the README's Fixed cases and its Not reported list. */
 const passEverywhere = [
 	{
 		description: "the element's own block and a state both declare a property",
@@ -138,7 +138,7 @@ const passEverywhere = [
 			}
 		`,
 	},
-	// The rules page's Not reported list, beyond the strict-only cases.
+	// The README's Not reported list, beyond the strict-only cases.
 	{
 		description: "a plain overlap, with no state variable",
 		code: `.card { padding: var(--t-space-4); padding-inline-start: 0; }`,
@@ -160,7 +160,7 @@ const passEverywhere = [
 		description: "the :visited exception",
 		code: `.link { --s-color: blue; color: var(--s-color); &:visited { color: purple; } }`,
 	},
-	// Beyond the rules page.
+	// Beyond the README's cases.
 	{
 		description:
 			"a longhand followed by its shorthand, left to declaration-block-no-shorthand-property-overrides",
@@ -451,7 +451,7 @@ testRule(bindOnce, {
 				},
 			],
 		},
-		// Beyond the rules page.
+		// Beyond the README's cases.
 		{
 			description: "two states declare a property the element's own block doesn't",
 			code: `
@@ -692,7 +692,7 @@ testRule(bindOnce, {
 				},
 			],
 		},
-		// B12: a selector list of pseudo-elements gets one instruction for each binding.
+		// A selector list of pseudo-elements gets one instruction for each binding.
 		{
 			description: "a selector list of two pseudo-elements gets one instruction for each binding",
 			code: `
@@ -739,7 +739,7 @@ testRule(bindOnce, {
 				},
 			],
 		},
-		// B13: a variant beside a state sets a private that the owner's part variable reads.
+		// A variant beside a state sets a private that the owner's part variable reads.
 		{
 			description: "a variant and a state change a pseudo-element: the variant sets a private",
 			code: `
@@ -796,7 +796,7 @@ testRule(bindOnce, {
 				},
 			],
 		},
-		// B14: a global element owns its pseudo-elements' part variables, like a root.
+		// A global element owns its pseudo-elements' part variables, like a root.
 		{
 			description: "a global element's pseudo-element binds the host's part variable",
 			code: `

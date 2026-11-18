@@ -5,7 +5,7 @@ const scope = (root: string): string => `@scope (${root}) to ([data-component])`
 
 testRule(partsInScope, {
 	accept: [
-		// The rules page's Fixed cases.
+		// The README's Fixed cases.
 		{
 			description: "the Button's icon inside its scope",
 			code: `
@@ -40,7 +40,7 @@ testRule(partsInScope, {
 				}
 			`,
 		},
-		// The rules page's Not reported cases.
+		// The README's Not reported cases.
 		{
 			description: "placement from the root block through parts into a slot",
 			code: `.card { & > [data-part="footer"] > [data-slot="action"] { justify-self: end; } }`,
@@ -99,7 +99,7 @@ testRule(partsInScope, {
 			description: "a pseudo-element of the root written with :scope inside a scope",
 			code: `.card { color: red; &::after { content: "new"; } &::before { content: "old"; } }`,
 		},
-		// The fixed forms of the checks the rules page lists without a case.
+		// The fixed forms of the checks the README lists without a case.
 		{
 			description: ":scope > inside a scope",
 			code: `@scope (.button) to ([data-component]) { :scope > [data-part="icon"] { inline-size: 1em; } }`,
@@ -168,7 +168,7 @@ testRule(partsInScope, {
 		},
 	],
 	reject: [
-		// The rules page's Reported cases.
+		// The README's Reported cases.
 		{
 			description: "the Button's icon outside its scope",
 			code: `.button [data-part="icon"] { inline-size: 1em; }`,
@@ -234,7 +234,7 @@ testRule(partsInScope, {
 				},
 			],
 		},
-		// The checks the rules page lists without a case.
+		// The checks the README lists without a case.
 		{
 			description: "a scope with no limit, and one limited by parts",
 			code: `
@@ -895,7 +895,7 @@ testRule(partsInScope, {
 				},
 			],
 		},
-		// The condition quoted with every bracket it opens closed (N07); the unwrapped control is above.
+		// The condition quoted with every bracket it opens closed; the unwrapped control is above.
 		{
 			description: "a condition inside :where() after a state, quoted with its brackets closed",
 			code: `

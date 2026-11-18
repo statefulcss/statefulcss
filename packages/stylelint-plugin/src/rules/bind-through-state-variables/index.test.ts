@@ -3,7 +3,7 @@ import bindThroughStateVariables from "./index.js";
 
 testRule(bindThroughStateVariables, {
 	accept: [
-		// The rules page's Fixed cases.
+		// The README's Fixed cases.
 		{
 			description: "a variant changes a private that a property reads directly",
 			code: `
@@ -38,7 +38,7 @@ testRule(bindThroughStateVariables, {
 				}
 			`,
 		},
-		// The rules page's Not reported cases.
+		// The README's Not reported cases.
 		{
 			description: "a variant-only property writes its state variable",
 			code: `
@@ -69,7 +69,7 @@ testRule(bindThroughStateVariables, {
 				}
 			`,
 		},
-		// Beyond the rules page.
+		// Beyond the README's cases.
 		{
 			description: "a part reads the part variable whose default reads the root's changing private",
 			code: `
@@ -179,7 +179,7 @@ testRule(bindThroughStateVariables, {
 				}
 			`,
 		},
-		// Rule 3's advice, followed, brings no error here (stages 6b-9 audit B12 to B14).
+		// Rule 3's advice, followed, brings no error here.
 		{
 			description: "rule 3's fix for a selector list of two pseudo-elements",
 			code: `
@@ -216,7 +216,7 @@ testRule(bindThroughStateVariables, {
 		},
 	],
 	reject: [
-		// The rules page's Reported cases.
+		// The README's Reported cases.
 		{
 			description: "a variant changes a private that a property reads directly",
 			code: `
@@ -296,7 +296,7 @@ testRule(bindThroughStateVariables, {
 				},
 			],
 		},
-		// Beyond the rules page.
+		// Beyond the README's cases.
 		{
 			description: "a three-step chain names every private on the way",
 			code: `
@@ -590,7 +590,7 @@ testRule(bindThroughStateVariables, {
 				},
 			],
 		},
-		// B12: a selector list of pseudo-elements gets one instruction for each binding.
+		// A selector list of pseudo-elements gets one instruction for each binding.
 		{
 			description: "a selector list of two pseudo-elements reading a changing private",
 			code: `

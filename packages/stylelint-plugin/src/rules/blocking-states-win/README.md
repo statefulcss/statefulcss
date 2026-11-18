@@ -35,7 +35,7 @@ Focus inside the guard, setting back, and the part's style query are reported wi
 
 ## Why
 
-Hover changes the background, disabled changes the opacity, and a disabled button still reacts to hover. No two blocks set the same property, so nothing else catches it. It was the first bug the precedence bench found. The guard sits inside `:where()`, so it adds no specificity, and it says in the file when interaction states apply. Restoring (the blocking state setting back what hover changed) was the earlier answer; it needed rest privates once semantic states had to survive a blocking state, and the guard needs none.
+Hover changes the background, disabled changes the opacity, and a disabled button still reacts to hover. No two blocks set the same property, so nothing else catches it. The guard sits inside `:where()`, so it adds no specificity, and it says in the file when interaction states apply. Restoring (the blocking state setting back what hover changed) was the earlier answer; it needed rest privates once semantic states had to survive a blocking state, and the guard needs none.
 
 It's a warning because a design can deliberately keep an effect on a disabled element, such as a tooltip on hover. That's what Stylelint's disable comment with a reason is for.
 
@@ -212,7 +212,7 @@ Fixed: `--fix` adds it to the guard.
 
 ### Not reported
 
-- A semantic state with a guard, the decided form: `&:where(:not(…)) { &:hover { … } } &[aria-pressed="true"] { … } &:disabled, &[aria-disabled="true"], &[data-loading] { --s-opacity: 0.5; }`.
+- A semantic state with a guard, the taught form: `&:where(:not(…)) { &:hover { … } } &[aria-pressed="true"] { … } &:disabled, &[aria-disabled="true"], &[data-loading] { --s-opacity: 0.5; }`.
 - `&:focus-visible { --s-outline-width: 2px; }` outside the guard: focus is exempt.
 - By default, an element with interaction states and no blocking state block (strict mode reports it).
 - Hover inside `@media (hover: hover)`, inside or around a full guard.

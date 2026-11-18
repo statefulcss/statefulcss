@@ -72,7 +72,7 @@ const button = (body: string, fixed = body) => ({
 
 testRule(blockingStatesWin, {
 	accept: [
-		// The rules page's Fixed cases.
+		// The README's Fixed cases.
 		{
 			description: "hover isn't guarded",
 			code: `
@@ -117,9 +117,9 @@ testRule(blockingStatesWin, {
 				}
 			`,
 		},
-		// The decided form, and the rules page's Not reported cases.
+		// The taught form, and the README's Not reported cases.
 		{
-			description: "a semantic state with a guard, the decided form",
+			description: "a semantic state with a guard, the taught form",
 			code: `
 				.button {
 					--s-background-color: var(--_background-color);
@@ -167,7 +167,7 @@ testRule(blockingStatesWin, {
 				}
 			`,
 		},
-		// The part and its component's query variable, from the rules page.
+		// The part and its component's query variable, from the README.
 		{
 			description: "a part whose component has blocking states waits for its query variable",
 			code: `
@@ -206,7 +206,7 @@ testRule(blockingStatesWin, {
 				}
 			`,
 		},
-		// Beyond the rules page.
+		// Beyond the README's cases.
 		{
 			description: "a :has() state in the guard, quoted differently from its block",
 			code: `
@@ -298,7 +298,7 @@ testRule(blockingStatesWin, {
 				}
 			`,
 		},
-		// B08: a part's style query checks a flag every blocking state changes, for its default.
+		// A part's style query checks a flag every blocking state changes, for its default.
 		{
 			description: "a part's query turned around on the value every blocking state sets",
 			code: `
@@ -344,7 +344,7 @@ testRule(blockingStatesWin, {
 				}
 			`,
 		},
-		// B09: a reader outside the component isn't this component's to judge.
+		// A reader outside the component isn't this component's to judge.
 		{
 			description: "a third party's element and another component read a blocking query variable",
 			code: `
@@ -359,7 +359,7 @@ testRule(blockingStatesWin, {
 				.note { opacity: var(--q-busy); }
 			`,
 		},
-		// R03: a flag is judged per blocking state, however many rules write the state.
+		// A flag is judged per blocking state, however many rules write the state.
 		{
 			description: "a blocking state written in two rules, one setting the flag",
 			code: tabs("&:disabled { --q-tabs-blocked: true; }", "&:disabled { opacity: 0.5; }"),
@@ -407,7 +407,7 @@ testRule(blockingStatesWin, {
 		},
 	],
 	reject: [
-		// The rules page's Reported cases.
+		// The README's Reported cases.
 		{
 			description: "hover isn't guarded",
 			code: `
@@ -522,7 +522,7 @@ testRule(blockingStatesWin, {
 				},
 			],
 		},
-		// Beyond the rules page.
+		// Beyond the README's cases.
 		{
 			description: "hover and active, which move into one guard in their order",
 			code: `
@@ -850,7 +850,7 @@ testRule(blockingStatesWin, {
 				},
 			],
 		},
-		// B01: a disable comment keeps its rule where the author wrote it. "hover and active" above is the control.
+		// A disable comment keeps its rule where the author wrote it. "hover and active" above is the control.
 		{
 			description: "a hover kept on purpose with a disable comment stays, and active is wrapped alone",
 			...button(
@@ -895,7 +895,7 @@ testRule(blockingStatesWin, {
 			warnings: [{ message: unguarded(":hover", '".button"'), line: 6, column: 3, endLine: 6, endColumn: 9 }],
 		},
 
-		// B02: only a selector whose every alternative is an interaction state is guarded whole.
+		// Only a selector whose every alternative is an interaction state is guarded whole.
 		{
 			description: "a list of hover and a semantic state, which --fix leaves to the author",
 			code: button('&:is(:hover, [aria-pressed="true"]) { --s-color: var(--_color-hover); }').code,
@@ -990,7 +990,7 @@ testRule(blockingStatesWin, {
 			],
 		},
 
-		// R02: a guard is completed only when everything inside it is an interaction state of the elements it guards.
+		// A guard is completed only when everything inside it is an interaction state of the elements it guards.
 		// "an incomplete guard around hover alone, completed" above is a control.
 		{
 			description: "an incomplete guard holding a semantic state, which --fix doesn't complete",
@@ -1110,7 +1110,7 @@ testRule(blockingStatesWin, {
 			],
 		},
 
-		// R03: a flag is judged per blocking state. The accepted cases above are the controls.
+		// A flag is judged per blocking state. The accepted cases above are the controls.
 		{
 			description: "a blocking state written in two rules, neither setting the flag",
 			code: tabs("&:disabled { --q-tabs-blocked: true; }", "&[data-loading] { opacity: 0.5; }"),
@@ -1135,7 +1135,7 @@ testRule(blockingStatesWin, {
 			warnings: [noSharedFlag(2)],
 		},
 
-		// R01: a disable comment governs its rule's line wherever it sits. "hover and active" above is the control.
+		// A disable comment governs its rule's line wherever it sits. "hover and active" above is the control.
 		{
 			description: "a disabled hover behind another comment on its line stays, and active is wrapped alone",
 			...button(
@@ -1193,7 +1193,7 @@ testRule(blockingStatesWin, {
 			warnings: [{ message: unguarded(":hover", '".button"'), line: 8, column: 3, endLine: 8, endColumn: 9 }],
 		},
 
-		// B04: a hover on a pseudo-element itself needs its guard on the host, which a wrap where it stands can't write.
+		// A hover on a pseudo-element itself needs its guard on the host, which a wrap where it stands can't write.
 		// "a pseudo-element's hover on a blocked host" above is the control.
 		{
 			description: "a hover nested in a pseudo-element, which --fix leaves to the author",
@@ -1209,7 +1209,7 @@ testRule(blockingStatesWin, {
 			],
 		},
 
-		// B05: a guard written once for a selector list.
+		// A guard written once for a selector list.
 		{
 			description:
 				"a guard shared by components whose blocking states differ, which --fix leaves to the author",
@@ -1275,7 +1275,7 @@ testRule(blockingStatesWin, {
 				.b { &:has(:where([data-part="field"]):disabled) { --s-opacity: 0.5; } }
 			`,
 		},
-		// B08: a part's style query checks a flag every blocking state changes, for its default.
+		// A part's style query checks a flag every blocking state changes, for its default.
 		{
 			description: "a part's query on the value its component's blocking states set",
 			code: `
@@ -1394,7 +1394,7 @@ testRule(blockingStatesWin, {
 				},
 			],
 		},
-		// B09's control: the component's own element reading it is reported.
+		// The control for a reader outside the component: the component's own element reading it is reported.
 		{
 			description: "the component's own part reads its blocking query variable with var()",
 			code: `
@@ -1490,7 +1490,7 @@ testRule(blockingStatesWin, {
 	],
 });
 
-// B03: with no blocking states configured there's nothing to guard against, in either level. The strict level's
+// With no blocking states configured there's nothing to guard against, in either level. The strict level's
 // reported hover above, with the default list, is the control.
 const nothingToGuard = {
 	description: "hover with no guard, when no blocking state is configured",
@@ -1506,7 +1506,7 @@ const nothingToGuard = {
 testRule(blockingStatesWin, { settings: { strict: true, blockingStates: [] }, accept: [nothingToGuard] });
 testRule(blockingStatesWin, { settings: { blockingStates: [] }, accept: [nothingToGuard] });
 
-// The settings' own blocking states, compared as written in the config (core's B16).
+// The settings' own blocking states, compared as written in the config.
 testRule(blockingStatesWin, {
 	settings: { blockingStates: [":nth-child(2n+1)", "[data-busy]"] },
 	accept: [

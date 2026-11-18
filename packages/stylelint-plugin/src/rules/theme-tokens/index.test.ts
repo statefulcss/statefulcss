@@ -184,7 +184,7 @@ const code = {
 
 testRule(themeTokens, {
 	accept: [
-		// The rules page's Fixed cases.
+		// The README's Fixed cases.
 		{
 			description: "a token in a component",
 			code: `
@@ -242,7 +242,7 @@ testRule(themeTokens, {
 			`,
 			file: themeFile("default"),
 		},
-		// The rules page's Not reported cases.
+		// The README's Not reported cases.
 		{
 			description: "a theme scope with color-scheme and a light-dark() token",
 			code: `
@@ -275,7 +275,7 @@ testRule(themeTokens, {
 			`,
 			file: themeFile("dark"),
 		},
-		// Beyond the rules page.
+		// Beyond the README's cases.
 		{
 			description: "base styles on html and :root",
 			code: `
@@ -350,7 +350,7 @@ testRule(themeTokens, {
 		},
 	],
 	reject: [
-		// The rules page's Reported cases.
+		// The README's Reported cases.
 		{
 			description: "a token in a component",
 			code: code.tokenInComponent,
@@ -433,7 +433,7 @@ testRule(themeTokens, {
 				),
 			],
 		},
-		// Beyond the rules page: tokens.
+		// Beyond the README's cases: tokens.
 		{
 			description: "a token on a page element inside a theme scope",
 			code: code.pageElement,
@@ -489,7 +489,7 @@ testRule(themeTokens, {
 				on(tokenOnPage("--t-space-3", '"html"'), code.pageForms, "--t-space-3"),
 			],
 		},
-		// Beyond the rules page: what theme scopes and color scheme selectors declare.
+		// Beyond the README's cases: what theme scopes and color scheme selectors declare.
 		{
 			description: "a [data-color-scheme] selector styling something",
 			code: code.colorSchemeStyling,
@@ -517,7 +517,7 @@ testRule(themeTokens, {
 				),
 			],
 		},
-		// R07: `light-dark()` takes colors only. The case above, a color by its name, is the control.
+		// `light-dark()` takes colors only. The case above, a color by its name, is the control.
 		{
 			description: "a [data-color-scheme] selector declaring a token that isn't a color",
 			code: `
@@ -589,7 +589,7 @@ testRule(themeTokens, {
 				endColumn: 2 + name.length,
 			})),
 		},
-		// R06: a list of themes in another theme's folder.
+		// A list of themes in another theme's folder.
 		{
 			description: "two themes in another theme's folder, each told its own folder",
 			code: `
@@ -632,7 +632,7 @@ testRule(themeTokens, {
 				},
 			],
 		},
-		// R13: the base theme named, at the themes folder's root, drops its name, as in its own folder.
+		// The base theme named, at the themes folder's root, drops its name, as in its own folder.
 		{
 			description: "the base theme named at the root of the themes folder",
 			code: `
@@ -675,7 +675,7 @@ testRule(themeTokens, {
 				on(themeScopeOnly("margin", '"[data-theme="default"]"'), code.privateInTheme, "margin"),
 			],
 		},
-		// Beyond the rules page: where themes are written.
+		// Beyond the README's cases: where themes are written.
 		{
 			description: "a color scheme selector outside the theme files",
 			code: code.colorSchemeOutside,

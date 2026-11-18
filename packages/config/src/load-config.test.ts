@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ConfigError } from "./config-error.js";
-import { loadConfig } from "./load-config.js";
+import { findConfig, loadConfig } from "./load-config.js";
 import { defaults } from "./schema.js";
 
 /** The filesystem errors a test injects, by call and path: `stat /project/app`. */
@@ -196,6 +196,57 @@ describe("loadConfig", () => {
 		it("goes up to the filesystem root outside a repository", async () => {
 			const root = await project({ "statefulcss.config.json": '{ "strict": true }' }, { repository: false });
 			await expect(loadConfig(path.join(root, "a/b/c/button.css"))).resolves.toMatchObject({ strict: true });
+		});
+	});
+
+	describe("the config's folder, from findConfig", () => {
+		it("is the folder of the config the settings came from", async () => {
+			const root = await project({
+				"statefulcss.config.json": '{ "baseTheme": "outer" }',
+				"apps/shop/statefulcss.config.json": '{ "baseTheme": "inner" }',
+			});
+			await expect(findConfig(path.join(root, "apps/shop/src/button.css"))).resolves.toEqual({
+				settings: { ...defaults, baseTheme: "inner" },
+				folder: path.join(root, "apps/shop"),
+			});
+			await expect(findConfig(path.join(root, "apps/blog/src/button.css"))).resolves.toEqual({
+				settings: { ...defaults, baseTheme: "outer" },
+				folder: root,
+			});
+		});
+
+		it('is the folder of a package.json with the "statefulcss" key', async () => {
+			const root = await project({
+				"packages/ui/package.json": JSON.stringify({ name: "ui", statefulcss: { strict: true } }),
+			});
+			await expect(findConfig(path.join(root, "packages/ui/src/button.css"))).resolves.toMatchObject({
+				folder: path.join(root, "packages/ui"),
+			});
+		});
+
+		it("is the repository root when there's no config", async () => {
+			const root = await project({ "packages/ui/package.json": '{ "name": "ui" }' });
+			await expect(findConfig(path.join(root, "packages/ui/src/button.css"))).resolves.toEqual({
+				settings: defaults,
+				folder: root,
+			});
+		});
+
+		it("is the filesystem root outside a repository with no config", async () => {
+			const root = await project({}, { repository: false });
+			const file = path.join(root, "src/button.css");
+			await expect(findConfig(file)).resolves.toEqual({ settings: defaults, folder: path.parse(file).root });
+		});
+
+		it("gives loadConfig's settings", async () => {
+			const root = await project({ "statefulcss.config.json": '{ "strict": true }' });
+			const file = path.join(root, "button.css");
+			expect((await findConfig(file)).settings).toBe(await loadConfig(file));
+		});
+
+		it("throws loadConfig's errors", async () => {
+			const root = await project({ "statefulcss.config.json": '{ "stric": true }' });
+			await expect(findConfig(path.join(root, "button.css"))).rejects.toBeInstanceOf(ConfigError);
 		});
 	});
 

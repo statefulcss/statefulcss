@@ -32,6 +32,20 @@ check_plugin() {
 		echo "$output"
 		exit 1
 	fi
+	# A wrong component must fail with exactly the rules it breaks, so a plugin whose rules don't run fails here.
+	output="$(npx --no-install stylelint wrong.css --formatter json 2>&1 || true)"
+	if ! node -e '
+		const [result] = JSON.parse(process.argv[1]);
+		const rules = [...new Set(result.warnings.map((warning) => warning.rule))].sort();
+		const expected = ["statefulcss/bind-once", "statefulcss/blocking-states-win"];
+		if (JSON.stringify(rules) !== JSON.stringify(expected)) {
+			console.error(`Expected wrong.css to fail with ${expected.join(", ")}, got ${rules.join(", ") || "nothing"}`);
+			process.exit(1);
+		}
+	' "$output"; then
+		echo "$output"
+		exit 1
+	fi
 	echo "Stylelint plugin with Stylelint $version: ok"
 }
 
@@ -102,7 +116,22 @@ if supports_stylelint_18; then
 		stylelint@18
 
 	printf '.button {\n\tcolor: red;\n}\n' >fixture.css
-	printf '{ "extends": ["@statefulcss/stylelint-plugin/recommended"] }\n' >.stylelintrc.json
+	# The hover repeats "opacity" instead of setting its state variable, and isn't guarded against :disabled.
+	cat >wrong.css <<'CSS'
+.button {
+	--s-opacity: 1;
+	opacity: var(--s-opacity);
+
+	&:hover {
+		opacity: 0.9;
+	}
+	&:disabled {
+		--s-opacity: 0.5;
+	}
+}
+CSS
+	# The package README's quick start, in a project npm made CommonJS.
+	printf 'export default { extends: ["@statefulcss/stylelint-plugin/recommended"] };\n' >stylelint.config.mjs
 
 	# The latest Stylelint 18, then the lowest version the plugin's peer range allows.
 	check_plugin

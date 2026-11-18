@@ -793,7 +793,7 @@ describe("loadConfig", () => {
 					});
 				});
 
-				// Source: the color-scheme-switch decision. The switch is never a state, in any list or form.
+				// The light and dark switch is never a state, in any list or form.
 				it("keeps the light and dark switch out of the state lists", async () => {
 					const hint =
 						"which asks about \"data-color-scheme\", the methodology's light and dark switch. It's no state. Use another attribute for the state.";

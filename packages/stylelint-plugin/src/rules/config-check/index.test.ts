@@ -1,6 +1,7 @@
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+import postcss from "postcss";
 import stylelint from "stylelint";
 import { describe, expect, it } from "vitest";
 
@@ -8,8 +9,7 @@ import { statefulRules } from "../../configs/adjustments.js";
 import plugins, { ruleMeta, ruleNames } from "../../index.js";
 import compatible from "../../configs/compatible.js";
 import recommended from "../../configs/recommended.js";
-import { toConfigPlugin } from "../../stylelint/config-check.js";
-import { ruleNameOf } from "../../stylelint/plugin.js";
+import { ruleNameOf, rulesUrl } from "../../stylelint/plugin.js";
 import {
 	inEverySyntax,
 	type Source,
@@ -17,19 +17,18 @@ import {
 	syntaxes,
 	temporaryProject,
 } from "../../testing/test-rule.js";
-import rulesWorkTogether from "./index.js";
+import configCheck from "./index.js";
 
-const ruleName = ruleNameOf(rulesWorkTogether);
+const ruleName = ruleNameOf(configCheck);
 const project = temporaryProject();
 
 /**
- * A config with every Stateful CSS rule as the configs set them and `rules` on top, and a config check of its own,
- * which has said nothing yet. The other rules are there so the config can name them.
+ * A config with every Stateful CSS rule as the configs set them and `rules` on top. The other rules are there so
+ * the config can name them.
  */
 function configWith(rules: NonNullable<stylelint.Config["rules"]>): stylelint.Config {
-	const others = plugins.filter((plugin) => !("ruleName" in plugin && plugin.ruleName === ruleName));
 	return {
-		plugins: [...others, toConfigPlugin(rulesWorkTogether)],
+		plugins,
 		rules: { ...statefulRules, ...rules },
 	};
 }
@@ -97,7 +96,7 @@ describe(ruleName, () => {
 		expect(ruleNames.at(-1)).toBe(ruleName);
 		expect(config.rules?.[ruleName]).toEqual([true, { severity: "warning" }]);
 		expect(ruleMeta[ruleName]).toEqual({
-			url: "https://statefulcss.com/docs/lint-rules/rules-work-together",
+			url: `${rulesUrl}/config-check/README.md`,
 			fixable: false,
 		});
 	});
@@ -170,25 +169,64 @@ describe(ruleName, () => {
 	);
 
 	it.each(syntaxes)(
-		"says a problem once for a run: on the first file, and that file again (%s)",
+		"says a problem in each run, so an editor shows it on every file it lints (%s)",
 		async (syntax) => {
 			const config = configWith({ "statefulcss/bind-through-state-variables": null });
 			const first = sourceFor(syntax, { code, file: "src/first.css" });
 			const second = sourceFor(syntax, { code, file: "src/second.css" });
+			// An editor calls `stylelint.lint()` for each file it shows, and again after each change.
 			expect((await saidIn(first, config)).said).toEqual([onFirstLine(bindThroughOff)]);
-			expect((await saidIn(second, config)).said).toEqual([]);
-			// An editor lints the first file again, and keeps showing the warning there.
+			expect((await saidIn(second, config)).said).toEqual([onFirstLine(bindThroughOff)]);
 			expect((await saidIn(first, config)).said).toEqual([onFirstLine(bindThroughOff)]);
 		},
 	);
 
+	/** Writes each file with the code given, and lints them all in one run. */
+	async function lintFiles(
+		files: Readonly<Record<string, string>>,
+		config: stylelint.Config,
+		cwd = project(),
+	) {
+		const paths = Object.entries(files).map(([file, text]) => {
+			const full = path.join(cwd, file);
+			mkdirSync(path.dirname(full), { recursive: true });
+			writeFileSync(full, text);
+			return full;
+		});
+		const { results } = await stylelint.lint({ files: paths, config, cwd, configBasedir: cwd });
+		return results.flatMap((result) =>
+			result.warnings
+				.filter((warning) => warning.rule === ruleName)
+				.map((warning) => ({ file: path.relative(cwd, result.source ?? ""), text: warning.text })),
+		);
+	}
+
+	const plain = ".page {\n\tcolor: red;\n}\n";
+
 	it("says a problem on one file of a run that lints several", async () => {
 		const config = configWith({ "statefulcss/bind-through-state-variables": null });
-		const files = ["src/one.css", "src/two.css", "src/three.css"].map((file) => path.join(project(), file));
-		for (const file of files) writeFileSync(file, ".page {\n\tcolor: red;\n}\n");
-		const { results } = await stylelint.lint({ files, config });
-		const said = results.flatMap((result) => result.warnings.filter((warning) => warning.rule === ruleName));
-		expect(said.map((warning) => warning.text)).toEqual([bindThroughOff]);
+		const said = await lintFiles(
+			{ "src/one.css": plain, "src/two.css": plain, "src/three.css": plain },
+			config,
+		);
+		expect(said.map((one) => one.text)).toEqual([bindThroughOff]);
+	});
+
+	it("says a problem a disable comment hides on the next file of the run", async () => {
+		const config = configWith({ "statefulcss/bind-through-state-variables": null });
+		const hidden = `/* stylelint-disable ${ruleName} -- off on purpose here */\n${plain}`;
+		const said = await lintFiles({ "src/hidden.css": hidden, "src/shown.css": plain }, config);
+		expect(said).toEqual([{ file: path.join("src", "shown.css"), text: bindThroughOff }]);
+	});
+
+	it("says a problem again for a second project linted in the same process", async () => {
+		const config = configWith({ "statefulcss/bind-through-state-variables": null });
+		for (const name of ["a", "b", "a"]) {
+			const cwd = path.join(project(), "projects", name);
+			expect(await lintFiles({ "src/page.css": plain }, config, cwd)).toEqual([
+				{ file: path.join("src", "page.css"), text: bindThroughOff },
+			]);
+		}
 	});
 
 	it("says each problem on the first file it's found in, so a problem only some files have is said too", async () => {
@@ -197,13 +235,22 @@ describe(ruleName, () => {
 			...configWith({}),
 			overrides: [{ files: ["**/legacy/**"], rules: { "statefulcss/bind-through-state-variables": null } }],
 		};
-		const first = sourceFor("css", { code, file: "src/first.css" });
-		const legacy = sourceFor("css", { code, file: "src/legacy/old.css" });
-		// Override globs are matched from the config's folder.
-		const options = { configBasedir: project() };
-		expect((await saidIn(first, config, options)).said).toEqual([]);
-		expect((await saidIn(legacy, config, options)).said).toEqual([onFirstLine(bindThroughOff)]);
-		expect((await saidIn(first, config, options)).said).toEqual([]);
+		const said = await lintFiles(
+			{ "src/first.css": plain, "src/legacy/old.css": plain, "src/last.css": plain },
+			config,
+		);
+		expect(said).toEqual([{ file: path.join("src", "legacy", "old.css"), text: bindThroughOff }]);
+	});
+
+	it("says it once in a run of a PostCSS plugin, on the first file it lints", async () => {
+		const config = configWith({ "statefulcss/bind-through-state-variables": null });
+		const processor = postcss([stylelint({ config })]);
+		const one = await processor.process(plain, { from: path.join(project(), "src/one.css") });
+		const two = await processor.process(plain, { from: path.join(project(), "src/two.css") });
+		const texts = (result: postcss.Result) =>
+			result.messages.filter((message) => message["rule"] === ruleName).map((message) => message["text"]);
+		expect(texts(one)).toEqual([bindThroughOff]);
+		expect(texts(two)).toEqual([]);
 	});
 
 	it("says it once in a .vue file with two <style> blocks", async () => {
@@ -221,8 +268,7 @@ describe(ruleName, () => {
 		expect(results[0]?.warnings.map((warning) => [warning.rule, warning.line, warning.column])).toEqual([
 			[ruleName, 1, 1],
 		]);
-		const fresh = configWith({ "statefulcss/bind-through-state-variables": null });
-		const empty = await saidIn(sourceFor("css", { code: "", file: "src/empty.css" }), fresh);
+		const empty = await saidIn(sourceFor("css", { code: "", file: "src/empty.css" }), config);
 		expect(empty.said.map((one) => one.text)).toEqual([bindThroughOff]);
 	});
 

@@ -38,7 +38,7 @@ const contradicted: Readonly<Record<string, string>> = {
 };
 
 export default defineConfigRule({
-	name: "rules-work-together",
+	name: "config-check",
 	severity: "warning",
 	fixable: false,
 	messages: {

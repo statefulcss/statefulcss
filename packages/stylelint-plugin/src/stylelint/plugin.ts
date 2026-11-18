@@ -21,8 +21,12 @@ export function ruleNameOf(definition: Pick<RuleDefinition, "name">): string {
 }
 
 /** A rule's page and whether it can fix, for Stylelint and for tools that list the rules. */
+/** Where each rule's README is read online, until the website has a page for each rule. */
+export const rulesUrl =
+	"https://github.com/statefulcss/statefulcss/blob/main/packages/stylelint-plugin/src/rules";
+
 export function metaOf(definition: Pick<RuleDefinition, "name" | "fixable">): stylelint.RuleMeta {
-	return { url: `https://statefulcss.com/docs/lint-rules/${definition.name}`, fixable: definition.fixable };
+	return { url: `${rulesUrl}/${definition.name}/README.md`, fixable: definition.fixable };
 }
 
 /** The one message the glue has of its own: a fault of the plugin's, never of the stylesheet's. */

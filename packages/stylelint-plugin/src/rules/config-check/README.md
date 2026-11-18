@@ -1,4 +1,4 @@
-# rules-work-together
+# config-check
 
 The rules that keep a promise together are switched on together, and no rule the methodology contradicts is on.
 
@@ -12,7 +12,9 @@ It reads the Stylelint config each file is linted with, not the stylesheet:
 - **`statefulcss/bind-once` off, and Stylelint's `declaration-block-no-duplicate-custom-properties` off too.** A repeated custom property goes unreported. Both configs switch Stylelint's rule off because `bind-once` reports the repeat.
 - **Stylelint's `no-descending-specificity` on.** It reports state blocks written in the methodology's order, so both configs switch it off.
 
-Each problem is said once for a run: on the first file it's found in, on that file's first line, and on that same file again whenever it's linted, so an editor keeps showing it. A problem that only some files have, through Stylelint's `overrides`, is said on the first of those files.
+Each problem is said once for a run, on the first file it's shown on. A run is one `stylelint` command, one `stylelint.lint()` call, or one PostCSS plugin made with `stylelint()`. An editor lints each file it shows in a run of its own, so it shows the warning on every file, and two projects linted in one process each get it. A problem that only some files have, through Stylelint's `overrides`, is said on the first of those files. A disable comment that hides it on one file leaves it to the next file of the run.
+
+It's reported where the file starts: on line 1, column 1, or in a `.vue` file where its first `<style>` block's content starts.
 
 A config that can't be used isn't this rule's: a `statefulcss.config` file that can't be read, an unknown setting, a value of the wrong kind, or a project setting written as a rule option (`themeFiles` on `theme-tokens`). Every Stateful CSS rule refuses those as an invalid option, so turning this rule off never hides them.
 
@@ -83,7 +85,7 @@ export default {
 
 - `recommended` or `compatible` as they are.
 - `bind-once` and `bind-through-state-variables` both off, with `declaration-block-no-duplicate-custom-properties` on.
-- A config that switches this rule off with `"statefulcss/rules-work-together": null`, or a file whose disable comment names it.
+- A config that switches this rule off with `"statefulcss/config-check": null`, or a file whose disable comment names it.
 
 ## Options
 
@@ -95,7 +97,7 @@ export default {
 	rules: {
 		// Changes through privates are reviewed by hand in this project.
 		"statefulcss/bind-through-state-variables": null,
-		"statefulcss/rules-work-together": null,
+		"statefulcss/config-check": null,
 	},
 };
 ```

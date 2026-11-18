@@ -56,7 +56,7 @@ describe.each(configs)("the corpus under %s", (_name, config) => {
 	it("has a wrong component for every rule over a stylesheet", () => {
 		const named = new Set(read(wrong).flatMap(([, code]) => failsOf(code)));
 		const rules = Object.keys(config.rules ?? {}).filter(
-			(rule) => rule.startsWith("statefulcss/") && rule !== "statefulcss/rules-work-together",
+			(rule) => rule.startsWith("statefulcss/") && rule !== "statefulcss/config-check",
 		);
 		expect(rules.filter((rule) => !named.has(rule))).toEqual([]);
 	});

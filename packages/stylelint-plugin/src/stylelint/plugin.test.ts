@@ -2,13 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import type { Rule } from "postcss";
+import postcss, { type Rule } from "postcss";
 import stylelint from "stylelint";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { defineRule, type Finding, type RuleDefinition } from "../rules/rule.js";
 import { lint, sourceFor, temporaryProject, testRule } from "../testing/test-rule.js";
-import { toPlugin } from "./plugin.js";
+import { rulesUrl, toPlugin } from "./plugin.js";
 
 // The glue is tested with rules that exist only here. Each is as small as a rule can be: it asks core's model one
 // question and reports the answer, so what's tested is the way from the model to Stylelint's output.
@@ -378,7 +378,7 @@ testRule(guard, {
 				}
 			`,
 		},
-		// L01: the wrapper is the file's own, with nothing taken from the first rule's spelling.
+		// The wrapper is the file's own, with nothing taken from the first rule's spelling.
 		{
 			description: "a file with CRLF line endings keeps them",
 			code: [
@@ -463,7 +463,7 @@ testRule(guard, {
 				}
 			`,
 		},
-		// L02: what a moved rule holds moves with it, byte for byte, one level deeper.
+		// What a moved rule holds moves with it, byte for byte, one level deeper.
 		{
 			description: "a moved rule keeps its comments and the at-rules nested in it",
 			code: `
@@ -621,7 +621,7 @@ describe("the glue", () => {
 		);
 	});
 
-	// B07: PostCSS counts offsets without the byte order mark, and the editor's text has it.
+	// PostCSS counts offsets without the byte order mark, and the editor's text has it.
 	it("offers an editor no fix in a file that starts with a byte order mark, and --fix still makes it", async () => {
 		const config = configFor(guard);
 		const code = ".button { &:hover { color: blue; } }";
@@ -669,7 +669,7 @@ describe("the glue", () => {
 			return { count: fixes.length, edited, fixed: (await lint(source, project(), config, true)).code };
 		};
 
-		// One finding renames two rules (glue F12).
+		// One finding renames two rules.
 		const renamed = await editorFix(
 			renameAll,
 			'.card [data-part="icon"] { color: red; }\n.link [data-part="icon"] { color: blue; }',
@@ -706,9 +706,9 @@ describe("the glue", () => {
 		const source = sourceFor("css", { code: '.card [data-part="icon"] { color: red; }' });
 		const { ruleMetadata } = await stylelint.lint({ code: source.code, config: configFor(names, rename) });
 		expect(ruleMetadata).toEqual({
-			"statefulcss/test-names": { url: "https://statefulcss.com/docs/lint-rules/test-names", fixable: false },
+			"statefulcss/test-names": { url: `${rulesUrl}/test-names/README.md`, fixable: false },
 			"statefulcss/test-rename": {
-				url: "https://statefulcss.com/docs/lint-rules/test-rename",
+				url: `${rulesUrl}/test-rename/README.md`,
 				fixable: true,
 			},
 		});
@@ -1117,5 +1117,31 @@ describe("a rule's options", () => {
 				'"themeFiles" is a project setting, not an option of "statefulcss/test-options". Set it in statefulcss.config.json instead',
 			],
 		});
+	});
+});
+
+describe("the same PostCSS root linted again", () => {
+	const project = temporaryProject();
+	const ruleName = "statefulcss/test-names";
+
+	it("gets a new model each time, so a change shows", async () => {
+		const processor = postcss([
+			stylelint({ config: { plugins: [toPlugin(names)], rules: { [ruleName]: true } } }),
+		]);
+		const from = path.join(project(), "src/card.css");
+		const root = postcss.parse('.card [data-part="title"] { color: red; }', { from });
+		const texts = async (): Promise<unknown[]> =>
+			(await processor.process(root, { from })).messages
+				.filter((message) => message["rule"] === ruleName)
+				.map((message) => message["text"]);
+		expect(await texts()).toEqual(['Part "title" (statefulcss/test-names)']);
+		root.walkRules((rule) => {
+			rule.selector = '.card [data-part="body"]';
+		});
+		expect(await texts()).toEqual(['Part "body" (statefulcss/test-names)']);
+		root.walkRules((rule) => {
+			rule.selector = ".card p";
+		});
+		expect(await texts()).toEqual([]);
 	});
 });

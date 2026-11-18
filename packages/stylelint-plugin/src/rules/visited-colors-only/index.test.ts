@@ -4,6 +4,10 @@ import visitedColorsOnly from "./index.js";
 const accepted =
 	'"color", "background-color", "fill", "stroke" and the border, outline, column-rule, text-decoration and text-emphasis colors';
 
+/** The advice for a custom property whose color property can't be told. */
+const unbound = (name: string): string =>
+	`Unexpected "${name}" set in ":visited", where the browser ignores custom properties. Set the color property directly instead: ":visited" applies only ${accepted}.`;
+
 /** The warning for a property `:visited` ignores, on the property written at that line and column. */
 function ignored(property: string, place: string, line: number, column: number): ExpectedWarning {
 	return {
@@ -263,12 +267,63 @@ testRule(visitedColorsOnly, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected "--s-opacity" set in ":visited", where the browser ignores custom properties. ":visited" applies only ${accepted}, set directly.`,
+					message: unbound("--s-opacity"),
 					line: 2,
 					column: 14,
 					endLine: 2,
 					endColumn: 25,
 				},
+			],
+		},
+		// R09: a custom property's advice names the property it's bound to, never one guessed from its name.
+		{
+			description: "a private bound to background-color, though its name ends in color",
+			code: `
+				a { background-color: var(--_badge-color); }
+				a:visited { --_badge-color: purple; }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--_badge-color" set in ":visited", where the browser ignores custom properties. Set "background-color" directly instead.',
+					line: 2,
+					column: 13,
+					endLine: 2,
+					endColumn: 27,
+				},
+			],
+		},
+		{
+			description: "a private bound through a shorthand to its color",
+			code: `
+				.badge {
+					border: 1px solid var(--_edge);
+					&:visited { --_edge: purple; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--_edge" set in ":visited", where the browser ignores custom properties. Set "border-color" directly instead.',
+					line: 3,
+					column: 14,
+					endLine: 3,
+					endColumn: 21,
+				},
+			],
+		},
+		{
+			description: "a private read by no color property, or by two",
+			code: `
+				.badge {
+					color: var(--_tint);
+					border-color: var(--_tint);
+					&:visited { --_tint: purple; --_badge-color: purple; }
+				}
+			`,
+			warnings: [
+				{ message: unbound("--_tint"), line: 4, column: 14, endLine: 4, endColumn: 21 },
+				{ message: unbound("--_badge-color"), line: 4, column: 31, endLine: 4, endColumn: 45 },
 			],
 		},
 		{

@@ -46,6 +46,8 @@ const messages = {
 		`Unexpected "${property}" declared on ${element} in ${place}. In strict mode every change goes through a state variable: bind it with "${property}: var(${variable})" in the block of ${element}, and set "${variable}" in ${place}.`,
 	strictOwner: (property: string, element: string, place: string, variable: string, owner: string) =>
 		`Unexpected "${property}" declared on ${element} in ${place}. In strict mode every change goes through a variable: bind it with "${property}: var(${variable})", and let ${owner} declare "${variable}" and set it in ${place}.`,
+	functional: (property: string, element: string, place: string, owner: string) =>
+		`Unexpected "${property}" changed on ${element} in ${place}. Bind it once to a variable that ${owner} declares and sets there; a functional pseudo-element has no part-variable name to suggest.`,
 	overlap: (property: string, other: string, element: string, variable: string) =>
 		`Unexpected "${property}" beside "${other}" on ${element}, which sets it too, while "${variable}" changes one of them. Bind each longhand once, so the change has one path.`,
 	repeated: (name: string, form: string) =>
@@ -116,7 +118,10 @@ export default defineRule<Record<never, never>, Key>({
 					const own = `--_${binding.variable.replace(/^--[sp]-/, "")}`;
 					const said = (message: Key, args: string[]): void =>
 						report(one.declaration, { message, args, at }, binding.variable);
-					if (places.size >= 2) {
+					if (places.size >= 2 && binding.functional && owner !== undefined) {
+						said("functional", [property, name(element.id), place, owner]);
+						reported.add(one);
+					} else if (places.size >= 2) {
 						const others = listOf(
 							changes.filter((other) => other.place !== one.place).map((other) => placeOf(other)),
 						);
@@ -155,6 +160,14 @@ export default defineRule<Record<never, never>, Key>({
 					const at = { node: one.declaration.node, part: "property" } as const;
 					const place = listOf(varied.map((block) => placeText(block)));
 					const binding = bindingOf(model, element, one, property);
+					if (binding.functional && binding.owner !== undefined) {
+						report(
+							one.declaration,
+							{ message: "functional", args: [property, name(element.id), place, name(binding.owner)], at },
+							binding.variable,
+						);
+						continue;
+					}
 					report(
 						one.declaration,
 						binding.owner === undefined
@@ -284,29 +297,33 @@ function placeText(block: Block): string {
  * root's or a global element's pseudo-element binds the part variable its host declares (`--p-after-opacity`), or the
  * root's for a part's pseudo-element (`--p-tab-after-opacity`) when the root's conditions change it. A part changed by
  * the root's conditions binds the root's part variable (`--p-icon-color`). Anything else binds its own state variable.
+ * A functional pseudo-element (`::part(label)`, `::highlight(results)`) has no part-variable name: `functional` says
+ * so, and `variable` only tells bindings apart.
  */
 function bindingOf(
 	model: Model,
 	element: Element,
 	one: Written,
 	property: string,
-): { variable: string; owner: Id | undefined } {
+): { variable: string; owner: Id | undefined; functional: boolean } {
 	const onRoot = one.blocks.some((block) => block.conditions.some((condition) => condition.on === "root"));
 	if (element.kind === "pseudo-element") {
 		const host = model.elements[element.host];
+		const functional = element.name.includes("(");
 		if (host?.kind === "part" && onRoot) {
 			const root = model.components[host.component]?.root;
 			if (root !== undefined)
-				return { variable: `--p-${host.name}-${element.name}-${property}`, owner: root };
+				return { variable: `--p-${host.name}-${element.name}-${property}`, owner: root, functional };
 		}
 		if (host?.kind === "part" || host?.kind === "root" || host?.kind === "global")
-			return { variable: `--p-${element.name}-${property}`, owner: host.id };
+			return { variable: `--p-${element.name}-${property}`, owner: host.id, functional };
 	}
 	if (element.kind === "part" && onRoot) {
 		const root = model.components[element.component]?.root;
-		if (root !== undefined) return { variable: `--p-${element.name}-${property}`, owner: root };
+		if (root !== undefined)
+			return { variable: `--p-${element.name}-${property}`, owner: root, functional: false };
 	}
-	return { variable: `--s-${property}`, owner: undefined };
+	return { variable: `--s-${property}`, owner: undefined, functional: false };
 }
 
 /**

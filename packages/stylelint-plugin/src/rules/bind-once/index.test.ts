@@ -243,8 +243,42 @@ testRule(bindOnce, {
 			description: "a variant that is the property's only declaration, with no state variables",
 			code: `.button { &[data-size="large"] { gap: var(--t-space-2); } }`,
 		},
+		// A functional pseudo-element declared once.
+		{
+			description: "a functional pseudo-element whose property is declared once",
+			code: `.card { &::part(label) { color: red; } &::highlight(results) { color: blue; } }`,
+		},
 	],
 	reject: [
+		// No variable name is made from "part(label)"; "::after" below gets its own.
+		{
+			description: "a functional pseudo-element changed on hover",
+			code: `
+				.card { &::part(label) { color: red; } &:hover::part(label) { color: blue; } }
+				.list { &::highlight(results) { color: red; } &:hover::highlight(results) { color: blue; } }
+				.box { &::after { color: red; } &:hover::after { color: blue; } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "color" changed on ".card::part(label)" in ":hover". Bind it once to a variable that ".card" declares and sets there; a functional pseudo-element has no part-variable name to suggest.',
+					line: 1,
+					column: 63,
+				},
+				{
+					message:
+						'Unexpected "color" changed on ".list::highlight(results)" in ":hover". Bind it once to a variable that ".list" declares and sets there; a functional pseudo-element has no part-variable name to suggest.',
+					line: 2,
+					column: 77,
+				},
+				{
+					message:
+						'Unexpected "color" declared on ".box::after" and again in ":hover". Bind it once with "color: var(--p-after-color)", and let ".box" declare "--p-after-color" and set it in ":hover".',
+					line: 3,
+					column: 50,
+				},
+			],
+		},
 		{
 			description: "the element's own block and a state both declare a property",
 			code: `
@@ -813,6 +847,19 @@ testRule(bindOnce, {
 		},
 	],
 	reject: [
+		// A functional pseudo-element in strict mode: no variable name is made from it either.
+		{
+			description: "strict mode: a functional pseudo-element whose only declaration is in a hover",
+			code: `.card { &:hover::part(label) { color: blue; } }`,
+			warnings: [
+				{
+					message:
+						'Unexpected "color" changed on ".card::part(label)" in ":hover". Bind it once to a variable that ".card" declares and sets there; a functional pseudo-element has no part-variable name to suggest.',
+					line: 1,
+					column: 32,
+				},
+			],
+		},
 		{
 			description: "strict mode: a hover that is the property's only declaration",
 			code: `

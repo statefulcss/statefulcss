@@ -5,6 +5,34 @@ const scss = { css: "SCSS syntax", vue: "SCSS syntax, in a plain <style> block" 
 
 testRule(noUndeclaredStateVariables, {
 	accept: [
+		// The two repairs the messages give for a part's own part variable.
+		{
+			description: "a part that declares and reads its own part variable",
+			code: `
+				.card { color: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="title"] { color: red; }
+				}
+			`,
+		},
+		{
+			description: "a part that writes its own part variable only on hover",
+			code: `
+				.card {
+					--p-title-color: black;
+					color: red;
+					&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])) { &:hover { --p-title-color: red; } }
+				}
+				@scope (.card) to ([data-component]) {
+					[data-part="title"] {
+						--s-color: black;
+						color: var(--s-color);
+						&:hover { --s-color: red; }
+					}
+					[data-part="title"] { outline-color: var(--p-title-color); }
+				}
+			`,
+		},
 		// The rules page's Fixed cases.
 		{
 			description: "a part reads its component's own state variable",
@@ -566,11 +594,61 @@ testRule(noUndeclaredStateVariables, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected "--p-title-color" read on part "title" but never declared on ".card", so it would come from an outer component. Declare it on ".card" and write it in its variants or states.`,
+					message: `Unexpected "--p-title-color" read on part "title" from its own declaration, never declared on ".card". Have ".card" declare it and write it in its variants or states, or give part "title" a plain value.`,
 					line: 5,
 					column: 10,
 					endLine: 5,
 					endColumn: 30,
+				},
+			],
+		},
+		// A part's own part variable: where the value comes from, and a repair that isn't a default on the part.
+		{
+			description: "a part that declares and reads its own part variable",
+			code: `
+				.card { color: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="title"] {
+						--p-title-color: red;
+						color: var(--p-title-color);
+					}
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--p-title-color" read on part "title" from its own declaration, never declared on ".card". Have ".card" declare it and write it in its variants or states, or give part "title" a plain value.`,
+					line: 5,
+					column: 10,
+					endLine: 5,
+					endColumn: 30,
+				},
+			],
+		},
+		{
+			description: "a part that writes its own part variable only on hover",
+			code: `
+				.card { color: red; }
+				@scope (.card) to ([data-component]) {
+					[data-part="title"] {
+						color: var(--p-title-color);
+						&:hover { --p-title-color: red; }
+					}
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected "--p-title-color" read on part "title" but never declared on ".card", so it would come from an outer component. Declare it on ".card" and write it in its variants or states.`,
+					line: 4,
+					column: 10,
+					endLine: 4,
+					endColumn: 30,
+				},
+				{
+					message: `Unexpected "--p-title-color" changed in ":hover" on part "title", its own part variable. Change its own state variable there instead, or have ".card" write "--p-title-color" in its variants or states.`,
+					line: 5,
+					column: 13,
+					endLine: 5,
+					endColumn: 28,
 				},
 			],
 		},

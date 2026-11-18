@@ -17,6 +17,10 @@ const messages = {
 		`Unexpected "${name}" read on ${reader} but declared on ${owner}. Take it on purpose with "${name}: inherit" in the block of ${reader}.`,
 	notDeclaredByOwner: (name: string, reader: string, owner: string) =>
 		`Unexpected "${name}" read on ${reader} but never declared on ${owner}, so it would come from an outer component. Declare it on ${owner} and write it in its variants or states.`,
+	ownPartVariable: (name: string, reader: string, owner: string) =>
+		`Unexpected "${name}" read on ${reader} from its own declaration, never declared on ${owner}. Have ${owner} declare it and write it in its variants or states, or give ${reader} a plain value.`,
+	partOwnState: (name: string, where: string, element: string, owner: string) =>
+		`Unexpected "${name}" changed in ${where} on ${element}, its own part variable. Change its own state variable there instead, or have ${owner} write "${name}" in its variants or states.`,
 	noDefault: (name: string, where: string, element: string) =>
 		`Unexpected "${name}" changed in ${where} but never declared on ${element}. Declare its default in the block of ${element}.`,
 	unchanging: (name: string, element: string, part: string) =>
@@ -117,8 +121,10 @@ function checkRead(context: Context, read: Read): void {
 		// A root's own part variables, a global element's, and content's that names no part of its own: which
 		// element reads them is `part-variables`' question.
 		if (owner === undefined || ownership.variable(owner, read.name) || ownerMayDeclare) return;
+		// The reader's own declaration supplies it: no outer component does. Writing it there is `part-variables'`.
+		const own = source?.element === read.element && source.default !== undefined;
 		report(declaration, read.name, {
-			message: "notDeclaredByOwner",
+			message: own ? "ownPartVariable" : "notDeclaredByOwner",
 			args: [read.name, name(read.element), name(owner)],
 			at,
 		});
@@ -176,9 +182,16 @@ function checkVariable(context: Context, variable: Variable): void {
 	const byOwner = element.kind === "root" || variable.namedFor.length > 0;
 	if (variable.default === undefined && first && !defaultUnknown) {
 		const change = model.declarations[variable.changes[0] ?? first.id] ?? first;
+		const where = `"${whereOf(model.blocks[change.block])}"`;
+		// A part never declares its own part variable, so a default there is no repair.
+		const owner =
+			variable.role === "part" && !byOwner
+				? context.ownership.owner(variable.element, variable.name, "part")
+				: undefined;
 		report(change, variable.name, {
-			message: "noDefault",
-			args: [variable.name, `"${whereOf(model.blocks[change.block])}"`, name(variable.element)],
+			...(owner === undefined
+				? { message: "noDefault", args: [variable.name, where, name(variable.element)] }
+				: { message: "partOwnState", args: [variable.name, where, name(variable.element), name(owner)] }),
 			at: { node: change.node, part: "property" },
 		});
 	}

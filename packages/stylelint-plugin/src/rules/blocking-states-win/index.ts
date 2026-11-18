@@ -2,7 +2,7 @@
 // lists every blocking state, focus stays outside it, and blocking states set only their own look. A part whose
 // component has blocking states also waits for the component's query variable.
 import type { Block, Condition, Element, Guard, Id, Model, Position } from "@statefulcss/core";
-import type { Rule } from "postcss";
+import type { ChildNode, Rule } from "postcss";
 
 import { listOf, nameOf } from "../names.js";
 import { ownershipOf } from "../ownership.js";
@@ -11,10 +11,16 @@ import { defineRule, type Edit, type Finding } from "../rule.js";
 const messages = {
 	unguarded: (condition: string, element: string, guard: string) =>
 		`Unexpected "${condition}" on ${element} outside a guard, so a blocked element still reacts to it. Write it inside "${guard}".`,
+	split: (condition: string, element: string, interaction: string, rest: string, guard: string) =>
+		`Unexpected "${condition}" on ${element} outside a guard, so a blocked element still reacts to ${interaction}. Split it: write ${interaction} inside "${guard}", and ${rest} outside it.`,
 	incomplete: (element: string, missing: string) =>
 		`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while they hold. Add them to its ":not()".`,
+	incompleteShared: (element: string, missing: string) =>
+		`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while they hold. The elements sharing it have different blocking states: write a guard for each, listing its own.`,
 	focusInGuard: (condition: string, element: string) =>
 		`Unexpected "${condition}" inside a guard on ${element}: a blocked element that stays focusable loses its focus style. Write it outside the guard.`,
+	focusSplit: (condition: string, element: string, focus: string, interaction: string) =>
+		`Unexpected "${condition}" inside a guard on ${element}: a blocked element that stays focusable loses its ${focus} style. Split it: keep ${interaction} inside the guard, and write ${focus} outside it.`,
 	setBack: (variable: string, blocking: string, states: string) =>
 		`Unexpected "${variable}" set back to its default in ${blocking}, which ${states} also write. Remove it: the guard keeps interaction states off, and a blocking state sets only its own look.`,
 	partUnqueried: (condition: string, element: string, root: string, variables: string, query: string) =>
@@ -69,40 +75,102 @@ export default defineRule<Record<never, never>, Key>({
 
 		// Interaction states with no guard, wrapped where every block of their rule is one
 		const unguarded: { block: Block; condition: Condition; element: Element }[] = [];
+		// For each guard as written, what it leaves out for each element it guards. A selector list writes one guard for
+		// several elements, so a completion is offered only when it's right for every one of them.
+		const completions = new Map<string, Completion>();
 		for (const element of elements) {
 			const guarded = guardedOf(element);
-			const checked = settings.strict || (blocked.get(element.id)?.length ?? 0) > 0;
+			const needed = required(guarded);
+			// With no blocking state to keep out, there's nothing to guard against.
+			const checked = needed.length > 0 && (settings.strict || (blocked.get(element.id)?.length ?? 0) > 0);
 			for (const block of blocksOf(model, element)) {
-				const pointer = interactions(block).filter((condition) => !condition.focus);
-				const focus = interactions(block).filter((condition) => condition.focus);
+				const found = interactions(block);
+				const pointer = found.filter((one) => one.pointer.length > 0);
 				const guards = guardsOf(model, block, guarded);
 				const [first] = pointer;
 
 				// Focus inside the guard: a blocked element that stays focusable must still show focus.
-				const [focused] = focus;
-				if (!first && focused && guards.length > 0)
-					report(placeKey(focused.at), {
-						message: "focusInGuard",
-						args: [focused.text, name(element.id)],
-						at: focused.at,
-					});
+				if (guards.length > 0) {
+					const [focused] = found.filter((one) => one.focus.length > 0);
+					if (!first && focused)
+						report(placeKey(focused.condition.at), {
+							message: "focusInGuard",
+							args: [focused.condition.text, name(element.id)],
+							at: focused.condition.at,
+						});
+					for (const one of pointer.filter((each) => each.focus.length > 0))
+						report(placeKey(one.condition.at), {
+							message: "focusSplit",
+							args: [
+								one.condition.text,
+								name(element.id),
+								quoted(one.focus.map((way) => way.text)),
+								quoted(one.pointer.map((way) => way.text)),
+							],
+							at: one.condition.at,
+						});
+				}
 
-				if (!first || !checked) continue;
+				if (!first) continue;
 				if (guards.length === 0) {
-					unguarded.push({ block, condition: first, element });
+					if (!checked) continue;
+					// A list that holds other states too: only its interaction states belong in the guard.
+					const mixed = pointer.find((one) => one.focus.length > 0 || one.other.length > 0);
+					if (!mixed) {
+						unguarded.push({ block, condition: first.condition, element });
+						continue;
+					}
+					report(placeKey(mixed.condition.at), {
+						message: "split",
+						args: [
+							mixed.condition.text,
+							name(element.id),
+							quoted(mixed.pointer.map((way) => way.text)),
+							quoted([...mixed.focus, ...mixed.other].map((way) => way.text)),
+							guardText(guarded),
+						],
+						at: mixed.condition.at,
+					});
 					continue;
 				}
 
-				// A guard that leaves a blocking state out.
+				// A guard that leaves a blocking state out. Every element under it is counted, checked or not, so a
+				// completion never adds one element's states to another's guard.
 				const covered = new Set(guards.flatMap((guard) => coverage(guard)));
-				const missing = required(guarded).filter((text) => !covered.has(compact(text)));
 				const [guard] = guards;
-				if (!guard || missing.length === 0) continue;
-				const edit = completion(guard.condition.at, missing);
-				report(placeKey(guard.condition.at), {
-					message: "incomplete",
-					args: [name(guarded), quoted(missing)],
+				if (!guard) continue;
+				const key = placeKey(guard.condition.at);
+				const completing: Completion = completions.get(key) ?? {
 					at: guard.condition.at,
+					guards: [],
+					missing: new Map(),
+					checked: new Set(),
+				};
+				completions.set(key, completing);
+				completing.guards.push(...guards);
+				completing.missing.set(
+					guarded,
+					needed.filter((text) => !covered.has(compact(text))),
+				);
+				if (checked) completing.checked.add(guarded);
+			}
+		}
+
+		for (const [key, { at, guards, missing, checked }] of completions) {
+			const lists = [...missing.values()].map((list) => list.map(compact).sort().join("\n"));
+			const shared = lists.every((list) => list === lists[0]);
+			// Completing a guard that holds a focus state would hide its focus on a blocked element that stays focusable.
+			const focus = guards.some((guard) =>
+				guard.blocks.some((id) => model.blocks[id]?.conditions.some(holdsFocus)),
+			);
+			for (const id of checked) {
+				const left = missing.get(id) ?? [];
+				if (left.length === 0) continue;
+				const edit = shared && !focus ? completion(at, left) : undefined;
+				report(key, {
+					message: shared ? "incomplete" : "incompleteShared",
+					args: [name(id), quoted(left)],
+					at,
 					...(edit ? { edits: [edit] } : {}),
 				});
 			}
@@ -158,7 +226,9 @@ export default defineRule<Record<never, never>, Key>({
 			if (!component || !root || rootBlocking.length === 0) continue;
 			const variables = queryVariablesOf(model, rootBlocking);
 			for (const block of blocksOf(model, element)) {
-				const [first] = interactions(block).filter((condition) => !condition.focus);
+				const [first] = interactions(block)
+					.filter((one) => one.pointer.length > 0)
+					.map((one) => one.condition);
 				if (!first) continue;
 				const queried = block.queries.some((query) =>
 					query.styleQueries.some((style) => !style.optional && variables.includes(style.name)),
@@ -266,16 +336,56 @@ function own(block: Block): Condition[] {
 	return block.conditions.filter((condition) => condition.on === "subject" || condition.on === "host");
 }
 
+/** A guard as written, and what it leaves out for each element it guards. */
+interface Completion {
+	readonly at: Position;
+	readonly guards: Guard[];
+	readonly missing: Map<Id, readonly string[]>;
+	/** The elements the rule checks, which are reported. */
+	readonly checked: Set<Id>;
+}
+
 /**
- * A state block's interaction states on the element itself. `:not(:hover)` is the look at rest, not an interaction
- * state.
+ * A condition holding an interaction state, sorted by the ways it can match: `:is(:hover, :focus-visible)` matches
+ * by pointer or by focus, `:is(:hover, [aria-pressed="true"])` by pointer or by a semantic state.
  */
-function interactions(block: Block): Condition[] {
+interface Interaction {
+	readonly condition: Condition;
+	readonly pointer: readonly Condition[];
+	readonly focus: readonly Condition[];
+	readonly other: readonly Condition[];
+}
+
+/**
+ * A state block's interaction states on the element itself, in any order inside a list. `:not(:hover)` is the look
+ * at rest, not an interaction state.
+ */
+function interactions(block: Block): Interaction[] {
 	if (block.kind !== "state") return [];
-	return own(block).filter(
-		(condition) =>
-			condition.kind === "state" && condition.group === "interaction" && !/^:not\(/i.test(condition.text),
-	);
+	return own(block).flatMap((condition) => {
+		if (condition.kind === "guard" || /^:not\(/i.test(condition.text)) return [];
+		const ways = waysOf(condition);
+		const pointer = ways.filter((way) => sortOf(way) === "pointer");
+		const focus = ways.filter((way) => sortOf(way) === "focus");
+		const other = ways.filter((way) => sortOf(way) === "other");
+		return pointer.length + focus.length > 0 ? [{ condition, pointer, focus, other }] : [];
+	});
+}
+
+/** The ways a condition can match: each selector an `:is()` or `:where()` lists, or the condition itself. */
+function waysOf(condition: Condition): Condition[] {
+	return /^:(?:is|where)\(/i.test(condition.text) && !condition.compound && condition.inner.length > 0
+		? condition.inner.flatMap(waysOf)
+		: [condition];
+}
+
+/** One way to match: by pointer (`:hover`, `:active`), by focus, or by anything else. */
+function sortOf(way: Condition): "pointer" | "focus" | "other" {
+	if (holdsFocus(way)) return "focus";
+	if (way.compound) return way.inner.some((one) => sortOf(one) === "pointer") ? "pointer" : "other";
+	return way.kind === "state" && way.group === "interaction" && !/^:not\(/i.test(way.text)
+		? "pointer"
+		: "other";
 }
 
 /** A state block that writes something, with a blocking state on the element itself, a `:has()` one included. */
@@ -371,7 +481,8 @@ function completion(at: Position, missing: readonly string[]): Edit | undefined 
 /**
  * The wraps that fix unguarded interaction states: for each rule that can move, the run of such rules it follows
  * each other in. A rule can move when it's nested, every branch of its selector is `&` with the state on it
- * (`&:hover`, `&[data-hovered]`), and every block it makes is an unguarded interaction state. A run shares one guard.
+ * (`&:hover`, `&[data-hovered]`), every block it makes is an unguarded interaction state reached only by pointer, and
+ * no disable comment applies to it. A run shares one guard.
  */
 function wrapsOf(
 	model: Model,
@@ -387,9 +498,19 @@ function wrapsOf(
 		if (!parent || (parent.type !== "rule" && parent.type !== "atrule")) continue;
 		if (!branchesOf(rule.selector).every((branch) => /^&[:[]/.test(branch) && !hasCombinator(branch)))
 			continue;
+		// The author may have kept this one on purpose, and a moved rule leaves its comment's line behind.
+		if (underDirective(rule)) continue;
 		const made = model.blocks.filter((other) => other.node === rule);
 		// A focus state moved into the guard would stop showing on a blocked element.
 		if (made.some((other) => own(other).some(holdsFocus))) continue;
+		// The guard goes where the rule's `&` stands: on the element, or a pseudo-element's host. A state on a
+		// pseudo-element itself (`&::file-selector-button { &:hover { } }`) needs its guard on a host it can't name.
+		const onGuarded = (other: Block): boolean =>
+			interactions(other).every(
+				({ condition }) =>
+					condition.on === (elementOf(model, other).kind === "pseudo-element" ? "host" : "subject"),
+			);
+		if (!made.every(onGuarded)) continue;
 		const guards = new Set(made.map(guardFor));
 		const [selector] = guards;
 		if (!selector || guards.size > 1 || !made.every((other) => flagged.has(other))) continue;
@@ -410,6 +531,26 @@ function wrapsOf(
 		for (const one of rules) wraps.set(one, edit);
 	}
 	return wraps;
+}
+
+/**
+ * Whether a Stylelint disable comment may apply to a rule: one just before it, one inside it, or one after it on its
+ * last line. A wrap would move the rule to another line, away from the comment or under another one.
+ */
+function underDirective(rule: Rule): boolean {
+	if (isDirective(rule.prev())) return true;
+	const next = rule.next();
+	if (isDirective(next) && !(next?.raws.before ?? "").includes("\n")) return true;
+	let inside = false;
+	rule.walkComments((comment) => {
+		if (isDirective(comment)) inside = true;
+	});
+	return inside;
+}
+
+/** `stylelint-disable`, `stylelint-enable`, and their `-line` and `-next-line` forms, for any rule. */
+function isDirective(node: ChildNode | undefined): boolean {
+	return node?.type === "comment" && /^\s*stylelint-(?:disable|enable)/.test(node.text);
 }
 
 /** A focus state, or a list that holds one: `:is(:hover, :focus-visible)`. */

@@ -4,6 +4,37 @@ import blockingStatesWin from "./index.js";
 const guard = '&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert]))';
 const unguarded = (condition: string, element: string, wanted = guard) =>
 	`Unexpected "${condition}" on ${element} outside a guard, so a blocked element still reacts to it. Write it inside "${wanted}".`;
+const split = (condition: string, interaction: string, rest: string, element = '".button"') =>
+	`Unexpected "${condition}" on ${element} outside a guard, so a blocked element still reacts to ${interaction}. Split it: write ${interaction} inside "${guard}", and ${rest} outside it.`;
+const incomplete = (element: string, missing: string) =>
+	`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while they hold. Add them to its ":not()".`;
+
+/** Lines that a case puts in the Button, each at the Button's level. */
+const lines = (...each: string[]) => each.join("\n\t\t\t");
+
+/** A blocked Button around what a case puts at line 6. */
+const button = (body: string, fixed = body) => ({
+	code: `
+		.button {
+			--s-color: var(--_color);
+			--s-opacity: 1;
+			color: var(--s-color);
+			opacity: var(--s-opacity);
+			${body}
+			&:disabled { --s-opacity: 0.5; }
+		}
+	`,
+	fixed: `
+		.button {
+			--s-color: var(--_color);
+			--s-opacity: 1;
+			color: var(--s-color);
+			opacity: var(--s-opacity);
+			${fixed}
+			&:disabled { --s-opacity: 0.5; }
+		}
+	`,
+});
 
 testRule(blockingStatesWin, {
 	accept: [
@@ -178,6 +209,10 @@ testRule(blockingStatesWin, {
 					&::after { --s-opacity: 0; content: ""; opacity: var(--s-opacity); }
 				}
 			`,
+		},
+		{
+			description: "a hover on a pseudo-element, guarded on its host",
+			code: button(lines(`${guard}::file-selector-button {`, "\t&:hover { color: red; }", "}")).code,
 		},
 		{
 			description: "a blocking state whose value differs from the default changes its own look",
@@ -449,7 +484,7 @@ testRule(blockingStatesWin, {
 			`,
 			warnings: [
 				{
-					message: unguarded(":is(:hover, :focus-visible)", '".button"'),
+					message: split(":is(:hover, :focus-visible)", '":hover"', '":focus-visible"'),
 					line: 6,
 					column: 3,
 					endLine: 6,
@@ -674,6 +709,228 @@ testRule(blockingStatesWin, {
 				},
 			],
 		},
+		// B01: a disable comment keeps its rule where the author wrote it. "hover and active" above is the control.
+		{
+			description: "a hover kept on purpose with a disable comment stays, and active is wrapped alone",
+			...button(
+				lines(
+					"/* stylelint-disable-next-line statefulcss/blocking-states-win -- keep the tooltip */",
+					"&:hover { --s-color: var(--_color-hover); }",
+					"&:active { --s-color: var(--_color-active); }",
+				),
+				lines(
+					"/* stylelint-disable-next-line statefulcss/blocking-states-win -- keep the tooltip */",
+					"&:hover { --s-color: var(--_color-hover); }",
+					`${guard} {`,
+					"\t&:active { --s-color: var(--_color-active); }",
+					"}",
+				),
+			),
+			warnings: [
+				{ message: unguarded(":active", '".button"'), line: 8, column: 3, endLine: 8, endColumn: 10 },
+			],
+		},
+		{
+			description: "a hover under another rule's disable-next-line comment, which --fix leaves to the author",
+			code: button(lines("/* stylelint-disable-next-line color-no-hex */", "&:hover { --s-color: #fff; }"))
+				.code,
+			warnings: [{ message: unguarded(":hover", '".button"'), line: 7, column: 3, endLine: 7, endColumn: 9 }],
+		},
+		{
+			description: "the same hover with no disable comment, wrapped",
+			...button("&:hover { --s-color: #fff; }", lines(`${guard} {`, "\t&:hover { --s-color: #fff; }", "}")),
+			warnings: [{ message: unguarded(":hover", '".button"'), line: 6, column: 3, endLine: 6, endColumn: 9 }],
+		},
+		{
+			description: "a hover followed by a disable-line comment on its line, which --fix leaves to the author",
+			code: button("&:hover { --s-color: #fff; } /* stylelint-disable-line color-no-hex */").code,
+			warnings: [{ message: unguarded(":hover", '".button"'), line: 6, column: 3, endLine: 6, endColumn: 9 }],
+		},
+		{
+			description: "a hover holding a disable comment, which --fix leaves to the author",
+			code: button(
+				lines("&:hover {", "\t/* stylelint-disable-next-line color-no-hex */", "\t--s-color: #fff;", "}"),
+			).code,
+			warnings: [{ message: unguarded(":hover", '".button"'), line: 6, column: 3, endLine: 6, endColumn: 9 }],
+		},
+
+		// B02: only a selector whose every alternative is an interaction state is guarded whole.
+		{
+			description: "a list of hover and a semantic state, which --fix leaves to the author",
+			code: button('&:is(:hover, [aria-pressed="true"]) { --s-color: var(--_color-hover); }').code,
+			warnings: [
+				{
+					message: split(':is(:hover, [aria-pressed="true"])', '":hover"', '"[aria-pressed="true"]"'),
+					line: 6,
+					column: 3,
+					endLine: 6,
+					endColumn: 37,
+				},
+			],
+		},
+		{
+			description: "the same list in the other order, reported the same",
+			code: button('&:is([aria-pressed="true"], :hover) { --s-color: var(--_color-hover); }').code,
+			warnings: [
+				{
+					message: split(':is([aria-pressed="true"], :hover)', '":hover"', '"[aria-pressed="true"]"'),
+					line: 6,
+					column: 3,
+					endLine: 6,
+					endColumn: 37,
+				},
+			],
+		},
+		{
+			description: "a :where() list of hover and a semantic state, which --fix leaves to the author",
+			code: button('&:where(:hover, [aria-pressed="true"]) { --s-color: var(--_color-hover); }').code,
+			warnings: [
+				{
+					message: split(':where(:hover, [aria-pressed="true"])', '":hover"', '"[aria-pressed="true"]"'),
+					line: 6,
+					column: 3,
+					endLine: 6,
+					endColumn: 40,
+				},
+			],
+		},
+		{
+			description: "a :where() list of interaction states only, wrapped",
+			...button(
+				"&:where(:hover, :active) { --s-color: var(--_color-hover); }",
+				lines(`${guard} {`, "\t&:where(:hover, :active) { --s-color: var(--_color-hover); }", "}"),
+			),
+			warnings: [
+				{
+					message: unguarded(":where(:hover, :active)", '".button"'),
+					line: 6,
+					column: 3,
+					endLine: 6,
+					endColumn: 26,
+				},
+			],
+		},
+		{
+			description: "an incomplete guard around hover or focus, which --fix doesn't complete",
+			code: button("&:where(:not(:disabled)):is(:hover, :focus-visible) { --s-color: var(--_color-hover); }")
+				.code,
+			warnings: [
+				{
+					message: incomplete('".button"', '"[aria-disabled="true"]", "[data-loading]" and "[inert]"'),
+					line: 6,
+					column: 10,
+					endLine: 6,
+					endColumn: 25,
+				},
+				{
+					message:
+						'Unexpected ":is(:hover, :focus-visible)" inside a guard on ".button": a blocked element that stays focusable loses its ":focus-visible" style. Split it: keep ":hover" inside the guard, and write ":focus-visible" outside it.',
+					line: 6,
+					column: 26,
+					endLine: 6,
+					endColumn: 53,
+				},
+			],
+		},
+		{
+			description: "an incomplete guard around hover alone, completed",
+			...button(
+				"&:where(:not(:disabled)):hover { --s-color: var(--_color-hover); }",
+				'&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])):hover { --s-color: var(--_color-hover); }',
+			),
+			warnings: [
+				{
+					message: incomplete('".button"', '"[aria-disabled="true"]", "[data-loading]" and "[inert]"'),
+					line: 6,
+					column: 10,
+					endLine: 6,
+					endColumn: 25,
+				},
+			],
+		},
+
+		// B04: a hover on a pseudo-element itself needs its guard on the host, which a wrap where it stands can't write.
+		// "a pseudo-element's hover on a blocked host" above is the control.
+		{
+			description: "a hover nested in a pseudo-element, which --fix leaves to the author",
+			code: button(lines("&::file-selector-button {", "\t&:hover { color: red; }", "}")).code,
+			warnings: [
+				{
+					message: unguarded(":hover", '".button::file-selector-button"'),
+					line: 7,
+					column: 4,
+					endLine: 7,
+					endColumn: 10,
+				},
+			],
+		},
+
+		// B05: a guard written once for a selector list.
+		{
+			description:
+				"a guard shared by components whose blocking states differ, which --fix leaves to the author",
+			code: `
+				.a, .b {
+					--s-color: var(--_color);
+					--s-opacity: 1;
+					color: var(--s-color);
+					opacity: var(--s-opacity);
+					${guard} {
+						&:hover { --s-color: var(--_color-hover); }
+					}
+				}
+				.a { &:has(:where([data-part="field"]):disabled) { --s-opacity: 0.5; } }
+				.b { &:has(:where([data-part="control"]):disabled) { --s-opacity: 0.5; } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected guard on ".a" and ".b" leaving out ":has(:where([data-part="field"]):disabled)" and ":has(:where([data-part="control"]):disabled)", so interaction states still apply while they hold. The elements sharing it have different blocking states: write a guard for each, listing its own.',
+					line: 6,
+					column: 10,
+					endLine: 6,
+					endColumn: 74,
+				},
+			],
+		},
+		{
+			description: "a guard shared by components with the same blocking states, completed for both",
+			code: `
+				.a, .b {
+					--s-color: var(--_color);
+					--s-opacity: 1;
+					color: var(--s-color);
+					opacity: var(--s-opacity);
+					${guard} {
+						&:hover { --s-color: var(--_color-hover); }
+					}
+				}
+				.a { &:has(:where([data-part="field"]):disabled) { --s-opacity: 0.5; } }
+				.b { &:has(:where([data-part="field"]):disabled) { --s-opacity: 0.5; } }
+			`,
+			warnings: [
+				{
+					message: incomplete('".a" and ".b"', '":has(:where([data-part="field"]):disabled)"'),
+					line: 6,
+					column: 10,
+					endLine: 6,
+					endColumn: 74,
+				},
+			],
+			fixed: `
+				.a, .b {
+					--s-color: var(--_color);
+					--s-opacity: 1;
+					color: var(--s-color);
+					opacity: var(--s-opacity);
+					&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert], :has(:where([data-part="field"]):disabled))) {
+						&:hover { --s-color: var(--_color-hover); }
+					}
+				}
+				.a { &:has(:where([data-part="field"]):disabled) { --s-opacity: 0.5; } }
+				.b { &:has(:where([data-part="field"]):disabled) { --s-opacity: 0.5; } }
+			`,
+		},
 	],
 });
 
@@ -718,6 +975,22 @@ testRule(blockingStatesWin, {
 		},
 	],
 });
+
+// B03: with no blocking states configured there's nothing to guard against, in either level. The strict level's
+// reported hover above, with the default list, is the control.
+const nothingToGuard = {
+	description: "hover with no guard, when no blocking state is configured",
+	code: `
+		.button {
+			--s-color: var(--_color);
+			color: var(--s-color);
+			&:hover { --s-color: var(--_color-hover); }
+			&:disabled { --s-opacity: 0.5; }
+		}
+	`,
+};
+testRule(blockingStatesWin, { settings: { strict: true, blockingStates: [] }, accept: [nothingToGuard] });
+testRule(blockingStatesWin, { settings: { blockingStates: [] }, accept: [nothingToGuard] });
 
 // The settings' own blocking states, compared as written in the config (core's B16).
 testRule(blockingStatesWin, {

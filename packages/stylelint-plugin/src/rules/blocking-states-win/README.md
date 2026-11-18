@@ -7,9 +7,10 @@ Severity: warning. Fixable: yes.
 ## Checks
 
 - **An interaction state outside a guard.** On an element with a blocking state block, every interaction state (`:hover`, `:active`, and the others in `interactionStates`) is written inside a guard, a `:not()` that lists the blocking states: `&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])) { &:hover { … } }`. The guard is on the element itself, or on its host for a pseudo-element; a guard on the component root doesn't guard its part. Hover inside `@media (hover: hover)` is still an interaction state, inside or around the guard. `:not(:hover)` is the look at rest, not an interaction state.
-- **Which elements.** By default, an element with a blocking state block of its own, a pseudo-element whose host has one, and a part whose component root has one. In strict mode (`strict: true`), every element with an interaction state. A blocking state block is one with declarations; one reached through `:has()` (`&:has(:where([data-part="input"]):disabled)`) counts for the root.
-- **A guard that leaves a blocking state out.** The guard lists every entry of `blockingStates`, compared as the config writes it (`:nth-child(2n+1)` matches `:nth-child(2n + 1)`). The root's guard also lists the blocking states it reaches through `:has()`. The message names the states it leaves out.
-- **Focus inside a guard.** Focus states are exempt: an `aria-disabled` or loading control stays focusable and must still show focus. A state block whose interaction states are all focus states (`:focus-visible`, `:focus`, `:focus-within`) is reported when it sits inside a guard, whatever level applies.
+- **A list that holds other states too.** `:is()` and `:where()` lists are read whatever their order. A list that holds an interaction state with a semantic or focus state (`&:is(:hover, [aria-pressed="true"])`, `&:is(:hover, :focus-visible)`) can't sit inside the guard whole: the message asks to split it, with the interaction states inside the guard and the rest outside.
+- **Which elements.** By default, an element with a blocking state block of its own, a pseudo-element whose host has one, and a part whose component root has one. In strict mode (`strict: true`), every element with an interaction state. A blocking state block is one with declarations; one reached through `:has()` (`&:has(:where([data-part="input"]):disabled)`) counts for the root. With an empty `blockingStates` and no blocking state reached through `:has()`, there's nothing to guard against, and nothing is reported.
+- **A guard that leaves a blocking state out.** The guard lists every entry of `blockingStates`, compared as the config writes it (`:nth-child(2n+1)` matches `:nth-child(2n + 1)`). The root's guard also lists the blocking states it reaches through `:has()`. The message names the states it leaves out. A guard written once for a selector list whose elements have different blocking states (`.a, .b`, each blocked through its own part) gets a message asking for a guard for each.
+- **Focus inside a guard.** Focus states are exempt: an `aria-disabled` or loading control stays focusable and must still show focus. A state block whose interaction states are all focus states (`:focus-visible`, `:focus`, `:focus-within`) is reported when it sits inside a guard, whatever level applies. So is a list inside a guard that holds focus with an interaction state (`&:is(:hover, :focus-visible)`), with a message asking to split it.
 - **Setting back.** A blocking state block that writes a variable an interaction or a semantic state also writes, with the same value as that variable's default (`--s-background-color: var(--_background-color)`), is reported on that declaration: the guard already keeps hover off, and the write hides that a disabled pressed button is pressed.
 - **A part whose component has blocking states.** The part's own guard only sees the part, so its interaction states also sit inside a style query on a `--q-*` that its component's blocking states set: `@container style(--q-tabs-blocked: false) { &:hover { … } }`. When those blocking states set no `--q-*`, the message suggests one, named for the component (`--q-tabs-blocked`).
 - **The `--q-*` a component's blocking states set.** It's only ever queried, never read with `var()`, and the component declares its default on its own root, so a nested component never inherits an outer one's value.
@@ -18,8 +19,17 @@ Severity: warning. Fixable: yes.
 
 **`--fix`:**
 
-- wraps unguarded interaction state rules in a guard, keeping their order. A run of such rules that follow each other shares one guard. It moves a rule only when it's nested and every selector in it is `&` with the state on it (`&:hover`, `&[aria-pressed="true"]:where(:hover)`), so a flat `.button:hover` and a selector that also holds focus (`&:hover, &:focus-visible`, `&:is(:hover, :focus-visible)`) are left to the author.
+- wraps unguarded interaction state rules in a guard, keeping their order. A run of such rules that follow each other shares one guard. The guard is written where the first rule stood, with the file's line ending, and takes no comment or `;` from it.
 - adds the blocking states a guard leaves out, at the end of its `:not()`.
+
+When a fix might change what the CSS does, the problem is reported and the fix left to the author. `--fix` moves a rule only when:
+
+- it's nested, and every selector in it is `&` with the state on it (`&:hover`, `&[aria-pressed="true"]:where(:hover)`). A flat `.button:hover` stays where it is.
+- every way it can match is an interaction state. A selector that also holds focus or a semantic state (`&:hover, &:focus-visible`, `&:is(:hover, :focus-visible)`, `&:where(:hover, [aria-pressed="true"])`) stays.
+- no Stylelint disable comment, for any rule, sits just before it, inside it, or after it on its last line. A rule kept on purpose stays where the author wrote it, and the rules around it are wrapped without it.
+- its state is on the element its `&` stands for. A hover written on a pseudo-element itself (`&::file-selector-button { &:hover { … } }`) needs its guard on the host, which a guard written there can't name.
+
+It completes a guard only when no rule inside it holds focus, and, for a guard written once for a selector list, when every element under it leaves out the same states. An editor's fix for one problem is withheld in a file that starts with a byte order mark; `--fix` still makes it.
 
 Focus inside the guard, setting back, and the part's style query are reported without a fix: each needs the author to move or remove declarations, and the query variable's name is the project's.
 
@@ -209,6 +219,7 @@ Fixed: `--fix` adds it to the guard.
 - `&:disabled { --s-color: var(--_color-disabled); }` when the default is `var(--_color)`: a value of its own is the blocking state's own look.
 - `&:not(:hover) { … }`: the look at rest.
 - `a:hover` next to `a:disabled`, and a utility's hover: not in a component.
+- Any hover, when `blockingStates` is empty: there's nothing to guard against.
 
 ## Options
 

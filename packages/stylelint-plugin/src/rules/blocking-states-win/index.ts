@@ -27,6 +27,8 @@ const messages = {
 		`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while ${count === "1" ? "it holds. Add it" : "they hold. Add them"} to its ":not()".`,
 	incompleteShared: (element: string, missing: string, count: string) =>
 		`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while ${count === "1" ? "it holds" : "they hold"}. The elements sharing it have different blocking states: write a guard for each, listing its own.`,
+	incompleteMixed: (element: string, missing: string, count: string) =>
+		`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while ${count === "1" ? "it holds" : "they hold"}. The guard also holds other styles, which adding ${count === "1" ? "it" : "them"} would change: give the interaction states their own guard, listing every blocking state.`,
 	focusInGuard: (condition: string, element: string) =>
 		`Unexpected "${condition}" inside a guard on ${element}: a blocked element that stays focusable loses its focus style. Write it outside the guard.`,
 	focusSplit: (condition: string, element: string, focus: string, interaction: string) =>
@@ -183,6 +185,15 @@ export default defineRule<Record<never, never>, Key>({
 			}
 		}
 
+		// Every guard written at each place, an element's outside a component included: `.button, a` writes one for each.
+		const guardsAt = new Map<string, Guard[]>();
+		for (const guard of model.guards) {
+			const key = placeKey(guard.condition.at);
+			const list = guardsAt.get(key);
+			if (list) list.push(guard);
+			else guardsAt.set(key, [guard]);
+		}
+
 		for (const [key, { at, guards, missing, checked }] of completions) {
 			const lists = [...missing.values()].map((list) => list.map(compact).sort().join("\n"));
 			const shared = lists.every((list) => list === lists[0]);
@@ -190,12 +201,31 @@ export default defineRule<Record<never, never>, Key>({
 			const focus = guards.some((guard) =>
 				guard.blocks.some((id) => model.blocks[id]?.conditions.some(holdsFocus)),
 			);
+			// Completing a guard keeps everything inside it off while the added states hold. That's right only for
+			// interaction states of the elements it was counted for: a semantic state's look (`&[aria-pressed="true"]`),
+			// a plain declaration, or another element's branch (`.button, a`) would change too.
+			const all = guardsAt.get(key) ?? guards;
+			const mixed = all.some(
+				(guard) =>
+					guard.element === undefined ||
+					!missing.has(guard.element) ||
+					guard.blocks.some((id) => {
+						const block = model.blocks[id];
+						// A focus state inside the guard has its own finding, and stops the completion above.
+						return (
+							block !== undefined &&
+							block.declarations.length > 0 &&
+							!onlyInteraction(block) &&
+							!block.conditions.some(holdsFocus)
+						);
+					}),
+			);
 			for (const id of checked) {
 				const left = missing.get(id) ?? [];
 				if (left.length === 0) continue;
-				const edit = shared && !focus ? completion(at, left) : undefined;
+				const edit = shared && !focus && !mixed ? completion(at, left) : undefined;
 				report(key, {
-					message: shared ? "incomplete" : "incompleteShared",
+					message: !shared ? "incompleteShared" : mixed ? "incompleteMixed" : "incomplete",
 					args: [name(id), ""],
 					at,
 					...(edit ? { edits: [edit] } : {}),
@@ -453,6 +483,17 @@ function waysOf(condition: Condition): Condition[] {
 		: [condition];
 }
 
+/**
+ * A block that applies only through an interaction state of its element: one of its own conditions matches by pointer
+ * alone, so a blocked element losing it loses nothing else. `&[aria-pressed="true"]:hover` is one;
+ * `&[aria-pressed="true"]` and `&:is(:hover, [aria-pressed="true"])` aren't.
+ */
+function onlyInteraction(block: Block): boolean {
+	return interactions(block).some(
+		({ pointer, focus, other }) => pointer.length > 0 && focus.length + other.length === 0,
+	);
+}
+
 /** One way to match: by pointer (`:hover`, `:active`), by focus, or by anything else. */
 function sortOf(way: Condition): "pointer" | "focus" | "other" {
 	if (holdsFocus(way)) return "focus";
@@ -562,12 +603,18 @@ function flagsOf(model: Model, root: Element, blocking: readonly Block[]): Flag[
 		let some = false;
 		let unjudged = value === undefined;
 		const blocked = new Set<string>();
-		for (const block of blocking) {
-			// The last write in the block wins.
-			const write = block.declarations
+		for (const blocks of statesOf(blocking)) {
+			// A state written in several rules is one state: its writes compete by the cascade. Writes inside an at-rule
+			// the state's own rules don't have (a nested `@media`) apply only sometimes, so they don't count.
+			const fewest = Math.min(...blocks.map((block) => block.queries.length));
+			const writes = blocks
+				.filter((block) => block.queries.length === fewest)
+				.flatMap((block) => block.declarations)
+				.sort((one, other) => one - other)
 				.flatMap((id) => model.declarations[id] ?? [])
-				.filter((declaration) => declaration.property === name)
-				.at(-1);
+				.filter((declaration) => declaration.property === name);
+			// An `!important` write wins over a later ordinary one; otherwise the last write wins.
+			const write = writes.filter((one) => one.node.important).at(-1) ?? writes.at(-1);
 			if (!write) some = true;
 			else if (computed(write)) unjudged = true;
 			else if (spaced(write.value) === value) some = true;
@@ -580,6 +627,25 @@ function flagsOf(model: Model, root: Element, blocking: readonly Block[]): Flag[
 			judged: some ? "some" : unjudged ? "unjudged" : "every",
 		};
 	});
+}
+
+/**
+ * Blocking state blocks grouped by the blocking states they're written for: two `.tabs:disabled` rules, and a
+ * `@media` nested in one, are one state. A block that adds a variant or a semantic state is the same state's.
+ */
+function statesOf(blocks: readonly Block[]): Block[][] {
+	const states = new Map<string, Block[]>();
+	for (const block of blocks) {
+		const key = `${block.element}\n${own(block)
+			.filter((condition) => condition.kind === "state" && condition.group === "blocking")
+			.map((condition) => compact(condition.text))
+			.sort()
+			.join("\n")}`;
+		const list = states.get(key);
+		if (list) list.push(block);
+		else states.set(key, [block]);
+	}
+	return [...states.values()];
 }
 
 /** A value read from elsewhere, or computed where it's used: `var()`, `env()`, `attr()`, `if()`. */
@@ -678,21 +744,36 @@ function wrapsOf(
 }
 
 /**
- * Whether a Stylelint disable comment may apply to a rule: one just before it, one inside it, or one after it on its
- * last line. A wrap would move the rule to another line, away from the comment or under another one.
+ * Whether a Stylelint disable comment may apply to a rule, for this rule or any other: one just before it, one on its
+ * lines (before it, inside it, after it, or in its selector's text, behind another comment or not), or a `-next-line`
+ * one on the line before. A wrap would move the rule to another line, away from the comment or under another one.
  */
 function underDirective(rule: Rule): boolean {
 	if (isDirective(rule.prev())) return true;
-	const next = rule.next();
-	if (isDirective(next) && !(next?.raws.before ?? "").includes("\n")) return true;
-	let inside = false;
-	rule.walkComments((comment) => {
-		if (isDirective(comment)) inside = true;
+	const raws = rule.raws as { selector?: { raw?: string }; between?: string };
+	if (directive.test(`${raws.selector?.raw ?? rule.selector}${raws.between ?? ""}`)) return true;
+	const first = rule.source?.start?.line;
+	const last = rule.source?.end?.line;
+	// With no lines to compare, the rule may be under any comment.
+	if (first === undefined || last === undefined) return true;
+	let governed = false;
+	rule.root().walkComments((comment) => {
+		if (!isDirective(comment)) return;
+		const from = comment.source?.start?.line;
+		const to = comment.source?.end?.line ?? from;
+		if (from === undefined || to === undefined) {
+			governed = true;
+			return;
+		}
+		const nextLine = /^\s*stylelint-(?:disable|enable)-next-line\b/.test(comment.text);
+		if (from <= last && (nextLine ? to + 1 : to) >= first) governed = true;
 	});
-	return inside;
+	return governed;
 }
 
 /** `stylelint-disable`, `stylelint-enable`, and their `-line` and `-next-line` forms, for any rule. */
+const directive = /stylelint-(?:disable|enable)/;
+
 function isDirective(node: ChildNode | undefined): boolean {
 	return node?.type === "comment" && /^\s*stylelint-(?:disable|enable)/.test(node.text);
 }

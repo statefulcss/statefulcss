@@ -9,6 +9,40 @@ const split = (condition: string, interaction: string, rest: string, element = '
 const incomplete = (element: string, missing: string, one = false) =>
 	`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while ${one ? "it holds. Add it" : "they hold. Add them"} to its ":not()".`;
 
+const incompleteMixed = (element: string, missing: string) =>
+	`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while they hold. The guard also holds other styles, which adding them would change: give the interaction states their own guard, listing every blocking state.`;
+
+/**
+ * A Tabs whose root block holds what a case puts from line 3, each line at the root's level, and whose tab part's
+ * guarded hover waits for `--q-tabs-blocked`.
+ */
+const tabs = (...body: string[]) => `
+	.tabs {
+		--q-tabs-blocked: false;
+		${body.join("\n\t\t")}
+	}
+	@scope (.tabs) to ([data-component]) {
+		[data-part="tab"] {
+			--s-color: var(--t-color-text-muted);
+			color: var(--s-color);
+			${guard} {
+				@container style(--q-tabs-blocked: false) {
+					&:hover { --s-color: var(--t-color-text); }
+				}
+			}
+		}
+	}
+`;
+/** The tab's hover, when no flag is set by every blocking state of a Tabs whose root block holds `lines` lines. */
+const noSharedFlag = (lines: number) => ({
+	message:
+		'Unexpected ":hover" on part "tab", which applies while ".tabs" is blocked: no query variable is set by every one of its blocking states. Set one, such as "--q-tabs-blocked", in each of them, and write ":hover" inside a style query on its default.',
+	line: 10 + lines,
+	column: 6,
+	endLine: 10 + lines,
+	endColumn: 12,
+});
+
 /** Lines that a case puts in the Button, each at the Button's level. */
 const lines = (...each: string[]) => each.join("\n\t\t\t");
 
@@ -324,6 +358,28 @@ testRule(blockingStatesWin, {
 				:global(.lib) { opacity: var(--q-busy); }
 				.note { opacity: var(--q-busy); }
 			`,
+		},
+		// R03: a flag is judged per blocking state, however many rules write the state.
+		{
+			description: "a blocking state written in two rules, one setting the flag",
+			code: tabs("&:disabled { --q-tabs-blocked: true; }", "&:disabled { opacity: 0.5; }"),
+		},
+		{
+			description: "a blocking state setting the flag, with a nested @media of its own",
+			code: tabs(
+				"&:disabled {",
+				"\t--q-tabs-blocked: true;",
+				"\topacity: 0.5;",
+				"\t@media (prefers-contrast: more) { opacity: 0.3; }",
+				"}",
+			),
+		},
+		{
+			description: "a blocking state whose !important write wins over a later ordinary one",
+			code: tabs(
+				"&:disabled { --q-tabs-blocked: true !important; }",
+				"&:disabled { --q-tabs-blocked: false; opacity: 0.5; }",
+			),
 		},
 	],
 	reject: [
@@ -908,6 +964,178 @@ testRule(blockingStatesWin, {
 					endColumn: 25,
 				},
 			],
+		},
+
+		// R02: a guard is completed only when everything inside it is an interaction state of the elements it guards.
+		// "an incomplete guard around hover alone, completed" above is a control.
+		{
+			description: "an incomplete guard holding a semantic state, which --fix doesn't complete",
+			code: button(
+				lines(
+					"&:where(:not(:disabled)) {",
+					'\t&[aria-pressed="true"] { --s-color: var(--_color-pressed); }',
+					"\t&:hover { --s-color: var(--_color-hover); }",
+					"}",
+				),
+			).code,
+			warnings: [
+				{
+					message: incompleteMixed('".button"', '"[aria-disabled="true"]", "[data-loading]" and "[inert]"'),
+					line: 6,
+					column: 10,
+					endLine: 6,
+					endColumn: 25,
+				},
+			],
+		},
+		{
+			description: "an incomplete guard holding a plain declaration, which --fix doesn't complete",
+			code: button(
+				lines(
+					"&:where(:not(:disabled)) {",
+					"\tcursor: pointer;",
+					"\t&:hover { --s-color: var(--_color-hover); }",
+					"}",
+				),
+			).code,
+			warnings: [
+				{
+					message: incompleteMixed('".button"', '"[aria-disabled="true"]", "[data-loading]" and "[inert]"'),
+					line: 6,
+					column: 10,
+					endLine: 6,
+					endColumn: 25,
+				},
+			],
+		},
+		{
+			description: "an incomplete guard shared with a link, which --fix doesn't complete",
+			code: `
+				.button, a {
+					&:where(:not(:disabled)) {
+						&:hover { color: red; }
+					}
+				}
+				.button:disabled { opacity: 0.5; }
+			`,
+			warnings: [
+				{
+					message: incompleteMixed('".button"', '"[aria-disabled="true"]", "[data-loading]" and "[inert]"'),
+					line: 2,
+					column: 10,
+					endLine: 2,
+					endColumn: 25,
+				},
+			],
+		},
+		{
+			description: "an incomplete guard around interaction states only, a pressed one's included, completed",
+			...button(
+				lines(
+					"&:where(:not(:disabled)) {",
+					"\t&:hover { --s-color: var(--_color-hover); }",
+					'\t&[aria-pressed="true"]:active { --s-color: var(--_color-active); }',
+					"}",
+				),
+				lines(
+					'&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])) {',
+					"\t&:hover { --s-color: var(--_color-hover); }",
+					'\t&[aria-pressed="true"]:active { --s-color: var(--_color-active); }',
+					"}",
+				),
+			),
+			warnings: [
+				{
+					message: incomplete('".button"', '"[aria-disabled="true"]", "[data-loading]" and "[inert]"'),
+					line: 6,
+					column: 10,
+					endLine: 6,
+					endColumn: 25,
+				},
+			],
+		},
+
+		// R03: a flag is judged per blocking state. The accepted cases above are the controls.
+		{
+			description: "a blocking state written in two rules, neither setting the flag",
+			code: tabs("&:disabled { --q-tabs-blocked: true; }", "&[data-loading] { opacity: 0.5; }"),
+			warnings: [noSharedFlag(2)],
+		},
+		{
+			description: "a blocking state setting the flag only inside a nested @media",
+			code: tabs(
+				"&:disabled {",
+				"\topacity: 0.5;",
+				"\t@media (prefers-contrast: more) { --q-tabs-blocked: true; }",
+				"}",
+			),
+			warnings: [noSharedFlag(4)],
+		},
+		{
+			description: "a blocking state whose later !important write sets the flag back",
+			code: tabs(
+				"&:disabled { --q-tabs-blocked: true; }",
+				"&:disabled { --q-tabs-blocked: false !important; opacity: 0.5; }",
+			),
+			warnings: [noSharedFlag(2)],
+		},
+
+		// R01: a disable comment governs its rule's line wherever it sits. "hover and active" above is the control.
+		{
+			description: "a disabled hover behind another comment on its line stays, and active is wrapped alone",
+			...button(
+				lines(
+					"/* stylelint-disable-next-line statefulcss/blocking-states-win -- keep the tooltip */",
+					"/* tooltip */ &:hover { --s-color: var(--_color-hover); }",
+					"&:active { --s-color: var(--_color-active); }",
+				),
+				lines(
+					"/* stylelint-disable-next-line statefulcss/blocking-states-win -- keep the tooltip */",
+					"/* tooltip */ &:hover { --s-color: var(--_color-hover); }",
+					`${guard} {`,
+					"\t&:active { --s-color: var(--_color-active); }",
+					"}",
+				),
+			),
+			warnings: [
+				{ message: unguarded(":active", '".button"'), line: 8, column: 3, endLine: 8, endColumn: 10 },
+			],
+		},
+		{
+			description: "a hover with a disable comment inside its selector stays, and active is wrapped alone",
+			...button(
+				lines(
+					"&:hover /* stylelint-disable-line statefulcss/blocking-states-win -- keep the tooltip */ { --s-color: var(--_color-hover); }",
+					"&:active { --s-color: var(--_color-active); }",
+				),
+				lines(
+					"&:hover /* stylelint-disable-line statefulcss/blocking-states-win -- keep the tooltip */ { --s-color: var(--_color-hover); }",
+					`${guard} {`,
+					"\t&:active { --s-color: var(--_color-active); }",
+					"}",
+				),
+			),
+			warnings: [
+				{ message: unguarded(":active", '".button"'), line: 7, column: 3, endLine: 7, endColumn: 10 },
+			],
+		},
+		{
+			description: "a hover after another rule's disabled range, wrapped",
+			...button(
+				lines(
+					"/* stylelint-disable color-no-hex */",
+					"&:focus-visible { outline: 1px solid; }",
+					"&:hover { --s-color: #fff; }",
+				),
+				lines(
+					"/* stylelint-disable color-no-hex */",
+					"&:focus-visible { outline: 1px solid; }",
+					`${guard} {`,
+					"\t&:hover { --s-color: #fff; }",
+					"}",
+				),
+			),
+			warnings: [{ message: unguarded(":hover", '".button"'), line: 8, column: 3, endLine: 8, endColumn: 9 }],
 		},
 
 		// B04: a hover on a pseudo-element itself needs its guard on the host, which a wrap where it stands can't write.

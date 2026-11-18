@@ -1,13 +1,21 @@
 import path from "node:path";
 
-import { ConfigError, loadConfig, type Settings } from "@statefulcss/config";
+import { ConfigError, findConfig, type Settings } from "@statefulcss/config";
 import { analyze, type Model } from "@statefulcss/core";
 import type { Document, Node, Root } from "postcss";
 import type stylelint from "stylelint";
 
 /** What the rules of one file share: its settings and core's model, or the reason there are none. */
 export type Loaded =
-	| { readonly settings: Settings; readonly model: Model }
+	| {
+			readonly settings: Settings;
+			readonly model: Model;
+			/**
+			 * The file's path from the config's folder, with `/` between its folders, which `themeFiles` is matched
+			 * against; undefined for code with no file.
+			 */
+			readonly file: string | undefined;
+	  }
 	/** The project's config can't be used. */
 	| { readonly error: ConfigError }
 	/** A fault of the plugin's own. */
@@ -54,9 +62,10 @@ function pair(copy: Node, live: Node): void {
 async function read(root: Root | Document, from: string | undefined): Promise<Loaded> {
 	try {
 		// Code passed as a string has no file: its settings are the working directory's.
-		const file = root.source?.input.file ?? from ?? path.join(process.cwd(), "stylesheet.css");
-		const settings = await loadConfig(file);
-		return { settings, model: analyze(root, settings) };
+		const file = root.source?.input.file ?? from;
+		const { settings, folder } = await findConfig(file ?? path.join(process.cwd(), "stylesheet.css"));
+		const relative = file === undefined ? undefined : path.relative(folder, path.resolve(file));
+		return { settings, model: analyze(root, settings), file: relative?.split(path.sep).join("/") };
 	} catch (error) {
 		return error instanceof ConfigError ? { error } : { fault: error };
 	}

@@ -50,6 +50,11 @@ export function defineRule<Options = Record<never, never>, Key extends string = 
 export interface Context<Options> {
 	readonly settings: Settings;
 	readonly options: Options;
+	/**
+	 * The linted file's path from the config's folder (the repository root with no config), with `/` between its
+	 * folders: `src/styles/themes/espresso/index.css`. Undefined for code with no file.
+	 */
+	readonly file?: string | undefined;
 }
 
 export interface Finding<Key extends string = string> {

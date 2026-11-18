@@ -84,7 +84,7 @@ export function toPlugin(
 		}
 		if ("fault" in loaded) return fault(loaded.fault);
 
-		const { model, settings } = loaded;
+		const { model, settings, file } = loaded;
 		let reportable = checked.get(result);
 		if (!reportable) {
 			try {
@@ -92,7 +92,7 @@ export function toPlugin(
 				const whole = model.unknowns.find((one) => one.reason === "internal" && one.node === model.root);
 				if (whole) throw new Error(whole.detail ?? "the stylesheet couldn't be read");
 				const options = optionsFrom(definition, secondary);
-				reportable = prepare(definition.check(model, { settings, options }));
+				reportable = prepare(definition.check(model, { settings, options, file }));
 			} catch (error) {
 				reportable = [];
 				fault(error);

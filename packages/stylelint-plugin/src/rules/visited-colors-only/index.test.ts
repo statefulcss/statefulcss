@@ -2,7 +2,7 @@ import { type ExpectedWarning, testRule } from "../../testing/test-rule.js";
 import visitedColorsOnly from "./index.js";
 
 const accepted =
-	'"color", "background-color", "fill", "stroke" and the border, outline, column-rule, text-decoration and text-emphasis colors';
+	'color properties, such as "color", "background-color", "fill", "stroke", "caret-color" and the border, outline, column-rule, text-decoration and text-emphasis colors';
 
 /** The advice for a custom property whose color property can't be told. */
 const unbound = (name: string): string =>
@@ -68,6 +68,10 @@ testRule(visitedColorsOnly, {
 						stroke: purple;
 						-webkit-text-fill-color: purple;
 						-webkit-text-stroke-color: purple;
+						-webkit-border-before-color: purple;
+						-webkit-border-after-color: purple;
+						-webkit-border-start-color: purple;
+						-webkit-border-end-color: purple;
 					}
 				}
 			`,
@@ -165,6 +169,12 @@ testRule(visitedColorsOnly, {
 				.link:where(:visited) { opacity: 0.8; }
 			`,
 			warnings: [ignored("opacity", '":visited"', 1, 25)],
+		},
+		// WebKit's logical border colors apply; their widths don't.
+		{
+			description: "a WebKit logical border width in :visited",
+			code: `a:visited { -webkit-border-before-color: purple; -webkit-border-before-width: 3px; }`,
+			warnings: [ignored("-webkit-border-before-width", '":visited"', 1, 50)],
 		},
 		{
 			description: "a list whose every selector needs :visited",

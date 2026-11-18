@@ -6,9 +6,9 @@ import type { Block, Condition, Declaration, Id, Model } from "@statefulcss/core
 import { listOf } from "../names.js";
 import { defineRule, type Finding } from "../rule.js";
 
-/** What `:visited` applies, as the messages say it. */
+/** What `:visited` applies, as the messages say it: examples, not the whole list. */
 const accepted =
-	'"color", "background-color", "fill", "stroke" and the border, outline, column-rule, text-decoration and text-emphasis colors';
+	'color properties, such as "color", "background-color", "fill", "stroke", "caret-color" and the border, outline, column-rule, text-decoration and text-emphasis colors';
 
 const messages = {
 	ignored: (property: string, place: string) =>
@@ -25,8 +25,9 @@ type Key = keyof typeof messages;
 
 /**
  * The properties `:visited` applies, from MDN's list: the color properties, with every border color's longhand and
- * logical form, and `fill` and `stroke`. `caret-color` and WebKit's text fill and stroke colors are kept too, since
- * Chromium applies them, so they're never reported as ignored.
+ * logical form, and `fill` and `stroke`. `caret-color`, WebKit's text fill and stroke colors and WebKit's logical
+ * border colors (`-webkit-border-before-color`) are kept too, since Chromium applies them (checked in Chrome 158 for
+ * the border colors), so they're never reported as ignored.
  */
 const applied = new Set([
 	"color",
@@ -51,6 +52,10 @@ const applied = new Set([
 	"stroke",
 	"-webkit-text-fill-color",
 	"-webkit-text-stroke-color",
+	"-webkit-border-before-color",
+	"-webkit-border-after-color",
+	"-webkit-border-start-color",
+	"-webkit-border-end-color",
 ]);
 
 /** Shorthands whose color part `:visited` applies, with that color's longhand. */

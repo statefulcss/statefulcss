@@ -10,6 +10,7 @@ import {
 } from "@statefulcss/core";
 
 import { ownershipOf } from "../ownership.js";
+import { isPage } from "../page.js";
 import { isNamePattern, matchesAny, type NamePattern } from "../patterns.js";
 import { defineRule, type Finding } from "../rule.js";
 
@@ -247,30 +248,4 @@ function componentOf(element: Element | undefined): number | undefined {
 /** What `:deep()` or `:global()` selects is a third party's element, whose names are the library's. */
 function skipped(element: Element): boolean {
 	return element.kind === "foreign";
-}
-
-/**
- * A selector for the document element, in any form: `:root` or `html`, alone or with a class, an attribute or a
- * pseudo-class on it (`:root[data-color-scheme="dark"]`, `html.dark`). What it declares is for the whole page.
- */
-function isPage(written: string): boolean {
-	const selector = written.trim().toLowerCase();
-	const subject = /^(?::root|html)(?![\w-])/.exec(selector);
-	return subject !== null && !hasCombinator(selector.slice(subject[0].length));
-}
-
-/** Whether a selector steps to another element: a combinator outside brackets, parentheses and quotes. */
-function hasCombinator(selector: string): boolean {
-	let depth = 0;
-	let quote: string | undefined;
-	for (let index = 0; index < selector.length; index++) {
-		const char = selector.charAt(index);
-		if (char === "\\") index++;
-		else if (quote) quote = char === quote ? undefined : quote;
-		else if (char === '"' || char === "'") quote = char;
-		else if (char === "(" || char === "[") depth++;
-		else if (char === ")" || char === "]") depth--;
-		else if (depth === 0 && /[\s>+~,]/.test(char)) return true;
-	}
-	return false;
 }

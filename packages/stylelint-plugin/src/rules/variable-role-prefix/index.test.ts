@@ -559,6 +559,48 @@ testRule(variableRolePrefix, {
 				},
 			],
 		},
+		// B16: the page is the selector's subject, wherever `:root` sits in its compound.
+		{
+			description: "a variable on a class with :root: the page, so a token",
+			code: `
+				.dark:root { --text: white; }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--text" with no role prefix. Declared for the whole page, it\'s a token: name it "--t-text".',
+					line: 1,
+					column: 14,
+					endLine: 1,
+					endColumn: 20,
+				},
+			],
+		},
+		{
+			description: "a variable on the page's pseudo-element: its own private, not a token",
+			code: `
+				html::before { --label: "Hi"; content: var(--label); }
+				:root::after { --mark: "*"; content: var(--mark); }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--label" with no role prefix. Name it "--_label", a private, if it\'s used only where it\'s declared.',
+					line: 1,
+					column: 16,
+					endLine: 1,
+					endColumn: 23,
+				},
+				{
+					message:
+						'Unexpected "--mark" with no role prefix. Name it "--_mark", a private, if it\'s used only where it\'s declared.',
+					line: 2,
+					column: 16,
+					endLine: 2,
+					endColumn: 22,
+				},
+			],
+		},
 		{
 			description: "a variable on html with a class: a token",
 			code: `

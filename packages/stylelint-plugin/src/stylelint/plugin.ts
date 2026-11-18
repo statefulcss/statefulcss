@@ -114,9 +114,12 @@ export function toPlugin(
 				if (!message) continue;
 			}
 			// A fix another fix has overtaken is left for the next run, and its problem is reported as usual. So is a
-			// single-problem fix in a `.vue` file: Stylelint 18 cuts it out of the wrong text there. `--fix` is right.
+			// single-problem fix in a `.vue` file: Stylelint 18 cuts it out of the wrong text there. So is one in a file
+			// that starts with a byte order mark: PostCSS counts offsets without it, and the editor's text has it.
+			// `--fix` is right in both.
 			const forEditor = config?.computeEditInfo === true && config.fix !== true;
-			const withheld = forEditor && result.root.type === "document";
+			const withheld =
+				forEditor && (result.root.type === "document" || result.root.source?.input.hasBOM === true);
 			const edits =
 				finding.edits?.length && !withheld && !overlap(finding.edits) && canApply(finding.edits)
 					? finding.edits

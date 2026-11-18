@@ -378,6 +378,131 @@ testRule(guard, {
 				}
 			`,
 		},
+		// L01: the wrapper is the file's own, with nothing taken from the first rule's spelling.
+		{
+			description: "a file with CRLF line endings keeps them",
+			code: [
+				".button {",
+				"\t--s-color: red;",
+				"\tcolor: var(--s-color);",
+				"\t&:hover { --s-color: blue; }",
+				"}",
+			].join("\r\n"),
+			warnings: [{ message: "Expected a guard", line: 4, column: 2 }],
+			fixed: [
+				".button {",
+				"\t--s-color: red;",
+				"\tcolor: var(--s-color);",
+				"\t&:where(:not(:disabled)) {",
+				"\t\t&:hover { --s-color: blue; }",
+				"\t}",
+				"}",
+			].join("\r\n"),
+		},
+		{
+			description: "a comment before the first rule's brace stays on that rule, not the wrapper",
+			code: `
+				.button {
+					--s-color: red;
+					color: var(--s-color);
+					&:hover /* for the label */ { --s-color: blue; }
+				}
+			`,
+			warnings: [{ message: "Expected a guard", line: 4, column: 2 }],
+			fixed: `
+				.button {
+					--s-color: red;
+					color: var(--s-color);
+					&:where(:not(:disabled)) {
+						&:hover /* for the label */ { --s-color: blue; }
+					}
+				}
+			`,
+		},
+		{
+			description:
+				"a line comment before the first rule's brace stays on that rule, its brace one level deeper",
+			skip: { css: "a line comment is SCSS", vue: "a line comment is SCSS" },
+			code: `
+				.button {
+					--s-color: red;
+					color: var(--s-color);
+					&:hover // for the label
+					{ --s-color: blue; }
+				}
+			`,
+			warnings: [{ message: "Expected a guard", line: 4, column: 2 }],
+			fixed: `
+				.button {
+					--s-color: red;
+					color: var(--s-color);
+					&:where(:not(:disabled)) {
+						&:hover // for the label
+						{ --s-color: blue; }
+					}
+				}
+			`,
+		},
+		{
+			description: "the first rule's optional semicolon stays on it, and the wrapper gets none",
+			code: `
+				.button {
+					--s-color: red;
+					color: var(--s-color);
+					&:hover { --s-color: blue; };
+				}
+			`,
+			warnings: [{ message: "Expected a guard", line: 4, column: 2 }],
+			fixed: `
+				.button {
+					--s-color: red;
+					color: var(--s-color);
+					&:where(:not(:disabled)) {
+						&:hover { --s-color: blue; };
+					}
+				}
+			`,
+		},
+		// L02: what a moved rule holds moves with it, byte for byte, one level deeper.
+		{
+			description: "a moved rule keeps its comments and the at-rules nested in it",
+			code: `
+				.button {
+					--s-color: red;
+					color: var(--s-color);
+					&:hover {
+						/* the label's color */
+						--s-color: blue;
+						@media (prefers-contrast: more) {
+							/* darker */
+							--s-color: navy;
+						}
+					}
+					&:active { --s-color: green; }
+				}
+			`,
+			warnings: [
+				{ message: "Expected a guard", line: 4, column: 2 },
+				{ message: "Expected a guard", line: 12, column: 2 },
+			],
+			fixed: `
+				.button {
+					--s-color: red;
+					color: var(--s-color);
+					&:where(:not(:disabled)) {
+						&:hover {
+							/* the label's color */
+							--s-color: blue;
+							@media (prefers-contrast: more) {
+								/* darker */
+								--s-color: navy;
+							}
+						}
+						&:active { --s-color: green; }
+					}
+				}
+			`,
+		},
 	],
 });
 
@@ -494,6 +619,36 @@ describe("the glue", () => {
 		expect((await lint(vue, project(), config, true)).code).toBe(
 			vue.wrap('.card [data-part="glyph"] { color: red; }'),
 		);
+	});
+
+	// B07: PostCSS counts offsets without the byte order mark, and the editor's text has it.
+	it("offers an editor no fix in a file that starts with a byte order mark, and --fix still makes it", async () => {
+		const config = configFor(guard);
+		const code = ".button { &:hover { color: blue; } }";
+		const wrapped = ".button { &:where(:not(:disabled)) { &:hover { color: blue; } } }";
+		for (const syntax of ["css", "scss", "vue"] as const) {
+			const plain = sourceFor(syntax, { code });
+			// The mark starts the file, before a `.vue` file's template too.
+			const marked = { ...plain, code: `\uFEFF${plain.code}` };
+			const fixOf = async (source: typeof plain) => {
+				const { results } = await stylelint.lint({
+					code: source.code,
+					codeFilename: path.join(project(), source.file),
+					config,
+					computeEditInfo: true,
+					...(source.customSyntax ? { customSyntax: source.customSyntax } : {}),
+				});
+				return results[0]?.warnings.map((warning) => warning.fix);
+			};
+			expect(await fixOf(marked)).toEqual([undefined]);
+			expect((await lint(marked, project(), config, true)).code?.replace(/^\uFEFF/, "")).toBe(
+				plain.wrap(wrapped),
+			);
+			// The control: with no mark, an editor gets the fix, except in a `.vue` file, and applying it wraps the hover.
+			const [fix] = (await fixOf(plain)) ?? [];
+			if (syntax === "vue") expect(fix).toBeUndefined();
+			else expect(fix && code.slice(0, fix.range[0]) + fix.text + code.slice(fix.range[1])).toBe(wrapped);
+		}
 	});
 
 	it("gives an editor one fix that holds every node the fix changes", async () => {

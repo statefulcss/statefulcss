@@ -143,17 +143,19 @@ export function apply(edits: readonly Edit[]): void {
 
 /**
  * Moves rules into a new rule written where the first stood. The new rule is a clone of the first, emptied, so no
- * PostCSS of the plugin's own is needed. Rules written on lines of their own move one level deeper, by the step
- * between the first rule's indentation and its parent's; rules written on one line stay on it.
+ * PostCSS of the plugin's own is needed; it keeps none of the first rule's own spelling (a comment before its `{`,
+ * an optional `;` after its `}`). Rules written on lines of their own move one level deeper, by the step between the
+ * first rule's indentation and its parent's, with the file's line ending; rules written on one line stay on it.
  */
 function wrap(rules: readonly Rule[], selector: string): void {
 	const [first] = rules;
 	const parent = first?.parent;
 	if (!first || !parent) return;
 	const before = first.raws.before ?? "";
+	const between = first.raws.between ?? " ";
 	const wrapper = first.clone({ selector });
 	wrapper.removeAll();
-	delete wrapper.raws.selector;
+	wrapper.raws = { before, between: /^\s*$/.test(between) ? between : " " };
 	parent.insertBefore(first, wrapper);
 
 	const newline = before.lastIndexOf("\n");
@@ -162,13 +164,14 @@ function wrap(rules: readonly Rule[], selector: string): void {
 		wrapper.append(...rules);
 		first.raws.before = " ";
 	} else {
+		const lineEnd = before[newline - 1] === "\r" ? "\r\n" : "\n";
 		const indent = before.slice(newline + 1);
 		const outer = indentOf(parent);
 		const step = indent.startsWith(outer) && indent.length > outer.length ? indent.slice(outer.length) : "\t";
-		wrapper.raws.after = `\n${indent}`;
+		wrapper.raws.after = `${lineEnd}${indent}`;
 		for (const rule of rules) deepen(rule, step);
 		wrapper.append(...rules);
-		first.raws.before = `\n${indent}${step}`;
+		first.raws.before = `${lineEnd}${indent}${step}`;
 	}
 	for (const rule of rules) wrappers.set(rule, wrapper);
 }
@@ -183,10 +186,10 @@ function indentOf(container: Container): string {
 
 /** Indents a node and everything in it by one more step: each line break that starts a written line. */
 function deepen(node: Node, step: string): void {
-	const raws = node.raws as { before?: string; after?: string };
-	for (const field of ["before", "after"] as const) {
+	const raws = node.raws as { before?: string; between?: string; after?: string };
+	for (const field of ["before", "between", "after"] as const) {
 		const raw = raws[field];
-		if (raw !== undefined) raws[field] = raw.replace(/\n(?!\n)/g, `\n${step}`);
+		if (raw !== undefined) raws[field] = raw.replace(/\n(?!\r?\n)/g, `\n${step}`);
 	}
 	if ("nodes" in node && Array.isArray(node.nodes))
 		for (const child of node.nodes as Node[]) deepen(child, step);

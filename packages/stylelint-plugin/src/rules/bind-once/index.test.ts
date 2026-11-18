@@ -297,6 +297,33 @@ testRule(bindOnce, {
 			],
 		},
 		{
+			description: "two states change a pseudo-element that declares the property nowhere else",
+			code: `
+				.link {
+					&:hover::after { opacity: 0.5; }
+					&:active::after { opacity: 1; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "opacity" declared on ".link::after" in ":hover" and again in ":active". Bind it once with "opacity: var(--p-after-opacity)", and let ".link" declare "--p-after-opacity" and set it in each.',
+					line: 2,
+					column: 19,
+					endLine: 2,
+					endColumn: 26,
+				},
+				{
+					message:
+						'Unexpected "opacity" declared on ".link::after" in ":active" and again in ":hover". Bind it once with "opacity: var(--p-after-opacity)", and let ".link" declare "--p-after-opacity" and set it in each.',
+					line: 3,
+					column: 20,
+					endLine: 3,
+					endColumn: 27,
+				},
+			],
+		},
+		{
 			description: "an element with state variables declares a property directly in a state",
 			code: `
 				.button {

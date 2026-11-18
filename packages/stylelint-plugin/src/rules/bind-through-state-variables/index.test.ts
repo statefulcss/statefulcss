@@ -140,6 +140,15 @@ testRule(bindThroughStateVariables, {
 				}
 			`,
 		},
+		// A private set in :visited doesn't change, since the browser ignores it there; only visited-colors-only reports it.
+		{
+			description: "a private set in :visited, read by color",
+			code: `
+				a { --_ink: navy; color: var(--_ink); }
+				a:visited { --_ink: purple; }
+				.link { --_ink: navy; color: var(--_ink); &:visited { --_ink: purple; } &:visited:hover { --_ink: red; } }
+			`,
+		},
 		{
 			description: "a private changed in a block of unknown kind",
 			code: `
@@ -225,6 +234,23 @@ testRule(bindThroughStateVariables, {
 					column: 20,
 					endLine: 3,
 					endColumn: 44,
+				},
+			],
+		},
+		// The same private set on hover does change.
+		{
+			description: "a private set on hover, read by color",
+			code: `
+				.link { --_ink: navy; color: var(--_ink); &:visited { --_ink: purple; } &:hover { --_ink: red; } }
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "color" reading "--_ink", which changes in ":hover". Move this value into the default of "--s-color" on ".link", and read "var(--s-color)" instead.',
+					line: 1,
+					column: 30,
+					endLine: 1,
+					endColumn: 41,
 				},
 			],
 		},

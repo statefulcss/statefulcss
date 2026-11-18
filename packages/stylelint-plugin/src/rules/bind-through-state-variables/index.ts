@@ -111,7 +111,7 @@ export default defineRule<Record<never, never>, Key>({
 				const declaration = model.declarations[id];
 				const block = declaration && model.blocks[declaration.block];
 				if (!block || block.kind === "own" || block.kind === "supports" || block.kind === "unknown") continue;
-				if (block.kind === "state" && block.groups.includes("visited")) continue;
+				if (visited(block)) continue;
 				if (block.conditions.some((condition) => condition.kind === "variant"))
 					variants.push([declaration, block]);
 				else if (block.kind === "state") states.push(block);
@@ -173,7 +173,8 @@ function skipped(model: Model, element: Element): boolean {
 /**
  * Where a changing variable changes: its own variant and state blocks, or, when it has none, those of the first
  * changing variable it reads or takes with `inherit`, with the names read on the way. Undefined when no change is found
- * (a loop of reads).
+ * (a loop of reads). A write in `:visited` changes nothing: the browser ignores custom properties there, and
+ * `visited-colors-only` reports it.
  */
 function changeOf(
 	model: Model,
@@ -185,13 +186,13 @@ function changeOf(
 	const blocks = variable.changes.flatMap((id) => {
 		const declaration = model.declarations[id];
 		const block = declaration && model.blocks[declaration.block];
-		return block ? [block] : [];
+		return block && !visited(block) ? [block] : [];
 	});
 	if (blocks.length > 0) return { blocks, chain: [] };
 	const ownership = ownershipOf(model);
 	for (const id of variable.writes) {
 		const declaration = model.declarations[id];
-		if (!declaration) continue;
+		if (!declaration || visited(model.blocks[declaration.block])) continue;
 		if (declaration.inherits) {
 			const taken = ownership.taken(variable);
 			const found = taken && changeOf(model, taken, seen);
@@ -207,6 +208,11 @@ function changeOf(
 		}
 	}
 	return undefined;
+}
+
+/** Whether a block is in `:visited`, where the browser ignores what a variable is set to. */
+function visited(block: Block | undefined): boolean {
+	return block?.kind === "state" && block.groups.includes("visited");
 }
 
 /** Conditions as a selector writes them, one after another. */

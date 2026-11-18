@@ -1,5 +1,5 @@
 // `no-abbreviations` (rule 8): names other people and tools read use full words. It reports the words of a name that
-// are on a deny list of known abbreviations, and suggests the full word: in token and component variable names (and
+// are on a deny list of known abbreviations, and suggests the full word, or the words it could stand for: in token and component variable names (and
 // privates' with `privates: true`), component class names, and the names and values of the `data-*` attributes the
 // CSS selects on.
 import { type Model, rolePrefixes, type Role } from "@statefulcss/core";
@@ -8,7 +8,7 @@ import type { AtRule, Container, Rule } from "postcss";
 import { listOf } from "../names.js";
 import { isNamePattern, matchesAny, type NamePattern } from "../patterns.js";
 import { defineRule, type Finding, type Place } from "../rule.js";
-import { abbreviations, fullSize } from "./words.js";
+import { abbreviations, fullSize, propertyOnly } from "./words.js";
 
 const messages = {
 	word: (written: string, suggested: string) =>
@@ -17,6 +17,13 @@ const messages = {
 		`Unexpected abbreviation "${abbreviation}" in "${written}". Write "${suggested}" instead.`,
 	several: (abbreviations: string, written: string, suggested: string) =>
 		`Unexpected abbreviations ${abbreviations} in "${written}". Write "${suggested}" instead.`,
+	// An abbreviation with more than one common meaning: its candidates, not one guess.
+	wordAmbiguous: (written: string, candidates: string) =>
+		`Unexpected abbreviation "${written}". Write the full word, such as ${candidates}.`,
+	oneAmbiguous: (abbreviation: string, written: string, candidates: string) =>
+		`Unexpected abbreviation "${abbreviation}" in "${written}". Write the full word, such as ${candidates}.`,
+	severalAmbiguous: (abbreviations: string, written: string, choices: string) =>
+		`Unexpected abbreviations ${abbreviations} in "${written}". Write each word in full: ${choices}.`,
 };
 
 type Key = keyof typeof messages;
@@ -44,17 +51,20 @@ export default defineRule<Options, Key>({
 		sizes: { default: "short", accepts: (value) => value === "short" || value === "full" },
 	},
 	check(model, { settings, options }) {
-		const fullOf = (word: string): string | undefined => {
+		/** The full words a word could stand for, or undefined when it's no abbreviation where it's written. */
+		const fullOf = (word: string, inProperty: boolean): readonly string[] | undefined => {
 			if (matchesAny(word, options.ignoreWords) || matchesAny(word.toLowerCase(), options.ignoreWords))
 				return undefined;
 			const lower = word.toLowerCase();
-			return abbreviations.get(lower) ?? (options.sizes === "full" ? fullSize(lower) : undefined);
+			if (!inProperty && propertyOnly.has(lower)) return undefined;
+			const size = options.sizes === "full" ? fullSize(lower) : undefined;
+			return abbreviations.get(lower) ?? (size === undefined ? undefined : [size]);
 		};
 		const checked = (role: Role | undefined): boolean =>
 			role !== undefined && (publicRoles.has(role) || (options.privates && role === "private"));
 		const findings: Finding<Key>[] = [];
-		const report = (written: string, from: number, at: Place): void => {
-			const finding = findingOf(written, from, at, fullOf);
+		const report = (written: string, from: number, at: Place, inProperty = false): void => {
+			const finding = findingOf(written, from, at, (word) => fullOf(word, inProperty));
 			if (finding) findings.push(finding);
 		};
 
@@ -67,13 +77,13 @@ export default defineRule<Options, Key>({
 			reported.add(declaration.written);
 			const name = declaration.property;
 			if (!unreadable.test(name))
-				report(name, prefixLength(name), { node: declaration.node, part: "property" });
+				report(name, prefixLength(name), { node: declaration.node, part: "property" }, true);
 		}
 		for (const registration of model.registrations) {
 			const { name, node } = registration;
 			const index = node.params.indexOf(name);
 			if (!checked(registration.role) || unreadable.test(name) || index === -1) continue;
-			report(name, prefixLength(name), { node, index, endIndex: index + name.length });
+			report(name, prefixLength(name), { node, index, endIndex: index + name.length }, true);
 		}
 
 		// Component classes and `data-*` attributes, everywhere a selector writes them.
@@ -97,8 +107,13 @@ export default defineRule<Options, Key>({
 					const lower = one.text.toLowerCase();
 					// An attribute a setting names is the project's choice, written in its config.
 					if (lower.startsWith("data-") && !named.has(lower)) report(one.text, "data-".length, at);
-				} else if (one.attribute.startsWith("data-") || named.has(one.attribute)) {
-					// The platform's attributes (`type`, `aria-*`, `dir`) take the platform's words.
+				} else if (
+					(one.attribute.startsWith("data-") || named.has(one.attribute)) &&
+					!one.partial &&
+					!codes.test(one.attribute)
+				) {
+					// The platform's attributes (`type`, `aria-*`, `dir`) take the platform's words. A value matched in
+					// part (`[data-file$=".txt"]`) or a language code (`[data-lang="bg"]`) is data, not a name.
 					report(one.text, 0, at);
 				}
 			}
@@ -106,6 +121,9 @@ export default defineRule<Options, Key>({
 		return findings;
 	},
 });
+
+/** An attribute whose values are language or locale codes, not words: `data-lang`, `data-locale`, `data-ui-language`. */
+const codes = /(?:lang|locale|language)$/;
 
 /** A name SCSS, Less or a template builds, which can't be read. */
 const unreadable = /[#$@{}\\]/;
@@ -121,23 +139,45 @@ function findingOf(
 	written: string,
 	from: number,
 	at: Place,
-	fullOf: (word: string) => string | undefined,
+	fullOf: (word: string) => readonly string[] | undefined,
 ): Finding<Key> | undefined {
-	const found: string[] = [];
+	const found: { readonly text: string; readonly candidates: readonly string[] }[] = [];
 	let suggested = written;
 	// From the end, so each replacement leaves the earlier words' offsets as they were.
 	for (const word of wordsOf(written).reverse()) {
 		if (word.start < from) continue;
 		const full = fullOf(word.text);
-		if (!full) continue;
-		found.unshift(word.text);
-		suggested = suggested.slice(0, word.start) + cased(full, word) + suggested.slice(word.end);
+		const [likeliest] = full ?? [];
+		if (!full || likeliest === undefined) continue;
+		const candidates = full.map((one) => cased(one, word));
+		found.unshift({ text: word.text, candidates });
+		suggested = suggested.slice(0, word.start) + cased(likeliest, word) + suggested.slice(word.end);
 	}
 	const [first] = found;
 	if (first === undefined) return undefined;
-	if (found.length === 1 && first === written) return { message: "word", args: [written, suggested], at };
-	if (new Set(found).size === 1) return { message: "one", args: [first, written, suggested], at };
-	return { message: "several", args: [listOf(found.map((word) => `"${word}"`)), written, suggested], at };
+	const whole = found.length === 1 && first.text === written;
+	const alone = new Set(found.map(({ text }) => text)).size === 1;
+	const quoted = (texts: readonly string[], conjunction: "and" | "or" = "and"): string =>
+		listOf(
+			texts.map((text) => `"${text}"`),
+			conjunction,
+		);
+	if (found.some(({ candidates }) => candidates.length > 1)) {
+		if (whole) return { message: "wordAmbiguous", args: [written, quoted(first.candidates, "or")], at };
+		if (alone)
+			return { message: "oneAmbiguous", args: [first.text, written, quoted(first.candidates, "or")], at };
+		const choices = [...new Map(found.map((one) => [one.text, one])).values()]
+			.map(({ text, candidates }) => `"${text}" as ${quoted(candidates, "or")}`)
+			.join("; ");
+		return {
+			message: "severalAmbiguous",
+			args: [quoted(found.map(({ text }) => text)), written, choices],
+			at,
+		};
+	}
+	if (whole) return { message: "word", args: [written, suggested], at };
+	if (alone) return { message: "one", args: [first.text, written, suggested], at };
+	return { message: "several", args: [quoted(found.map(({ text }) => text)), written, suggested], at };
 }
 
 interface Word {
@@ -204,13 +244,20 @@ function selectorsOf(model: Model): { node: Rule | AtRule; text: string }[] {
 type Written =
 	| { readonly kind: "class"; readonly text: string; readonly index: number }
 	| { readonly kind: "name"; readonly text: string; readonly index: number }
-	| { readonly kind: "value"; readonly text: string; readonly index: number; readonly attribute: string };
+	| {
+			readonly kind: "value";
+			readonly text: string;
+			readonly index: number;
+			readonly attribute: string;
+			/** Matched in part, with `^=`, `$=`, `*=` or `|=`: a prefix, suffix or piece of the data, not a name. */
+			readonly partial: boolean;
+	  };
 
 /** What another component's styles select, in Vue's and CSS Modules' forms; with no bracket, the rest of the selector. */
 const foreignFunction = /^::?(?:deep|global|slotted|v-deep|v-global|v-slotted)(?![\w-])/i;
 
 /**
- * The classes and attributes a selector writes, outside strings and outside what `:deep()`, `:global()` or
+ * The classes and attributes a selector writes, outside strings and comments and outside what `:deep()`, `:global()` or
  * `:slotted()` select. A name with an escape or interpolation is left out, since it can't be read as written.
  */
 function writtenIn(text: string): Written[] {
@@ -220,6 +267,8 @@ function writtenIn(text: string): Written[] {
 		const character = text.charAt(index);
 		if (character === "\\") {
 			index += 2;
+		} else if (text.startsWith("/*", index)) {
+			index = endOfComment(text, index);
 		} else if (character === '"' || character === "'") {
 			index = endOfString(text, index);
 		} else if (character === ":" && foreignFunction.test(text.slice(index))) {
@@ -246,18 +295,24 @@ function writtenIn(text: string): Written[] {
 /** An attribute selector's name and value, from the text inside its brackets. */
 function attributeIn(inner: string, offset: number): Written[] {
 	const match =
-		/^(\s*)([\w-]+)\s*(?:[~|^$*]?=\s*(?:"([^"\\]*)"|'([^'\\]*)'|([^\s"'\\]+)))?(?:\s+[is])?\s*$/di.exec(
+		/^(\s*)([\w-]+)\s*(?:([~|^$*]?)=\s*(?:"([^"\\]*)"|'([^'\\]*)'|([^\s"'\\]+)))?(?:\s+[is])?\s*$/di.exec(
 			inner,
 		);
 	const nameAt = match?.indices?.[2];
 	if (!match?.[2] || !nameAt) return [];
 	const attribute = match[2].toLowerCase();
 	const found: Written[] = [{ kind: "name", text: match[2], index: offset + nameAt[0] }];
-	const group = [3, 4, 5].find((one) => match[one] !== undefined);
+	const group = [4, 5, 6].find((one) => match[one] !== undefined);
 	const value = group === undefined ? undefined : match[group];
 	const valueAt = group === undefined ? undefined : match.indices?.[group];
 	if (value && valueAt && !unreadable.test(value))
-		found.push({ kind: "value", text: value, index: offset + valueAt[0], attribute });
+		found.push({
+			kind: "value",
+			text: value,
+			index: offset + valueAt[0],
+			attribute,
+			partial: /^[|^$*]$/.test(match[3] ?? ""),
+		});
 	return found;
 }
 
@@ -267,6 +322,12 @@ function endOfString(text: string, start: number): number {
 	let index = start + 1;
 	while (index < text.length && text.charAt(index) !== quote) index += text.charAt(index) === "\\" ? 2 : 1;
 	return index + 1;
+}
+
+/** The offset just after a comment that opens at `start`, or the end of the text. */
+function endOfComment(text: string, start: number): number {
+	const end = text.indexOf("*/", start + 2);
+	return end === -1 ? text.length : end + 2;
 }
 
 /** The offset of the bracket that closes the one at `start`, or the end of the text. */
@@ -285,6 +346,10 @@ function closing(text: string, start: number): number {
 			index = endOfString(text, index);
 			continue;
 		}
+		if (text.startsWith("/*", index)) {
+			index = endOfComment(text, index);
+			continue;
+		}
 		if (character === open) depth += 1;
 		else if (character === close && --depth === 0) return index;
 		index += 1;
@@ -299,6 +364,7 @@ function nextBranch(text: string, start: number): number {
 		const character = text.charAt(index);
 		if (character === "\\") index += 2;
 		else if (character === '"' || character === "'") index = endOfString(text, index);
+		else if (text.startsWith("/*", index)) index = endOfComment(text, index);
 		else if (character === "(" || character === "[") index = closing(text, index) + 1;
 		else if (character === ",") return index;
 		else index += 1;

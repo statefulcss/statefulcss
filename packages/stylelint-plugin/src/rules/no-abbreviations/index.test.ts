@@ -116,6 +116,38 @@ testRule(noAbbreviations, {
 			`,
 		},
 		{
+			description: "pad as a noun, outside a custom property's name",
+			code: `
+				.signature-pad { display: block; }
+				.number-pad { display: grid; }
+				.drum { &[data-kind="pad"] { color: red; } }
+			`,
+		},
+		{
+			description: "a value matched in part, and language and locale codes",
+			code: `
+				.file {
+					&[data-file$=".txt"] { color: red; }
+					&[data-name^="btn"] { color: red; }
+					&[data-path*="img/bg"] { color: red; }
+					&[data-region|="sec"] { color: red; }
+					&[data-lang="bg"] { color: red; }
+					&[data-ui-locale="bg"] { color: red; }
+					&[data-language="bg"] { color: red; }
+				}
+			`,
+		},
+		{
+			description: "comments inside a selector and a scope's root",
+			code: `
+				.card { display: grid; }
+				.card/* old [data-btn=prim] */:hover { color: red; }
+				@scope (.card/* [data-btn=prim] */) to ([data-component]) {
+					p { color: red; }
+				}
+			`,
+		},
+		{
 			description: "a name SCSS builds",
 			code: `
 				$side: pad;
@@ -245,6 +277,92 @@ testRule(noAbbreviations, {
 					27,
 					39,
 				),
+			],
+		},
+		{
+			description: "an ambiguous abbreviation, as a whole value: its candidates",
+			code: `.list { &[data-sort="desc"] { color: red; } }`,
+			warnings: [
+				on(
+					`Unexpected abbreviation "desc". Write the full word, such as "description" or "descending".`,
+					1,
+					22,
+					26,
+				),
+			],
+		},
+		{
+			description: "an ambiguous abbreviation in a component's class",
+			code: `.acc-panel { display: block; }`,
+			warnings: [
+				on(
+					`Unexpected abbreviation "acc" in ".acc-panel". Write the full word, such as "accent", "accordion" or "account".`,
+					1,
+					1,
+					11,
+				),
+			],
+		},
+		{
+			description: "an ambiguous abbreviation beside another, and in its case",
+			code: `
+				.card { --c-card-sec-bg: red; }
+				.tab { &[data-tab-sel="Dis"] { color: red; } }
+			`,
+			warnings: [
+				on(
+					`Unexpected abbreviations "sec" and "bg" in "--c-card-sec-bg". Write each word in full: "sec" as "secondary", "section" or "second"; "bg" as "background".`,
+					1,
+					9,
+					24,
+				),
+				on(
+					`Unexpected abbreviation "sel" in "data-tab-sel". Write the full word, such as "selected", "select" or "selection".`,
+					2,
+					10,
+					22,
+				),
+				on(`Unexpected abbreviation "Dis". Write the full word, such as "Disabled" or "Display".`, 2, 24, 27),
+			],
+		},
+		{
+			description: "pad in a custom property's name, beside pad as a noun",
+			code: `.signature-pad { --c-signature-pad-gap: 1rem; }`,
+			warnings: [
+				on(
+					`Unexpected abbreviation "pad" in "--c-signature-pad-gap". Write "--c-signature-padding-gap" instead.`,
+					1,
+					18,
+					39,
+				),
+			],
+		},
+		{
+			description: "a value matched whole or as a word in a list, beside ones matched in part",
+			code: `
+				.file {
+					&[data-file="txt"] { color: red; }
+					&[data-tags~="btn"] { color: red; }
+					&[data-file$=".txt"] { color: red; }
+				}
+			`,
+			warnings: [
+				on(`Unexpected abbreviation "txt". Write "text" instead.`, 2, 15, 18),
+				on(`Unexpected abbreviation "btn". Write "button" instead.`, 3, 16, 19),
+			],
+		},
+		{
+			description: "an attribute after a comment in a selector, and one in a scope's root",
+			code: `
+				.card { display: grid; }
+				.card/* old */[data-btn="primary"]:hover { color: red; }
+				@scope (.card/* note */[data-sz="x"]) to ([data-component]) {
+					p { color: red; }
+				}
+			`,
+			warnings: [
+				on(`Unexpected abbreviation "btn" in "data-btn". Write "data-button" instead.`, 2, 16, 24),
+				on(`Unexpected abbreviation "sz" in "data-sz". Write "data-size" instead.`, 3, 25, 32),
 			],
 		},
 		{

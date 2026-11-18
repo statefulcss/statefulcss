@@ -26,10 +26,10 @@ export function nameOf(model: Model, settings: Settings, id: Id): string {
 	return `"${element.key}"`;
 }
 
-/** Each distinct text once, joined: `a`, `a and b`, `a, b and c`. */
-export function listOf(texts: readonly string[]): string {
+/** Each distinct text once, joined: `a`, `a and b`, `a, b and c`, or with `or`: `a, b or c`. */
+export function listOf(texts: readonly string[], conjunction: "and" | "or" = "and"): string {
 	const distinct = [...new Set(texts)];
 	return distinct.length < 2
 		? distinct.join("")
-		: `${distinct.slice(0, -1).join(", ")} and ${distinct.at(-1) ?? ""}`;
+		: `${distinct.slice(0, -1).join(", ")} ${conjunction} ${distinct.at(-1) ?? ""}`;
 }

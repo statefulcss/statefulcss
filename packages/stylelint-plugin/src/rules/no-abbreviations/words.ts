@@ -5,7 +5,7 @@
 // `z`), and anything a project could mean as a full word (`act`, `pos`, `warn`, `wrap`).
 
 /** Each abbreviation, lowercase, with its full word. */
-export const abbreviations: ReadonlyMap<string, string> = new Map([
+const single: ReadonlyMap<string, string> = new Map([
 	// Colors and surfaces
 	["bg", "background"],
 	["fg", "foreground"],
@@ -15,17 +15,13 @@ export const abbreviations: ReadonlyMap<string, string> = new Map([
 	["bdr", "border"],
 	["shdw", "shadow"],
 	["opac", "opacity"],
-	["acc", "accent"],
 	// Emphasis and states
 	["prim", "primary"],
 	["prm", "primary"],
-	["sec", "secondary"],
 	["tert", "tertiary"],
 	["emph", "emphasis"],
 	["hov", "hover"],
 	["hvr", "hover"],
-	["dis", "disabled"],
-	["sel", "selected"],
 	["err", "error"],
 	["dflt", "default"],
 	// Space and size
@@ -48,7 +44,6 @@ export const abbreviations: ReadonlyMap<string, string> = new Map([
 	["lnk", "link"],
 	["ico", "icon"],
 	["msg", "message"],
-	["desc", "description"],
 	["hdr", "header"],
 	["ftr", "footer"],
 	["itm", "item"],
@@ -58,6 +53,31 @@ export const abbreviations: ReadonlyMap<string, string> = new Map([
 	["dlg", "dialog"],
 	["tbl", "table"],
 ]);
+
+/**
+ * Abbreviations with more than one common meaning, lowercase, with the full words they could stand for, the likeliest
+ * first. The message lists them all rather than guess: `[data-sort="desc"]` is "descending", `.acc-panel` may be an
+ * accordion.
+ */
+const several: ReadonlyMap<string, readonly string[]> = new Map([
+	["acc", ["accent", "accordion", "account"]],
+	["sec", ["secondary", "section", "second"]],
+	["sel", ["selected", "select", "selection"]],
+	["desc", ["description", "descending"]],
+	["dis", ["disabled", "display"]],
+]);
+
+/** Each abbreviation, lowercase, with the full words it could stand for: one, or several when it's ambiguous. */
+export const abbreviations: ReadonlyMap<string, readonly string[]> = new Map([
+	...[...single].map(([word, full]): [string, readonly string[]] => [word, [full]]),
+	...several,
+]);
+
+/**
+ * Abbreviations reported only in a custom property's name: elsewhere they're often a full word. `.signature-pad` and
+ * `[data-kind="pad"]` name a pad; `--c-card-pad` is the card's padding.
+ */
+export const propertyOnly: ReadonlySet<string> = new Set(["pad"]);
 
 /**
  * The full form of a T-shirt size, in CSS's own words for font sizes (`x-small`, `xx-large`), or undefined for a word

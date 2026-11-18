@@ -396,8 +396,12 @@ function startOf(compound: Compound, fallback: Rule | AtRule): Position {
 	return first ? positionOf(first) : { node: fallback, index: 0, endIndex: 0 };
 }
 
-/** What names a component in a compound: its first class, else its component attribute's value. */
+/**
+ * What names a component in a compound: its first class, else its component attribute's value. The document element
+ * is never a component: a class on it (`html.dark`, `:root.dark`) is a condition of the page.
+ */
 export function identityOf(compound: Compound, names: Names): Identity | undefined {
+	if (isDocumentElement(compound)) return undefined;
 	let className: Part | undefined;
 	let attribute: Part | undefined;
 	for (const part of compound.parts) {
@@ -417,6 +421,16 @@ export function identityOf(compound: Compound, names: Names): Identity | undefin
 	if (attribute?.node.type === "attribute" && attribute.node.value)
 		return { kind: "attribute", value: attribute.node.value, at: positionOf(attribute) };
 	return undefined;
+}
+
+/** Whether a compound names the document element, with `html` or `:root`, before any pseudo-element. */
+function isDocumentElement(compound: Compound): boolean {
+	for (const { node } of compound.parts) {
+		if (isPseudoElement(node)) return false;
+		if (node.type === "tag" && node.value.toLowerCase() === "html") return true;
+		if (node.type === "pseudo" && node.value.toLowerCase() === ":root") return true;
+	}
+	return false;
 }
 
 /** A compound split into what names the element and what narrows it. */
@@ -455,6 +469,8 @@ function splitCompound(
 	// wherever `:is()` stands in it. On an element nothing else names (`:where(ul, ol)`), it's what names it.
 	const typeIsVariant =
 		!role.isContext && compound.parts.some((current) => namesElement(current.node, names));
+	// A class on the document element (`html.dark`) is a condition of the page: the document element is never a component.
+	const documentElement = isDocumentElement(compound);
 
 	for (const [index, current] of compound.parts.entries()) {
 		const { node } = current;
@@ -467,7 +483,7 @@ function splitCompound(
 		else if (node.type === "class") {
 			// An extra class on the same element, or a class on what comes before the root, is a condition core
 			// can't classify.
-			if (className || role.isContext) conditions.push(current);
+			if (className || role.isContext || documentElement) conditions.push(current);
 			else identity.push((className = current));
 		} else if (node.type === "attribute") {
 			const name = node.attribute.toLowerCase();

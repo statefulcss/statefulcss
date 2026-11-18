@@ -704,6 +704,32 @@ describe("elements that belong to no component", () => {
 		]);
 	});
 
+	// A class on the document element is a condition of the page, read as `html[data-color-scheme="dark"]` is, not a
+	// component: the document element is never one.
+	inEverySyntax("a class on the document element is a condition of the page", ({ read }) => {
+		const model = read(`
+			html.dark { --s-opacity: 1; opacity: var(--s-opacity); }
+			html.dark:hover { --s-opacity: 0.9; }
+			:root.dark[inert] { --s-opacity: 0.5; }
+			HTML.dark .card { color: red; }
+		`);
+		// `HTML.dark` is the Card's context. Written on its own, `.dark .card` stays a component (the ownership tests).
+		expect(components(model)).toEqual([["class", "card", "class", true]]);
+		expect(blocks(model)).toEqual([
+			["html.dark", "html", "direct"],
+			["html.dark:hover", "html", "direct"],
+			[":root.dark[inert]", ":root", "direct"],
+			["HTML.dark .card", ".card", "direct"],
+		]);
+		expect(model.blocks.map((block) => block.conditions.map((condition) => condition.text))).toEqual([
+			[".dark"],
+			[".dark", ":hover"],
+			[".dark", "[inert]"],
+			[".dark"],
+		]);
+		expect(model.blocks[3]?.conditions.map((condition) => condition.on)).toEqual(["context"]);
+	});
+
 	// Source: the global-elements decision: in a component, the same attributes are conditions.
 	inEverySyntax(
 		"theme and color-scheme attributes inside a component's @scope are conditions",

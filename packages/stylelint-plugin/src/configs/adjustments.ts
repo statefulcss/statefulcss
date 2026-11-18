@@ -1,14 +1,14 @@
 // The one source of both configs, so `recommended` and `compatible` can't disagree.
 import type stylelint from "stylelint";
 
-import { rules } from "../rules/index.js";
+import { everyRule } from "../rules/index.js";
 import { ruleNameOf } from "../stylelint/plugin.js";
 
 type Rules = NonNullable<stylelint.Config["rules"]>;
 
-/** The Stateful CSS rules, each at its own level. */
+/** The Stateful CSS rules, each at its own level, the config check included. */
 export const statefulRules: Rules = Object.fromEntries(
-	rules.map((rule) => [
+	everyRule.map((rule) => [
 		ruleNameOf(rule),
 		rule.severity === "warning" ? [true, { severity: "warning" }] : true,
 	]),

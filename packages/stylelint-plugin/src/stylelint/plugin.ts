@@ -190,9 +190,13 @@ const stylelintOptions = new Set(["severity", "message", "url", "reportDisables"
 /** The settings a project writes in `statefulcss.config`, which no rule takes as an option. */
 const settingNames = new Set(Object.keys(defaults));
 
-function validOptions(
+/**
+ * Whether a rule's options can be used, saying why not as Stylelint says an invalid option. A project setting
+ * written as an option is refused even with validation off.
+ */
+export function validOptions(
 	result: stylelint.PostcssResult,
-	definition: RuleDefinition,
+	definition: Pick<RuleDefinition, "name" | "options">,
 	primary: unknown,
 	secondary: unknown,
 ): boolean {
@@ -254,7 +258,9 @@ interface OptionDefinition {
 	readonly accepts: (value: unknown) => boolean;
 }
 
-function optionDefinitions(definition: RuleDefinition): (readonly [string, OptionDefinition])[] {
+function optionDefinitions(
+	definition: Pick<RuleDefinition, "options">,
+): (readonly [string, OptionDefinition])[] {
 	return Object.entries(definition.options ?? {}).map(([name, option]) => [name, option as OptionDefinition]);
 }
 
@@ -284,6 +290,6 @@ function quoted(value: unknown): string {
 	return typeof value === "string" ? `"${value}"` : `"${JSON.stringify(value)}"`;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -2,7 +2,7 @@
 
 A component's parts are styled only inside its `@scope (root) to ([data-component])`, written after its root block.
 
-Severity: error. Fixable: yes, for `&` and `:scope` before a part inside a scope.
+Severity: error. Fixable: no.
 
 ## Checks
 
@@ -16,11 +16,12 @@ Severity: error. Fixable: yes, for `&` and `:scope` before a part inside a scope
 - A component's scope has `to ([data-component])` as its limit: no other limit, and not none.
 - A component's scope is written after its root block, not before it and not inside it.
 - Inside a scope, `:scope` appears only as `:scope >`:
-  - `& >` is written `:scope >`. `--fix` writes it;
-  - `&` or `:scope` before a descendant (`:scope [data-part="icon"]`) is left out. `--fix` removes it;
-  - `--fix` changes only what one written selector holds: it leaves a `&` that an outer rule wrote, and a comment between `:scope` and the next compound, for the author;
-  - `:scope` with a condition (`:scope:hover`, `:scope[data-size="small"] [data-part="icon"]`, `&:not(.quiet) >`) is a variant or a state of the root, even when it can't be told which. It belongs in the root block. The message quotes the whole condition as written, with every bracket it opens closed (`:hover:where(:not(:disabled))`), and `--fix` leaves it;
-  - `:scope` on its own (`:scope { … }`, `:scope::after`), and declarations written directly in the scope, style the root. They belong in the root block.
+  - `& >` is written `:scope >`;
+  - `&` or `:scope` before a descendant (`:scope [data-part="icon"]`) is left out;
+  - `:scope +` and `& ~` select a sibling of the root, which is outside the scope. The message says so;
+  - `:scope` with a condition (`:scope:hover`, `:scope[data-size="small"] [data-part="icon"]`, `&:not(.quiet) >`) is a variant or a state of the root, even when it can't be told which. It belongs in the root block. The message quotes the whole condition as written, with every bracket it opens closed (`:hover:where(:not(:disabled))`);
+  - `:scope` on its own (`:scope { … }`), and declarations written directly in the scope, style the root. They belong in the root block. A pseudo-element of the root (`:scope::after`) moves into the root block as a whole rule, `&::after`.
+- There's no `--fix`. Removing `:scope ` lowers a rule's specificity, and turning `& >` into `:scope >` raises it, so either can change which rule wins against another in the scope. The author makes the change and checks it.
 - The same holds for the scope's own root: a condition there (`@scope (.button:hover) to ([data-component])`) is a variant or state selecting the parts. It belongs in the root block, setting part variables that the parts read.
 - A `[data-part]` attribute on a component root's own compound (`.tab[data-part="tab"]`) is reported: an element is a component or a part, never both.
 - One finding for each written thing: a selector list under two components (`.card, .button { & [data-part="icon"] { … } }`) gets one finding that names both scopes.
@@ -194,7 +195,7 @@ Reported:
 }
 ```
 
-Fixed, by `--fix`:
+Fixed, by hand:
 
 ```css
 @scope (.button) to ([data-component]) {

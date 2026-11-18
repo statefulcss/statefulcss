@@ -74,6 +74,31 @@ testRule(partsInScope, {
 				}
 			`,
 		},
+		// The repairs the messages give for the scope's root written before a part, a sibling or a pseudo-element.
+		{
+			description: ":scope before a part and & > before a class rule they compete with",
+			code: `
+				@scope (.card) to ([data-component]) {
+					p { color: red; }
+					.caption { color: blue; }
+					:scope > [data-part="title"] { color: blue; }
+					.heading { color: red; }
+				}
+			`,
+		},
+		{
+			description: "a part after :scope + or & ~, a sibling of the root",
+			code: `
+				@scope (.card) to ([data-component]) {
+					[data-part="icon"] { color: red; }
+					:scope > [data-part="label"] { color: blue; }
+				}
+			`,
+		},
+		{
+			description: "a pseudo-element of the root written with :scope inside a scope",
+			code: `.card { color: red; &::after { content: "new"; } &::before { content: "old"; } }`,
+		},
 		// The fixed forms of the checks the rules page lists without a case.
 		{
 			description: ":scope > inside a scope",
@@ -278,14 +303,101 @@ testRule(partsInScope, {
 			code: `@scope (.button) to ([data-component]) { & > [data-part="icon"] { inline-size: 1em; } }`,
 			warnings: [
 				{
-					message: `Expected ":scope >" instead of "& >" inside a scope.`,
+					message: `Expected ":scope >" instead of "& >" inside a scope. Change it by hand, then check which rules it now beats.`,
 					line: 1,
 					column: 42,
 					endLine: 1,
 					endColumn: 43,
 				},
 			],
-			fixed: `@scope (.button) to ([data-component]) { :scope > [data-part="icon"] { inline-size: 1em; } }`,
+		},
+		// Either rewrite can change which rule wins, so both are the author's to make.
+		{
+			description: ":scope before a part and & > before a class rule they compete with",
+			code: `
+				@scope (.card) to ([data-component]) {
+					:scope p { color: red; }
+					.caption { color: blue; }
+					& > [data-part="title"] { color: blue; }
+					.heading { color: red; }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own, then check it still beats the rules it did.`,
+					line: 2,
+					column: 2,
+					endLine: 2,
+					endColumn: 8,
+				},
+				{
+					message: `Expected ":scope >" instead of "& >" inside a scope. Change it by hand, then check which rules it now beats.`,
+					line: 4,
+					column: 2,
+					endLine: 4,
+					endColumn: 3,
+				},
+			],
+		},
+		// A sibling of the root, and a pseudo-element of the root.
+		{
+			description: "a part after :scope + or & ~, a sibling of the root",
+			code: `
+				@scope (.card) to ([data-component]) {
+					:scope + [data-part="icon"] { color: red; }
+					& ~ [data-part="icon"] { color: blue; }
+					:scope ~[data-part="label"] { color: blue; }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected ":scope +" inside a scope: it selects a sibling of the component root, outside the scope. Select a part inside the root instead.`,
+					line: 2,
+					column: 2,
+					endLine: 2,
+					endColumn: 10,
+				},
+				{
+					message: `Unexpected "& ~" inside a scope: it selects a sibling of the component root, outside the scope. Select a part inside the root instead.`,
+					line: 3,
+					column: 2,
+					endLine: 3,
+					endColumn: 5,
+				},
+				{
+					message: `Unexpected ":scope ~" inside a scope: it selects a sibling of the component root, outside the scope. Select a part inside the root instead.`,
+					line: 4,
+					column: 2,
+					endLine: 4,
+					endColumn: 10,
+				},
+			],
+		},
+		{
+			description: "a pseudo-element of the root written with :scope inside a scope",
+			code: `
+				.card { color: red; }
+				@scope (.card) to ([data-component]) {
+					:scope::after { content: "new"; }
+					:scope::BEFORE { content: "old"; }
+				}
+			`,
+			warnings: [
+				{
+					message: `Unexpected ":scope::after" inside a scope. Move the whole rule into the root block, as "&::after".`,
+					line: 3,
+					column: 2,
+					endLine: 3,
+					endColumn: 15,
+				},
+				{
+					message: `Unexpected ":scope::BEFORE" inside a scope. Move the whole rule into the root block, as "&::BEFORE".`,
+					line: 4,
+					column: 2,
+					endLine: 4,
+					endColumn: 16,
+				},
+			],
 		},
 		{
 			description: "& before a part inside a scope",
@@ -297,27 +409,20 @@ testRule(partsInScope, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected "&" before a descendant inside a scope. Remove "& " and select the descendant on its own.`,
+					message: `Unexpected "&" before a descendant inside a scope. Remove "& " and select the descendant on its own, then check it still beats the rules it did.`,
 					line: 2,
 					column: 2,
 					endLine: 2,
 					endColumn: 3,
 				},
 				{
-					message: `Unexpected "&" before a descendant inside a scope. Remove "& " and select the descendant on its own.`,
+					message: `Unexpected "&" before a descendant inside a scope. Remove "& " and select the descendant on its own, then check it still beats the rules it did.`,
 					line: 3,
 					column: 23,
 					endLine: 3,
 					endColumn: 24,
 				},
 			],
-			// A comment between "&" and the part is the author's: that one is left for them.
-			fixed: `
-				@scope (.button) to ([data-component]) {
-					[data-part="icon"] { inline-size: 1em; }
-					[data-part="badge"], &  /* note */  [data-part="label"] { color: red; }
-				}
-			`,
 		},
 		{
 			description: ":scope with a space before a part, and before content",
@@ -330,48 +435,40 @@ testRule(partsInScope, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own.`,
+					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own, then check it still beats the rules it did.`,
 					line: 2,
 					column: 2,
 					endLine: 2,
 					endColumn: 8,
 				},
 				{
-					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own.`,
+					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own, then check it still beats the rules it did.`,
 					line: 3,
 					column: 2,
 					endLine: 3,
 					endColumn: 8,
 				},
 				{
-					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own.`,
+					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own, then check it still beats the rules it did.`,
 					line: 4,
 					column: 2,
 					endLine: 4,
 					endColumn: 8,
 				},
 			],
-			fixed: `
-				@scope (.button) to ([data-component]) {
-					[data-part="icon"] { inline-size: 1em; }
-					[data-part="label"]:hover { color: red; }
-					p { margin: 0; }
-				}
-			`,
 		},
 		{
-			description: ":scope before a part that :where() wraps, which is left for the author",
+			description: ":scope before a part that :where() wraps",
 			code: `@scope (.button) to ([data-component]) { :scope :where([data-part="icon"]) { inline-size: 1em; } }`,
 			warnings: [
 				{
-					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own.`,
+					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own, then check it still beats the rules it did.`,
 					line: 1,
 					column: 42,
 					endLine: 1,
 					endColumn: 48,
 				},
 			],
-			fixed: `@scope (.button) to ([data-component]) { :scope :where([data-part="icon"]) { inline-size: 1em; } }`,
 		},
 		{
 			description: ":scope with an attribute, a variant selecting a part",
@@ -494,11 +591,11 @@ testRule(partsInScope, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected ":scope" without ">" inside a scope. Move its declarations to the root block.`,
+					message: `Unexpected ":scope::after" inside a scope. Move the whole rule into the root block, as "&::after".`,
 					line: 3,
 					column: 2,
 					endLine: 3,
-					endColumn: 8,
+					endColumn: 15,
 				},
 				{
 					message: "Unexpected declarations directly inside a scope. Move them to the root block.",
@@ -869,26 +966,20 @@ testRule(partsInScope, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own.`,
+					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own, then check it still beats the rules it did.`,
 					line: 2,
 					column: 2,
 					endLine: 2,
 					endColumn: 8,
 				},
 				{
-					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own.`,
+					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own, then check it still beats the rules it did.`,
 					line: 3,
 					column: 2,
 					endLine: 3,
 					endColumn: 8,
 				},
 			],
-			fixed: `
-				@scope (.card) to ([data-component]) {
-					[data-part="icon"] { @include paint; }
-					[data-part="label"] { }
-				}
-			`,
 		},
 		{
 			description: "a placement path through a plain element, with only an @include",
@@ -903,10 +994,9 @@ testRule(partsInScope, {
 				},
 			],
 		},
-		// --fix touches only what one written selector holds.
+		// Comments and an outer rule's "&" change nothing: each is reported, and --fix leaves every one.
 		{
-			description:
-				"a comment between :scope and the part, which --fix leaves for the author, and one after &",
+			description: "a comment between :scope and the part, and one after &",
 			code: `
 				@scope (.card) to ([data-component]) {
 					:scope /* keep */ [data-part="icon"] { color: red; }
@@ -915,26 +1005,20 @@ testRule(partsInScope, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own.`,
+					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own, then check it still beats the rules it did.`,
 					line: 2,
 					column: 2,
 					endLine: 2,
 					endColumn: 8,
 				},
 				{
-					message: `Expected ":scope >" instead of "& >" inside a scope.`,
+					message: `Expected ":scope >" instead of "& >" inside a scope. Change it by hand, then check which rules it now beats.`,
 					line: 3,
 					column: 2,
 					endLine: 3,
 					endColumn: 3,
 				},
 			],
-			fixed: `
-				@scope (.card) to ([data-component]) {
-					:scope /* keep */ [data-part="icon"] { color: red; }
-					:scope /* keep */ > [data-part="tab"] { color: red; }
-				}
-			`,
 		},
 		{
 			description: "a line comment between :scope and the part",
@@ -947,7 +1031,7 @@ testRule(partsInScope, {
 			skip: { css: "a line comment is SCSS", vue: "a line comment is SCSS" },
 			warnings: [
 				{
-					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own.`,
+					message: `Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own, then check it still beats the rules it did.`,
 					line: 2,
 					column: 2,
 					endLine: 2,
@@ -956,7 +1040,7 @@ testRule(partsInScope, {
 			],
 		},
 		{
-			description: "an & written in an outer rule, which --fix leaves for the author",
+			description: "an & written in an outer rule",
 			code: `
 				@scope (.card) to ([data-component]) {
 					& { & [data-part="icon"] { color: red; } & > [data-part="tab"] { color: red; } }
@@ -964,14 +1048,14 @@ testRule(partsInScope, {
 			`,
 			warnings: [
 				{
-					message: `Unexpected "&" before a descendant inside a scope. Remove "& " and select the descendant on its own.`,
+					message: `Unexpected "&" before a descendant inside a scope. Remove "& " and select the descendant on its own, then check it still beats the rules it did.`,
 					line: 2,
 					column: 2,
 					endLine: 2,
 					endColumn: 3,
 				},
 				{
-					message: `Expected ":scope >" instead of "& >" inside a scope.`,
+					message: `Expected ":scope >" instead of "& >" inside a scope. Change it by hand, then check which rules it now beats.`,
 					line: 2,
 					column: 2,
 					endLine: 2,

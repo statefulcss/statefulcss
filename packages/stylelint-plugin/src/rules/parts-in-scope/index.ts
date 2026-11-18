@@ -3,7 +3,7 @@
 import type { Settings } from "@statefulcss/config";
 import type { Block, Component, Condition, Element, Model, Position, Scope, Step } from "@statefulcss/core";
 
-import { defineRule, type Edit, type Finding } from "../rule.js";
+import { defineRule, type Finding } from "../rule.js";
 
 const messages = {
 	outside: (part: string, scope: string) =>
@@ -33,17 +33,22 @@ const messages = {
 		`Unexpected "@scope" inside a rule. Write the component's scope after its root block.`,
 	beforeRootBlock: (root: string) =>
 		`Unexpected scope of "${root}" before its root block. Move it after the root block.`,
-	nestingChild: () => `Expected ":scope >" instead of "& >" inside a scope.`,
+	nestingChild: () =>
+		`Expected ":scope >" instead of "& >" inside a scope. Change it by hand, then check which rules it now beats.`,
 	nestingDescendant: () =>
-		`Unexpected "&" before a descendant inside a scope. Remove "& " and select the descendant on its own.`,
+		`Unexpected "&" before a descendant inside a scope. Remove "& " and select the descendant on its own, then check it still beats the rules it did.`,
 	scopeDescendant: () =>
-		`Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own.`,
+		`Unexpected ":scope" before a descendant inside a scope. Remove ":scope " and select the descendant on its own, then check it still beats the rules it did.`,
+	siblingInScope: (written: string) =>
+		`Unexpected "${written}" inside a scope: it selects a sibling of the component root, outside the scope. Select a part inside the root instead.`,
 	conditionSelecting: (condition: string) =>
 		`Unexpected "${condition}" on the scope's root, selecting inside it. Write "${condition}" in the root block, setting part variables that the parts read.`,
 	conditionOnRoot: (condition: string) =>
 		`Unexpected "${condition}" on the scope's root. Write the root's variants and states in its root block.`,
 	rootInScope: (written: string) =>
 		`Unexpected "${written}" without ">" inside a scope. Move its declarations to the root block.`,
+	pseudoElementInScope: (written: string, nested: string) =>
+		`Unexpected "${written}" inside a scope. Move the whole rule into the root block, as "${nested}".`,
 	declarationsInScope: () => `Unexpected declarations directly inside a scope. Move them to the root block.`,
 };
 
@@ -52,7 +57,9 @@ type Key = keyof typeof messages;
 export default defineRule<Record<never, never>, Key>({
 	name: "parts-in-scope",
 	severity: "error",
-	fixable: true,
+	// No fix: removing ":scope " lowers a rule's specificity and "& >" to ":scope >" raises it, so either can change
+	// which rule wins in the scope.
+	fixable: false,
 	messages,
 	check(model, { settings }) {
 		const findings: Finding<Key>[] = [];
@@ -338,7 +345,14 @@ function checkBlocksInScopes(model: Model, report: Report): void {
 
 		const written = block.scopeRootAt;
 		if (subjectIsRoot) {
-			if (written) report({ message: "rootInScope", args: [textAt(written)], at: written });
+			const element = model.elements[block.element];
+			if (written && element?.kind === "pseudo-element") {
+				// `:scope::after` in the scope: the whole rule moves, keeping the pseudo-element (`&::after`).
+				const pseudo = pseudoAfter(written, element.name);
+				const at = pseudo ? { ...written, endIndex: pseudo.endIndex } : written;
+				const nested = `&${pseudo ? textAt(pseudo) : `::${element.name}`}`;
+				report({ message: "pseudoElementInScope", args: [textAt(at), nested], at });
+			} else if (written) report({ message: "rootInScope", args: [textAt(written)], at: written });
 			else {
 				const first =
 					block.declarations[0] === undefined ? undefined : model.declarations[block.declarations[0]];
@@ -348,18 +362,27 @@ function checkBlocksInScopes(model: Model, report: Report): void {
 		}
 		if (!written) continue;
 		const next = block.path[1];
-		// `--fix` changes only what one written selector holds: not a `&` an outer rule wrote.
-		const oneSelector = next !== undefined && next.at.node === written.node;
-		if (block.scopeRoot === "&" && next?.combinator === ">") {
-			// The glue checks that "&" is still written there before it replaces it.
-			const edits: Edit[] = [{ kind: "replace", at: written, expects: "&", text: ":scope" }];
-			report({ message: "nestingChild", args: [], at: written, ...(oneSelector ? { edits } : {}) });
-		} else if (next?.combinator === " ") {
-			const message = block.scopeRoot === "&" ? "nestingDescendant" : "scopeDescendant";
-			const removal = oneSelector ? removalBefore(written, next.at) : undefined;
-			report({ message, args: [], at: written, ...(removal ? { edits: [removal] } : {}) });
-		}
+		// Core reads `:scope + [data-part="icon"]` as a descendant; the written combinator tells a sibling.
+		const sibling = siblingAfter(written, next?.at);
+		if (sibling) report({ message: "siblingInScope", args: [textAt(sibling)], at: sibling });
+		else if (block.scopeRoot === "&" && next?.combinator === ">")
+			report({ message: "nestingChild", args: [], at: written });
+		else if (next?.combinator === " ")
+			report({
+				message: block.scopeRoot === "&" ? "nestingDescendant" : "scopeDescendant",
+				args: [],
+				at: written,
+			});
 	}
+}
+
+/** `:scope +` or `& ~`: a sibling combinator written between the scope's root and the next compound. */
+function siblingAfter(written: Position, next: Position | undefined): Position | undefined {
+	if (next?.node !== written.node || next.index <= written.endIndex) return undefined;
+	const match = /^\s*[+~]/.exec(valueOf(written.node).slice(written.endIndex, next.index));
+	return match
+		? { node: written.node, index: written.index, endIndex: written.endIndex + match[0].length }
+		: undefined;
 }
 
 /**
@@ -457,17 +480,6 @@ function within(inner: Position, outer: Position): boolean {
 function quotedList(names: readonly string[]): string {
 	const quoted = names.map((name) => `"${name}"`);
 	return quoted.length < 2 ? quoted.join("") : `${quoted.slice(0, -1).join(", ")} and ${quoted.at(-1) ?? ""}`;
-}
-
-/**
- * The edit that removes `& ` or `:scope ` before the next compound, when only spaces stand between them in one
- * rule's selector. Anything else, such as a `:where()` around the next part, is left for the author.
- */
-function removalBefore(written: Position, next: Position): Edit | undefined {
-	if (next.node !== written.node || next.index <= written.endIndex) return undefined;
-	const at = { node: written.node, index: written.index, endIndex: next.index };
-	const expects = textAt(at);
-	return /^(?:&|:scope)\s+$/i.test(expects) ? { kind: "replace", at, expects, text: "" } : undefined;
 }
 
 /** The text a position covers, in the rule's selector or the at-rule's parameters. */

@@ -68,3 +68,77 @@ export const overrides: NonNullable<stylelint.Config["overrides"]> = [
 		},
 	},
 ];
+
+/** Sass's own at-rules, which `at-rule-no-unknown` doesn't know. */
+const sassAtRules = [
+	"use",
+	"forward",
+	"import",
+	"mixin",
+	"include",
+	"content",
+	"function",
+	"return",
+	"extend",
+	"at-root",
+	"if",
+	"else",
+	"each",
+	"for",
+	"while",
+	"error",
+	"warn",
+	"debug",
+];
+
+/** What a Sass block needs of the rules that know only CSS's names. */
+const sassNames: Rules = {
+	"at-rule-no-unknown": [true, { ignoreAtRules: sassAtRules }],
+	// CSS has `@mixin` and `@function` too, so their Sass preludes are read as CSS's. `media` is ignored as
+	// `stylelint-config-recommended` ignores it.
+	"at-rule-prelude-no-invalid": [true, { ignoreAtRules: ["media", "mixin", "function"] }],
+	"annotation-no-unknown": [true, { ignoreAnnotations: ["default", "global"] }],
+};
+
+/** CSS Modules' own names: `composes`, `:global` and `:local`, and `@value`. */
+const cssModulesNames = (atRules: readonly string[]): Rules => ({
+	"property-no-unknown": [true, { ignoreProperties: ["composes"] }],
+	"selector-pseudo-class-no-unknown": [true, { ignorePseudoClasses: ["global", "local"] }],
+	"at-rule-no-unknown": [true, { ignoreAtRules: [...atRules, "value"] }],
+});
+
+/**
+ * For `recommended`, whose rules come from `stylelint-config-recommended`: the syntaxes the rules read, Sass, Vue
+ * and CSS Modules, by file name. A project on `compatible` has its own config for its syntaxes. Overrides go in
+ * order, and a later one replaces a rule's whole setting, so the CSS Modules ones repeat Sass's at-rules.
+ */
+export const syntaxOverrides: NonNullable<stylelint.Config["overrides"]> = [
+	{
+		files: ["**/*.scss", "**/*.sass"],
+		rules: {
+			...sassNames,
+			// They read a value or a media query as CSS, so a Sass variable, function or map in one is reported.
+			"declaration-property-value-no-unknown": null,
+			"value-no-invalid": null,
+			"media-query-no-invalid": null,
+			// Sass's `@use` and `@forward` come before an `@import`.
+			"no-invalid-position-at-import-rule": [true, { ignoreAtRules: ["use", "forward"] }],
+		},
+	},
+	{
+		// A `<style lang="scss">` block can't be told from a CSS one by file name: Sass's names are accepted, and the
+		// rules that read values as CSS stay on.
+		files: ["**/*.vue"],
+		rules: {
+			...sassNames,
+			// Vue's own pseudo-classes, and CSS Modules' in a `<style module>` block.
+			"selector-pseudo-class-no-unknown": [
+				true,
+				{ ignorePseudoClasses: ["deep", "global", "slotted", "local"] },
+			],
+			"property-no-unknown": [true, { ignoreProperties: ["composes"] }],
+		},
+	},
+	{ files: ["**/*.module.css"], rules: cssModulesNames([]) },
+	{ files: ["**/*.module.scss", "**/*.module.sass"], rules: cssModulesNames(sassAtRules) },
+];

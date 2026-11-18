@@ -231,4 +231,4 @@ Fixed:
 }
 ```
 
-It reads no `statefulcss.config` settings.
+It has no settings of its own, but the project's settings change the role it suggests, since they say what the stylesheet holds. `themeAttribute` says which scopes are themes: with `"themeAttribute": "data-skin"`, `[data-skin=dark] { --brand: black; }` is a theme, and `--brand` is told to be `--t-brand`; with the default, `[data-skin=dark]` is a state, and `--brand` is told to be `--s-brand`.

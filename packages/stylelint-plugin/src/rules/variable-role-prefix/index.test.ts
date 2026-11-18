@@ -6,7 +6,7 @@ import variableRolePrefix from "./index.js";
 
 testRule(variableRolePrefix, {
 	accept: [
-		// The rules page's Fixed cases.
+		// The README's Fixed cases.
 		{
 			description: "a variable with no role: a state changes it, so it's a state variable",
 			code: `
@@ -64,7 +64,7 @@ testRule(variableRolePrefix, {
 				.popup { --available-width: 20rem; }
 			`,
 		},
-		// The rules page's Not reported cases.
+		// The README's Not reported cases.
 		{
 			description: "reading a library's variable",
 			code: `.popup { max-inline-size: var(--available-width); }`,
@@ -149,7 +149,7 @@ testRule(variableRolePrefix, {
 		},
 	],
 	reject: [
-		// The rules page's Reported cases.
+		// The README's Reported cases.
 		{
 			description: "a variable with no role: a state changes it, so it's a state variable",
 			code: `
@@ -559,7 +559,7 @@ testRule(variableRolePrefix, {
 				},
 			],
 		},
-		// B16: the page is the selector's subject, wherever `:root` sits in its compound.
+		// The page is the selector's subject, wherever `:root` sits in its compound.
 		{
 			description: "a variable on a class with :root: the page, so a token",
 			code: `
@@ -770,7 +770,7 @@ testRule(variableRolePrefix, {
 	],
 });
 
-// The rules page's Not reported case for `ignoreProperties`, and Stylelint's conventions for the option.
+// The README's Not reported case for `ignoreProperties`, and Stylelint's conventions for the option.
 testRule(variableRolePrefix, {
 	options: { ignoreProperties: ["/^--swiper-/", "--legacy-gap", "/^--vendor-/i", /^--ext-/] },
 	accept: [
@@ -826,6 +826,49 @@ testRule(variableRolePrefix, {
 					column: 12,
 					endLine: 1,
 					endColumn: 25,
+				},
+			],
+		},
+	],
+});
+
+// The project's theme attribute says which scopes are themes, so it changes the role the message suggests.
+const skinTheme = "[data-skin=dark] { --brand: black; }";
+const at = { line: 1, column: 20, endLine: 1, endColumn: 27 };
+
+testRule(variableRolePrefix, {
+	settings: { themeAttribute: "data-skin" },
+	accept: [
+		{
+			description: "a token in a theme of the project's theme attribute",
+			code: "[data-skin=dark] { --t-brand: black; }",
+		},
+	],
+	reject: [
+		{
+			description: "a variable in a theme of the project's theme attribute: a token",
+			code: skinTheme,
+			warnings: [
+				{
+					message:
+						'Unexpected "--brand" with no role prefix. A theme declares it, so it\'s a token: name it "--t-brand".',
+					...at,
+				},
+			],
+		},
+	],
+});
+
+testRule(variableRolePrefix, {
+	reject: [
+		{
+			description: "the same attribute without the setting: not a theme, so a state variable",
+			code: skinTheme,
+			warnings: [
+				{
+					message:
+						'Unexpected "--brand" with no role prefix. A variant or state changes it, so it\'s a state variable: name it "--s-brand".',
+					...at,
 				},
 			],
 		},

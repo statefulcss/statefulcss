@@ -317,6 +317,24 @@ Reported:
 }
 ```
 
+Fixed: the Button's writes are renamed for the glyph.
+
+```css
+.button {
+	--p-glyph-color: var(--t-color-neutral-600);
+
+	&:hover {
+		--p-glyph-color: var(--t-color-neutral-800);
+	}
+}
+
+@scope (.button) to ([data-component]) {
+	[data-part="glyph"] {
+		color: var(--p-glyph-color);
+	}
+}
+```
+
 ### Not reported
 
 - A part reading the part variables its component declares for it: `.button { --p-icon-color: var(--_icon-color); &:hover { --p-icon-color: var(--_icon-color-hover); } }` with `[data-part="icon"] { color: var(--p-icon-color); }` in its scope.

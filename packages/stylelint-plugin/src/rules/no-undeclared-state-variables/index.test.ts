@@ -5,6 +5,18 @@ const scss = { css: "SCSS syntax", vue: "SCSS syntax, in a plain <style> block" 
 
 testRule(noUndeclaredStateVariables, {
 	accept: [
+		{
+			description: "a renamed part, with its owner's writes renamed too",
+			code: `
+				.button {
+					--p-glyph-color: var(--t-color-neutral-600);
+					&:hover { --p-glyph-color: var(--t-color-neutral-800); }
+				}
+				@scope (.button) to ([data-component]) {
+					[data-part="glyph"] { color: var(--p-glyph-color); }
+				}
+			`,
+		},
 		// The two repairs the messages give for a part's own part variable.
 		{
 			description: "a part that declares and reads its own part variable",
@@ -33,7 +45,7 @@ testRule(noUndeclaredStateVariables, {
 				}
 			`,
 		},
-		// The rules page's Fixed cases.
+		// The README's Fixed cases.
 		{
 			description: "a part reads its component's own state variable",
 			code: `
@@ -95,7 +107,7 @@ testRule(noUndeclaredStateVariables, {
 				}
 			`,
 		},
-		// The rules page's Not reported cases.
+		// The README's Not reported cases.
 		{
 			description: "a part reading the part variables its component declares for it",
 			code: `
@@ -247,7 +259,7 @@ testRule(noUndeclaredStateVariables, {
 		},
 	],
 	reject: [
-		// The rules page's Reported cases.
+		// The README's Reported cases.
 		{
 			description: "a part reads its component's own state variable",
 			code: `
@@ -579,7 +591,7 @@ testRule(noUndeclaredStateVariables, {
 				},
 			],
 		},
-		// From core's final audit (B18 to B23, R02).
+		// What a part's own write proves about its owner.
 		{
 			description: "a part's own write never proves its owner's declaration",
 			code: `
@@ -796,10 +808,10 @@ testRule(noUndeclaredStateVariables, {
 	],
 });
 
-// From Astra's audit of rules 4 and 9: each reported case next to the one that makes it right.
+// Each reported case next to the one that makes it right.
 testRule(noUndeclaredStateVariables, {
 	accept: [
-		// The owner is chosen from the reader and the name (F04, F02).
+		// The owner is chosen from the reader and the name.
 		{
 			description: "a part declaring the part variable its pseudo-element reads, and the root feeding it",
 			code: `
@@ -857,7 +869,7 @@ testRule(noUndeclaredStateVariables, {
 				}
 			`,
 		},
-		// A private taken with inherit (F05).
+		// A private taken with inherit.
 		{
 			description: "a part taking a private its root declares",
 			code: `
@@ -867,7 +879,7 @@ testRule(noUndeclaredStateVariables, {
 				}
 			`,
 		},
-		// What counts as a part reading it (F03, question 1).
+		// What counts as a part reading it.
 		{
 			description: "the part a private is named for, taking it with inherit",
 			code: `
@@ -894,7 +906,7 @@ testRule(noUndeclaredStateVariables, {
 				@scope (.button) to ([data-component]) { [data-part="icon"] { color: var(--p-icon-color); } }
 			`,
 		},
-		// An unknown under a variant, state or query excuses only a change (question 2).
+		// An unknown under a variant, state or query excuses only a change.
 		{
 			description: "an @include in a state may change a part variable, so it isn't called unchanging",
 			code: `
@@ -902,13 +914,13 @@ testRule(noUndeclaredStateVariables, {
 				@scope (.card) to ([data-component]) { [data-part="title"] { color: var(--p-title-color); } }
 			`,
 		},
-		// The root's own pseudo-element, with no scope in the file (question 3).
+		// The root's own pseudo-element, with no scope in the file.
 		{
 			description:
 				"the root's pseudo-element reading the part variable the root declares for it, with no scope",
 			code: `.card { --p-after-opacity: 0; &:hover { --p-after-opacity: 1; } &::after { opacity: var(--p-after-opacity); } }`,
 		},
-		// One finding for each written read and reason (F08).
+		// One finding for each written read and reason.
 		{
 			description: "a selector list whose roots both declare what it reads",
 			code: `.card { --s-c: red; } .button { --s-c: blue; } .card, .button { color: var(--s-c); }`,

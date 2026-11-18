@@ -1,7 +1,17 @@
 // `blocking-states-win` (rule 7): interaction states never apply to a blocked element. They sit inside a guard that
 // lists every blocking state, focus stays outside it, and blocking states set only their own look. A part whose
 // component has blocking states also waits for the component's query variable.
-import type { Block, Condition, Element, Guard, Id, Model, Position } from "@statefulcss/core";
+import type {
+	Block,
+	Condition,
+	Element,
+	Guard,
+	Id,
+	Model,
+	Position,
+	Read,
+	StyleQuery,
+} from "@statefulcss/core";
 import type { ChildNode, Rule } from "postcss";
 
 import { listOf, nameOf } from "../names.js";
@@ -13,20 +23,24 @@ const messages = {
 		`Unexpected "${condition}" on ${element} outside a guard, so a blocked element still reacts to it. Write it inside "${guard}".`,
 	split: (condition: string, element: string, interaction: string, rest: string, guard: string) =>
 		`Unexpected "${condition}" on ${element} outside a guard, so a blocked element still reacts to ${interaction}. Split it: write ${interaction} inside "${guard}", and ${rest} outside it.`,
-	incomplete: (element: string, missing: string) =>
-		`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while they hold. Add them to its ":not()".`,
-	incompleteShared: (element: string, missing: string) =>
-		`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while they hold. The elements sharing it have different blocking states: write a guard for each, listing its own.`,
+	incomplete: (element: string, missing: string, count: string) =>
+		`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while ${count === "1" ? "it holds. Add it" : "they hold. Add them"} to its ":not()".`,
+	incompleteShared: (element: string, missing: string, count: string) =>
+		`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while ${count === "1" ? "it holds" : "they hold"}. The elements sharing it have different blocking states: write a guard for each, listing its own.`,
 	focusInGuard: (condition: string, element: string) =>
 		`Unexpected "${condition}" inside a guard on ${element}: a blocked element that stays focusable loses its focus style. Write it outside the guard.`,
 	focusSplit: (condition: string, element: string, focus: string, interaction: string) =>
 		`Unexpected "${condition}" inside a guard on ${element}: a blocked element that stays focusable loses its ${focus} style. Split it: keep ${interaction} inside the guard, and write ${focus} outside it.`,
-	setBack: (variable: string, blocking: string, states: string) =>
-		`Unexpected "${variable}" set back to its default in ${blocking}, which ${states} also write. Remove it: the guard keeps interaction states off, and a blocking state sets only its own look.`,
+	setBack: (variable: string, blocking: string, states: string, count: string) =>
+		`Unexpected "${variable}" set back to its default in ${blocking}, which ${states} also ${count === "1" ? "writes" : "write"}. Remove it: the guard keeps interaction states off, and a blocking state sets only its own look.`,
 	partUnqueried: (condition: string, element: string, root: string, variables: string, query: string) =>
 		`Unexpected "${condition}" on ${element} outside a style query on ${variables}, so it applies while ${root} is blocked. Write it inside "${query}".`,
+	partWrongQuery: (condition: string, element: string, written: string, root: string, query: string) =>
+		`Unexpected "${condition}" on ${element} inside "${written}", which doesn't keep it off while ${root} is blocked. Write it inside "${query}".`,
 	partNoQueryVariable: (condition: string, element: string, root: string, variable: string) =>
 		`Unexpected "${condition}" on ${element}, which applies while ${root} is blocked: its blocking states set no query variable. Set "${variable}" in them, and write "${condition}" inside a style query on it.`,
+	partNoSharedFlag: (condition: string, element: string, root: string, variable: string) =>
+		`Unexpected "${condition}" on ${element}, which applies while ${root} is blocked: no query variable is set by every one of its blocking states. Set one, such as "${variable}", in each of them, and write "${condition}" inside a style query on its default.`,
 	queryRead: (variable: string) =>
 		`Unexpected "${variable}" read with "var()". A query variable that blocking states set is only queried, with "@container style()".`,
 	queryNoDefault: (variable: string, root: string, blocking: string) =>
@@ -41,6 +55,11 @@ interface Said {
 	readonly args: readonly string[];
 	readonly at: Finding<Key>["at"];
 	readonly edits?: readonly Edit[];
+	/**
+	 * A list the sentence agrees with in number: its items are gathered from every branch, written quoted at `index`,
+	 * and counted in one more argument at the end.
+	 */
+	readonly list?: { readonly index: number; readonly items: readonly string[] };
 }
 
 export default defineRule<Record<never, never>, Key>({
@@ -63,6 +82,14 @@ export default defineRule<Record<never, never>, Key>({
 
 		const elements = model.elements.filter((element) => inComponent(model, element));
 		const blocked = blockedBy(model);
+		// Reads with `var()` by name, gathered once.
+		const varReads = new Map<string, Read[]>();
+		for (const read of model.reads) {
+			if (read.via !== "var") continue;
+			const list = varReads.get(read.name);
+			if (list) list.push(read);
+			else varReads.set(read.name, [read]);
+		}
 
 		/** The blocking states a guard on this element must list: the settings', and the root's `:has()` ones. */
 		const required = (guarded: Id): readonly string[] => [
@@ -169,9 +196,10 @@ export default defineRule<Record<never, never>, Key>({
 				const edit = shared && !focus ? completion(at, left) : undefined;
 				report(key, {
 					message: shared ? "incomplete" : "incompleteShared",
-					args: [name(id), quoted(left)],
+					args: [name(id), ""],
 					at,
 					...(edit ? { edits: [edit] } : {}),
+					list: { index: 1, items: left },
 				});
 			}
 		}
@@ -204,13 +232,14 @@ export default defineRule<Record<never, never>, Key>({
 						const where = other && model.blocks[other.block];
 						if (!where || where.kind !== "state" || isBlocking(where)) return [];
 						const text = statesText(where, ["interaction", "semantic"]);
-						return text ? [`"${text}"`] : [];
+						return text ? [text] : [];
 					});
 					if (states.length === 0) continue;
 					report(`${declaration.written}`, {
 						message: "setBack",
-						args: [declaration.property, `"${blocking}"`, listOf(states)],
+						args: [declaration.property, `"${blocking}"`, ""],
 						at: { node: declaration.node },
+						list: { index: 2, items: states },
 					});
 				}
 			}
@@ -224,38 +253,65 @@ export default defineRule<Record<never, never>, Key>({
 			const root = component && model.elements[component.root];
 			const rootBlocking = root ? (blocked.get(root.id) ?? []) : [];
 			if (!component || !root || rootBlocking.length === 0) continue;
-			const variables = queryVariablesOf(model, rootBlocking);
+			const flags = flagsOf(model, root, rootBlocking);
+			// A flag the query can rely on: one every blocking state changes away from its default, or one whose values
+			// this file can't judge (a computed default, a value read from elsewhere).
+			const usable = [
+				...flags.filter((flag) => flag.judged === "every"),
+				...flags.filter((flag) => flag.judged === "unjudged"),
+			];
+			const suggestion = (flag: Flag): string => `@container style(${flag.name}: ${flag.default ?? "…"})`;
 			for (const block of blocksOf(model, element)) {
 				const [first] = interactions(block)
 					.filter((one) => one.pointer.length > 0)
 					.map((one) => one.condition);
 				if (!first) continue;
-				const queried = block.queries.some((query) =>
-					query.styleQueries.some((style) => !style.optional && variables.includes(style.name)),
+				const queries = block.queries.flatMap((query) =>
+					query.styleQueries.flatMap((style) => {
+						const flag = flags.find((one) => one.name === style.name);
+						return flag && !style.optional ? [{ query, style, flag }] : [];
+					}),
 				);
-				if (queried) continue;
-				const [variable] = variables;
-				if (variable === undefined) {
+				if (queries.some(({ style, flag }) => keepsOff(style, flag))) continue;
+				const [best] = usable;
+				if (flags.length === 0)
 					report(placeKey(first.at), {
 						message: "partNoQueryVariable",
 						args: [first.text, name(element.id), name(root.id), `--q-${component.name}-blocked`],
 						at: first.at,
 					});
-					continue;
+				else if (!best)
+					report(placeKey(first.at), {
+						message: "partNoSharedFlag",
+						args: [first.text, name(element.id), name(root.id), `--q-${component.name}-blocked`],
+						at: first.at,
+					});
+				else if (queries.length === 0)
+					report(placeKey(first.at), {
+						message: "partUnqueried",
+						args: [
+							first.text,
+							name(element.id),
+							name(root.id),
+							quoted(flags.map((flag) => flag.name)),
+							suggestion(best),
+						],
+						at: first.at,
+					});
+				else {
+					const [{ query, flag } = { query: undefined, flag: best }] = queries;
+					report(placeKey(first.at), {
+						message: "partWrongQuery",
+						args: [
+							first.text,
+							name(element.id),
+							query ? `@${query.name} ${spaced(query.params)}` : "",
+							name(root.id),
+							suggestion(usable.includes(flag) ? flag : best),
+						],
+						at: first.at,
+					});
 				}
-				const fallback = ownership.variable(root.id, variable)?.default;
-				const value = fallback === undefined ? "…" : spaced(model.declarations[fallback]?.value ?? "…");
-				report(placeKey(first.at), {
-					message: "partUnqueried",
-					args: [
-						first.text,
-						name(element.id),
-						name(root.id),
-						quoted(variables),
-						`@container style(${variable}: ${value})`,
-					],
-					at: first.at,
-				});
 			}
 		}
 
@@ -277,10 +333,11 @@ export default defineRule<Record<never, never>, Key>({
 				}
 			}
 			for (const variable of queryVariablesOf(model, rootBlocking)) {
-				for (const read of model.reads) {
+				for (const read of varReads.get(variable) ?? []) {
 					const declaration =
 						read.declaration === undefined ? undefined : model.declarations[read.declaration];
-					if (read.name !== variable || read.via !== "var" || !declaration) continue;
+					// Only this component's own elements: a third party's, or another component's, isn't judged here.
+					if (!declaration || componentOf(model.elements[read.element]) !== component.id) continue;
 					report(`${declaration.written}\n${variable}`, {
 						message: "queryRead",
 						args: [variable],
@@ -294,6 +351,11 @@ export default defineRule<Record<never, never>, Key>({
 			const [first] = group;
 			if (!first) return [];
 			const args = first.args.map((_, index) => listOf(group.map((one) => one.args[index] ?? "")));
+			if (first.list) {
+				const items = [...new Set(group.flatMap((one) => one.list?.items ?? []))];
+				args[first.list.index] = quoted(items);
+				args.push(String(items.length));
+			}
 			return [{ message: first.message, args, at: first.at, ...(first.edits ? { edits: first.edits } : {}) }];
 		});
 	},
@@ -314,6 +376,18 @@ function inComponent(model: Model, element: Element): boolean {
 		element.kind === "slot" ||
 		element.kind === "content"
 	);
+}
+
+/** The component an element belongs to: a root, part, slot or content, or a pseudo-element of one. */
+function componentOf(element: Element | undefined): Id | undefined {
+	if (!element) return undefined;
+	return element.kind === "root" ||
+		element.kind === "part" ||
+		element.kind === "slot" ||
+		element.kind === "content" ||
+		element.kind === "pseudo-element"
+		? element.component
+		: undefined;
 }
 
 /** The element a guard on this element's blocks is written on: its own, or its host's for a pseudo-element. */
@@ -463,6 +537,69 @@ function queryVariablesOf(model: Model, blocks: readonly Block[]): string[] {
 	return [...new Set(names)];
 }
 
+/**
+ * A `--q-*` a component's blocking states set, as this file writes it: its default on the root, and how the blocking
+ * states treat it. `every`: each sets it, to a value other than its default. `some`: one doesn't set it, or sets it to
+ * its default. `unjudged`: a value is computed or comes from elsewhere, or the root declares no default, so the rule
+ * has no opinion.
+ */
+interface Flag {
+	readonly name: string;
+	readonly default: string | undefined;
+	/** The values the blocking states set it to, each once. */
+	readonly blocked: readonly string[];
+	readonly judged: "every" | "some" | "unjudged";
+}
+
+/** The `--q-*` a component's blocking states set, each judged by the values the file writes. */
+function flagsOf(model: Model, root: Element, blocking: readonly Block[]): Flag[] {
+	const ownership = ownershipOf(model);
+	return queryVariablesOf(model, blocking).map((name): Flag => {
+		const defaultId = ownership.variable(root.id, name)?.default;
+		const fallback = defaultId === undefined ? undefined : model.declarations[defaultId];
+		const value = fallback && !computed(fallback) ? spaced(fallback.value) : undefined;
+		// A blocking state that leaves it alone, or sets it to its default, isn't kept out by a query on it.
+		let some = false;
+		let unjudged = value === undefined;
+		const blocked = new Set<string>();
+		for (const block of blocking) {
+			// The last write in the block wins.
+			const write = block.declarations
+				.flatMap((id) => model.declarations[id] ?? [])
+				.filter((declaration) => declaration.property === name)
+				.at(-1);
+			if (!write) some = true;
+			else if (computed(write)) unjudged = true;
+			else if (spaced(write.value) === value) some = true;
+			else blocked.add(spaced(write.value));
+		}
+		return {
+			name,
+			default: value ?? (fallback ? spaced(fallback.value) : undefined),
+			blocked: [...blocked],
+			judged: some ? "some" : unjudged ? "unjudged" : "every",
+		};
+	});
+}
+
+/** A value read from elsewhere, or computed where it's used: `var()`, `env()`, `attr()`, `if()`. */
+function computed(declaration: { readonly reads: readonly Id[]; readonly value: string }): boolean {
+	return declaration.reads.length > 0 || /\b(?:env|attr|if)\(/i.test(declaration.value);
+}
+
+/**
+ * Whether a style query on a flag keeps a part's interaction state off while its component is blocked: it holds only
+ * for the flag's default (`style(--q-tabs-blocked: false)`), or it's the one value every blocking state sets, turned
+ * around (`not style(--q-tabs-blocked: true)`). A flag the rule can't judge gets no opinion.
+ */
+function keepsOff(style: StyleQuery, flag: Flag): boolean {
+	if (flag.judged === "unjudged") return true;
+	if (flag.judged === "some" || style.value === undefined) return false;
+	const value = spaced(style.value);
+	if (!style.negated) return value === flag.default;
+	return flag.blocked.length === 1 && flag.blocked[0] === value;
+}
+
 /** The states of a block in some groups, as written one after another: `:hover`, `[aria-pressed="true"]`. */
 function statesText(block: Block, groups: readonly Condition["group"][]): string {
 	return own(block)
@@ -490,6 +627,13 @@ function wrapsOf(
 	guardFor: (block: Block) => string,
 ): Map<Block["node"], Edit> {
 	const flagged = new Set(unguarded.map(({ block }) => block));
+	// The blocks each source rule makes, gathered once.
+	const byNode = new Map<Block["node"], Block[]>();
+	for (const block of model.blocks) {
+		const list = byNode.get(block.node);
+		if (list) list.push(block);
+		else byNode.set(block.node, [block]);
+	}
 	const movable = new Map<Rule, string>();
 	for (const { block } of unguarded) {
 		const rule = block.node;
@@ -500,7 +644,7 @@ function wrapsOf(
 			continue;
 		// The author may have kept this one on purpose, and a moved rule leaves its comment's line behind.
 		if (underDirective(rule)) continue;
-		const made = model.blocks.filter((other) => other.node === rule);
+		const made = byNode.get(rule) ?? [];
 		// A focus state moved into the guard would stop showing on a blocked element.
 		if (made.some((other) => own(other).some(holdsFocus))) continue;
 		// The guard goes where the rule's `&` stands: on the element, or a pseudo-element's host. A state on a

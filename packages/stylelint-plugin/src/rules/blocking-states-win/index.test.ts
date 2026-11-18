@@ -6,8 +6,8 @@ const unguarded = (condition: string, element: string, wanted = guard) =>
 	`Unexpected "${condition}" on ${element} outside a guard, so a blocked element still reacts to it. Write it inside "${wanted}".`;
 const split = (condition: string, interaction: string, rest: string, element = '".button"') =>
 	`Unexpected "${condition}" on ${element} outside a guard, so a blocked element still reacts to ${interaction}. Split it: write ${interaction} inside "${guard}", and ${rest} outside it.`;
-const incomplete = (element: string, missing: string) =>
-	`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while they hold. Add them to its ":not()".`;
+const incomplete = (element: string, missing: string, one = false) =>
+	`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while ${one ? "it holds. Add it" : "they hold. Add them"} to its ":not()".`;
 
 /** Lines that a case puts in the Button, each at the Button's level. */
 const lines = (...each: string[]) => each.join("\n\t\t\t");
@@ -262,6 +262,67 @@ testRule(blockingStatesWin, {
 						&:focus-visible { --s-outline-width: 2px; }
 					}
 				}
+			`,
+		},
+		// B08: a part's style query checks a flag every blocking state changes, for its default.
+		{
+			description: "a part's query turned around on the value every blocking state sets",
+			code: `
+				.tabs {
+					--q-tabs-blocked: false;
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&[aria-disabled="true"] { --q-tabs-blocked: true; --s-opacity: 0.5; }
+					&[data-loading] { --q-tabs-blocked: true; }
+				}
+				@scope (.tabs) to ([data-component]) {
+					[data-part="tab"] {
+						--s-color: var(--t-color-text-muted);
+						color: var(--s-color);
+						${guard} {
+							@container not style(--q-tabs-blocked: true) {
+								&:hover { --s-color: var(--t-color-text); }
+							}
+						}
+					}
+				}
+			`,
+		},
+		{
+			description: "a part's query on a flag whose default is computed gets no opinion",
+			code: `
+				.tabs {
+					--q-tabs-blocked: var(--_blocked-at-rest);
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&[aria-disabled="true"] { --q-tabs-blocked: true; --s-opacity: 0.5; }
+				}
+				@scope (.tabs) to ([data-component]) {
+					[data-part="tab"] {
+						--s-color: var(--t-color-text-muted);
+						color: var(--s-color);
+						${guard} {
+							@container style(--q-tabs-blocked: true) {
+								&:hover { --s-color: var(--t-color-text); }
+							}
+						}
+					}
+				}
+			`,
+		},
+		// B09: a reader outside the component isn't this component's to judge.
+		{
+			description: "a third party's element and another component read a blocking query variable",
+			code: `
+				.tabs {
+					--q-busy: false;
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&:disabled { --q-busy: true; --s-opacity: 0.5; }
+				}
+				.card :deep(.lib) { opacity: var(--q-busy); }
+				:global(.lib) { opacity: var(--q-busy); }
+				.note { opacity: var(--q-busy); }
 			`,
 		},
 	],
@@ -575,7 +636,7 @@ testRule(blockingStatesWin, {
 			warnings: [
 				{
 					message:
-						'Unexpected guard on ".field" leaving out ":has(:where([data-part="input"]):disabled)", so interaction states still apply while they hold. Add them to its ":not()".',
+						'Unexpected guard on ".field" leaving out ":has(:where([data-part="input"]):disabled)", so interaction states still apply while it holds. Add it to its ":not()".',
 					line: 6,
 					column: 10,
 					endLine: 6,
@@ -910,7 +971,7 @@ testRule(blockingStatesWin, {
 			`,
 			warnings: [
 				{
-					message: incomplete('".a" and ".b"', '":has(:where([data-part="field"]):disabled)"'),
+					message: incomplete('".a" and ".b"', '":has(:where([data-part="field"]):disabled)"', true),
 					line: 6,
 					column: 10,
 					endLine: 6,
@@ -930,6 +991,176 @@ testRule(blockingStatesWin, {
 				.a { &:has(:where([data-part="field"]):disabled) { --s-opacity: 0.5; } }
 				.b { &:has(:where([data-part="field"]):disabled) { --s-opacity: 0.5; } }
 			`,
+		},
+		// B08: a part's style query checks a flag every blocking state changes, for its default.
+		{
+			description: "a part's query on the value its component's blocking states set",
+			code: `
+				.tabs {
+					--q-tabs-blocked: false;
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&[aria-disabled="true"] { --q-tabs-blocked: true; --s-opacity: 0.5; }
+				}
+				@scope (.tabs) to ([data-component]) {
+					[data-part="tab"] {
+						--s-color: var(--t-color-text-muted);
+						color: var(--s-color);
+						${guard} {
+							@container style(--q-tabs-blocked: true) {
+								&:hover { --s-color: var(--t-color-text); }
+							}
+						}
+					}
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected ":hover" on part "tab" inside "@container style(--q-tabs-blocked: true)", which doesn\'t keep it off while ".tabs" is blocked. Write it inside "@container style(--q-tabs-blocked: false)".',
+					line: 13,
+					column: 6,
+					endLine: 13,
+					endColumn: 12,
+				},
+			],
+		},
+		{
+			description: "two flags, each set by one blocking state",
+			code: `
+				.tabs {
+					--q-dim: no;
+					--q-busy: no;
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&:disabled { --q-dim: yes; --s-opacity: 0.5; }
+					&[data-loading] { --q-busy: yes; }
+				}
+				@scope (.tabs) to ([data-component]) {
+					[data-part="tab"] {
+						--s-color: var(--t-color-text-muted);
+						color: var(--s-color);
+						${guard} {
+							@container style(--q-dim: no) {
+								&:hover { --s-color: var(--t-color-text); }
+							}
+							&:active { --s-color: var(--t-color-text-strong); }
+						}
+					}
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected ":hover" on part "tab", which applies while ".tabs" is blocked: no query variable is set by every one of its blocking states. Set one, such as "--q-tabs-blocked", in each of them, and write ":hover" inside a style query on its default.',
+					line: 15,
+					column: 6,
+					endLine: 15,
+					endColumn: 12,
+				},
+				{
+					message:
+						'Unexpected ":active" on part "tab", which applies while ".tabs" is blocked: no query variable is set by every one of its blocking states. Set one, such as "--q-tabs-blocked", in each of them, and write ":active" inside a style query on its default.',
+					line: 17,
+					column: 5,
+					endLine: 17,
+					endColumn: 12,
+				},
+			],
+		},
+		{
+			description: "a flag one blocking state leaves at its default, beside one every blocking state sets",
+			code: `
+				.tabs {
+					--q-dim: no;
+					--q-tabs-blocked: false;
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&:disabled { --q-dim: yes; --q-tabs-blocked: true; --s-opacity: 0.5; }
+					&[data-loading] { --q-dim: no; --q-tabs-blocked: true; }
+				}
+				@scope (.tabs) to ([data-component]) {
+					[data-part="tab"] {
+						--s-color: var(--t-color-text-muted);
+						color: var(--s-color);
+						${guard} {
+							@container style(--q-dim: no) {
+								&:hover { --s-color: var(--t-color-text); }
+							}
+							&:active { --s-color: var(--t-color-text-strong); }
+						}
+					}
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected ":hover" on part "tab" inside "@container style(--q-dim: no)", which doesn\'t keep it off while ".tabs" is blocked. Write it inside "@container style(--q-tabs-blocked: false)".',
+					line: 15,
+					column: 6,
+					endLine: 15,
+					endColumn: 12,
+				},
+				{
+					message:
+						'Unexpected ":active" on part "tab" outside a style query on "--q-dim" and "--q-tabs-blocked", so it applies while ".tabs" is blocked. Write it inside "@container style(--q-tabs-blocked: false)".',
+					line: 17,
+					column: 5,
+					endLine: 17,
+					endColumn: 12,
+				},
+			],
+		},
+		// B09's control: the component's own element reading it is reported.
+		{
+			description: "the component's own part reads its blocking query variable with var()",
+			code: `
+				.tabs {
+					--q-busy: false;
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&:disabled { --q-busy: true; --s-opacity: 0.5; }
+				}
+				@scope (.tabs) to ([data-component]) {
+					[data-part="tab"] { opacity: var(--q-busy); }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--q-busy" read with "var()". A query variable that blocking states set is only queried, with "@container style()".',
+					line: 8,
+					column: 31,
+					endLine: 8,
+					endColumn: 44,
+				},
+			],
+		},
+		// One state writing the variable a blocking state sets back.
+		{
+			description: "a blocking state sets back what one interaction state writes",
+			code: `
+				.button {
+					--s-background-color: var(--_background-color);
+					--s-opacity: 1;
+					background-color: var(--s-background-color);
+					opacity: var(--s-opacity);
+					${guard} {
+						&:hover { --s-background-color: var(--_background-color-hover); }
+					}
+					&:disabled { --s-background-color: var(--_background-color); --s-opacity: 0.5; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--s-background-color" set back to its default in ":disabled", which ":hover" also writes. Remove it: the guard keeps interaction states off, and a blocking state sets only its own look.',
+					line: 9,
+					column: 15,
+					endLine: 9,
+					endColumn: 62,
+				},
+			],
 		},
 	],
 });
@@ -1026,7 +1257,7 @@ testRule(blockingStatesWin, {
 			warnings: [
 				{
 					message:
-						'Unexpected guard on ".row" leaving out "[data-busy]", so interaction states still apply while they hold. Add them to its ":not()".',
+						'Unexpected guard on ".row" leaving out "[data-busy]", so interaction states still apply while it holds. Add it to its ":not()".',
 					line: 4,
 					column: 10,
 					endLine: 4,

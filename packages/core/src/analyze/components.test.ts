@@ -232,7 +232,6 @@ describe("a whole component", () => {
 });
 
 describe("components", () => {
-	// Sources: the flat-components and ownership decisions.
 	inEverySyntax("every top-level rule that starts from the same class is one component", ({ read }) => {
 		const model = read(`
 			.button { color: red; }
@@ -252,7 +251,6 @@ describe("components", () => {
 		expect(find(model, ".button")?.blocks).toEqual([0, 1, 2, 3]);
 	});
 
-	// Sources: the parts-model details bench, case 4; the rules page, `component-variable-names`.
 	inEverySyntax("a component named by its attribute", ({ read }) => {
 		const model = read(`
 			[data-component="button"] {
@@ -317,7 +315,6 @@ describe("components", () => {
 		expect(components(model)).toEqual([["class", "note", "class", false]]);
 	});
 
-	// Source: core's design, question 2.
 	inEverySyntax("a class root and an attribute scope with the same name are one component", ({ read }) => {
 		const model = read(`
 			/**
@@ -396,7 +393,6 @@ describe("components", () => {
 });
 
 describe("the settings' attribute names", () => {
-	// Source: the shared-settings decision.
 	inEverySyntax("name the component, its parts and its slots through the whole model", ({ read }) => {
 		const settings = {
 			...defaults,
@@ -440,7 +436,6 @@ describe("the settings' attribute names", () => {
 });
 
 describe("parts, slots and content", () => {
-	// Sources: the methodology's "Composition and placement"; the slotted-placement-per-state decision.
 	inEverySyntax("slots, reached from the root block", ({ read }) => {
 		const model = read(`
 			.checkout {
@@ -479,7 +474,6 @@ describe("parts, slots and content", () => {
 		]);
 	});
 
-	// Sources: the rules page, rule 3's cases; core's design, question 3.
 	inEverySyntax("content reached from the root block, a class included", ({ read }) => {
 		const model = read(`
 			.prose { & a:hover { text-decoration-thickness: 2px; } }
@@ -500,7 +494,7 @@ describe("parts, slots and content", () => {
 		]);
 	});
 
-	// Sources: the methodology's "Components and parts"; the answer on layers and utilities.
+	// Source: the methodology's "Components and parts".
 	inEverySyntax("a class inside a scope is content, never a component", ({ read }) => {
 		const model = read(`
 			.article { color: black; }
@@ -527,7 +521,6 @@ describe("parts, slots and content", () => {
 		expect(model.blocks[3]?.scopeRootAt).toBeUndefined();
 	});
 
-	// Sources: the rules page, rules 3 and 4; the parts page, the tab's `::after`.
 	inEverySyntax("a pseudo-element is its own element, on its host", ({ read }) => {
 		const model = read(`
 			.link {
@@ -579,7 +572,7 @@ describe("parts, slots and content", () => {
 });
 
 describe("part references outside a scope", () => {
-	// Sources: the rules page, rule 9; the correction that a root is never also a part.
+	// A root is never also a part.
 	inEverySyntax("each place a selector names a part says where it is", ({ read }) => {
 		const model = read(`
 			.button [data-part="icon"] { inline-size: 1em; }
@@ -649,7 +642,6 @@ describe("part references outside a scope", () => {
 });
 
 describe("elements that belong to no component", () => {
-	// Sources: the global-elements decision; the rules page, rule 2's cases.
 	inEverySyntax("global elements, theme scopes and color-scheme selectors", ({ read }) => {
 		const model = read(`
 			a { color: red; }
@@ -679,8 +671,8 @@ describe("elements that belong to no component", () => {
 		expect(model.blocks.every((block) => block.reach === "direct")).toBe(true);
 	});
 
-	// Source: the global-elements decision. The audit's probe (2.1): in a scope whose root names no component, the
-	// theme and color-scheme attributes are still each element's identity, and the scope's root is its context.
+	// In a scope whose root names no component, the theme and color-scheme attributes are still each element's
+	// identity, and the scope's root is its context.
 	inEverySyntax("theme scopes and color-scheme selectors inside a global @scope", ({ read }) => {
 		const theme = '[data-theme="dark"] { --t-space-4: 1.25rem; }';
 		const scheme = '[data-color-scheme="dark"] { color-scheme: dark; }';
@@ -730,7 +722,7 @@ describe("elements that belong to no component", () => {
 		expect(model.blocks[3]?.conditions.map((condition) => condition.on)).toEqual(["context"]);
 	});
 
-	// Source: the global-elements decision: in a component, the same attributes are conditions.
+	// In a component, the same attributes are conditions.
 	inEverySyntax(
 		"theme and color-scheme attributes inside a component's @scope are conditions",
 		({ read }) => {
@@ -751,7 +743,6 @@ describe("elements that belong to no component", () => {
 		},
 	);
 
-	// Source: the component-terms decision, clarified 2026-11-14.
 	inEverySyntax("a class block in the utilities layer is a utility, layered or nested", ({ read }) => {
 		const model = read(`
 			@layer utilities {
@@ -778,7 +769,6 @@ describe("elements that belong to no component", () => {
 		expect(find(model, ".visually-hidden")?.blocks).toEqual([0, 1]);
 	});
 
-	// Source: the vue-styles decision.
 	inEverySyntax("what :deep() and :global() select is foreign", ({ read }) => {
 		const model = read(`
 			.card { color: red; & :deep(.button) { color: blue; } }
@@ -807,7 +797,6 @@ describe("elements that belong to no component", () => {
 });
 
 describe("scopes", () => {
-	// Source: the rules page, rule 9.
 	inEverySyntax("the limit, and whether it is the component attribute", ({ read }) => {
 		const model = read(`
 			.card { color: red; }
@@ -855,7 +844,6 @@ describe("scopes", () => {
 });
 
 describe("doc comments", () => {
-	// Sources: the file-header decision; core's design, question 7.
 	inEverySyntax("belong to the component of the block right after them", ({ read }) => {
 		const model = read(`
 			/**
@@ -900,7 +888,6 @@ describe("doc comments", () => {
 });
 
 describe("unknown syntax", () => {
-	// Source: the unknown-syntax decision, clarified 2026-11-14.
 	inEverySyntax("an unknown names the elements it sits in", ({ read }) => {
 		const model = read(`
 			@include reset;

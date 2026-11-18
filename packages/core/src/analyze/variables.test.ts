@@ -20,7 +20,8 @@ const sources = (model: Model) =>
 const namedElements = (model: Model, one: Variable | undefined) =>
 	one?.namedFor.map((id) => keyOf(model, id));
 
-// The parts page, "A part with states of its own", with what the details bench adds in cases 6 and 7.
+// The parts page, "A part with states of its own", with a query variable, a part's pseudo-element fed from the
+// root, and a part variable a variant changes.
 const tabs = `
 	.tabs {
 		--q-tabs-blocked: false;
@@ -87,7 +88,6 @@ describe("variables", () => {
 		]);
 	});
 
-	// Sources: the element-privates decision; the rules page, rule 4's cases.
 	inEverySyntax("its default is its first write in a block with no variant or state", ({ read }) => {
 		const model = read(`
 			.button {
@@ -118,7 +118,6 @@ describe("variables", () => {
 });
 
 describe("the elements a variable is named for", () => {
-	// Sources: the parts page; the details bench, cases 6 and 7; the pseudo-element-state-variables decision.
 	inEverySyntax("a root names its parts, and its parts' pseudo-elements as {part}-{pseudo}", ({ read }) => {
 		const model = read(tabs);
 		expect(model.unknowns).toEqual([]);
@@ -133,7 +132,6 @@ describe("the elements a variable is named for", () => {
 		expect(named('.tabs [data-part="tab"]', "--s-color")).toEqual([]);
 	});
 
-	// Sources: the methodology's "How values reach parts"; the slotted-placement-per-state decision.
 	inEverySyntax(
 		"a root names its slots, its own pseudo-elements, and the parts its privates are for",
 		({ read }) => {
@@ -230,7 +228,7 @@ describe("the variable a read reaches", () => {
 		]);
 	});
 
-	// Source: the rules page, rule 4's cases: what the rule has to tell apart.
+	// A rule has to tell these apart.
 	inEverySyntax(
 		"a part's read of its component's own state variable is linked, for a rule to judge",
 		({ read }) => {
@@ -300,7 +298,6 @@ describe("the variable a read reaches", () => {
 });
 
 describe("whether a variable is changing", () => {
-	// Sources: the rules page, rules 4 and 6.
 	inEverySyntax("a variant or a state writes it, or its value reads one that is", ({ read }) => {
 		const model = read(`
 			.card {

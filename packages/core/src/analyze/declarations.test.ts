@@ -93,7 +93,6 @@ describe("declarations", () => {
 		]);
 	});
 
-	// Source: the rules page, rule 3: a repeated custom property.
 	inEverySyntax("a custom property repeated in one block is two declarations", ({ read }) => {
 		const model = read(
 			".sheet { --s-block-size: 100vh; --s-block-size: 100dvh; block-size: var(--s-block-size); }",
@@ -105,7 +104,6 @@ describe("declarations", () => {
 		expect(model.blocks[0]?.declarations).toEqual([0, 1, 2]);
 	});
 
-	// Sources: the element-privates decision; the rules page, rule 4, not reported.
 	inEverySyntax("a private taken with inherit", ({ read }) => {
 		const model = read(`
 			@scope (.card) to ([data-component]) {
@@ -120,7 +118,6 @@ describe("declarations", () => {
 		]);
 	});
 
-	// Source: the rules page, rule 2's cases.
 	inEverySyntax("tokens on a theme scope, and what else a theme scope declares", ({ read }) => {
 		const model = read(`
 			[data-theme] {
@@ -157,7 +154,6 @@ describe("declarations", () => {
 });
 
 describe("roles", () => {
-	// Source: the rules page, rule 1's cases.
 	inEverySyntax("a variable with no role, and a prefix with no name", ({ read }) => {
 		const model = read(`
 			.button { --opacity: 1; opacity: var(--opacity); &:hover { --opacity: 0.9; } }
@@ -172,7 +168,6 @@ describe("roles", () => {
 		expect(reads(model)).toEqual([["--opacity", "none", "var", ".button", 0]]);
 	});
 
-	// Sources: the rules page, rule 1; the library-variables decision.
 	inEverySyntax(
 		"a library variable is one the component's doc comment names, for that component only",
 		({ read }) => {
@@ -230,7 +225,6 @@ describe("roles", () => {
 });
 
 describe("reads", () => {
-	// Sources: the rules page's "Shared pieces"; the methodology's ten rules.
 	inEverySyntax("each var(), with its declaration, its block and its element", ({ read }) => {
 		const model = read(`
 			.button {
@@ -307,7 +301,6 @@ describe("reads", () => {
 });
 
 describe("registrations", () => {
-	// Sources: the rules page, rules 1 and 2, and `resolve-where-shown`.
 	inEverySyntax("each @property, with its name, its role and what it registers", ({ read }) => {
 		const model = read(`
 			@property --scale { syntax: "<number>"; inherits: false; initial-value: 1; }
@@ -346,7 +339,6 @@ describe("registrations", () => {
 });
 
 describe("values core can't read", () => {
-	// Source: the unknown-syntax decision, clarified 2026-11-14.
 	inEverySyntax("v-bind() keeps the declaration and marks its value", ({ read }) => {
 		const model = read(
 			".card { --s-color: v-bind(theme.color); color: var(--s-color); padding: v-bind('gap'); }",

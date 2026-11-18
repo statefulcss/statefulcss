@@ -147,7 +147,7 @@ describe("nesting", () => {
 		{ skip: { css: "CSS nesting has no &-suffix", vue: "a plain <style> block has no &-suffix" } },
 	);
 
-	// The audit's probe (3.11): the selector goes on one line, and quoted text stays as written.
+	// The selector goes on one line, and quoted text stays as written.
 	inEverySyntax("quoted whitespace and parentheses stay as written", ({ parse }) => {
 		const walked = walk(
 			parse(`[data-component="( x )"] { color: red; }\n.a:not( .b ,\n  [title="a  ( b )"] ) { color: red; }`),
@@ -382,7 +382,7 @@ describe("scopes", () => {
 		expect([part?.source.type, part?.node.sourceIndex]).toEqual(["atrule", 3]);
 	});
 
-	// The audit's probe (3.11): a parenthesis in a quoted value doesn't end the root or the limit.
+	// A parenthesis in a quoted value doesn't end the root or the limit.
 	inEverySyntax("a parenthesis inside a quoted value in the prelude", ({ parse }) => {
 		const walked = walk(
 			parse(

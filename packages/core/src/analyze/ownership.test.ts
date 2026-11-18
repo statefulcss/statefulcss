@@ -592,7 +592,7 @@ describe("a doc comment above a selector list", () => {
 	});
 });
 
-// Source: the global-elements decision, clarified 2026-11-15: a scope whose root names no component is context.
+// A scope whose root names no component is context.
 describe("a component inside a global @scope", () => {
 	const facts = (model: Model) =>
 		model.blocks.map((block) => [
@@ -680,7 +680,7 @@ describe("a component inside a global @scope", () => {
 	});
 });
 
-// The audit's probe (2.3): `at` is the whole attribute; `nameAt` is the name alone, for a name-only highlight or edit.
+// `at` is the whole attribute; `nameAt` is the name alone, for a name-only highlight or edit.
 describe("where a part's name is written", () => {
 	inEverySyntax("inside the attribute, quoted, unquoted or escaped", ({ read }) => {
 		const model = read(String.raw`

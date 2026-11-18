@@ -80,7 +80,7 @@ describe("Vue files with several <style> blocks", () => {
 	});
 
 	describe("a block's kind comes only from the attribute names on its <style> tag", () => {
-		// The audit's probe: the first block declares the variable, the second reads it. The read reaches it only
+		// The first block declares the variable, the second reads it. The read reaches it only
 		// when both blocks are one sheet.
 		const probe = (tag: string) => {
 			const model = analyze(

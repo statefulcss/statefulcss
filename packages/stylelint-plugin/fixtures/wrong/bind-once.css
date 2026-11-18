@@ -1,0 +1,15 @@
+/* Fails statefulcss/bind-once: the hover declares "color" again, instead of setting the state variable it's bound to. */
+
+/**
+ * Link
+ * @component link
+ */
+.link {
+	color: var(--t-color-link);
+
+	&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])) {
+		&:hover {
+			color: var(--t-color-link-hover);
+		}
+	}
+}

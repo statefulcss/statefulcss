@@ -1,0 +1,16 @@
+/* Fails statefulcss/bind-through-state-variables: the hover changes a private that "background-color" reads directly. */
+
+/**
+ * Button
+ * @component button
+ */
+.button {
+	--_background-color: var(--t-color-neutral-100);
+	background-color: var(--_background-color);
+
+	&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])) {
+		&:hover {
+			--_background-color: var(--t-color-neutral-200);
+		}
+	}
+}

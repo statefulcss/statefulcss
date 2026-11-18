@@ -1,0 +1,10 @@
+/* Fails statefulcss/theme-tokens: a component declares a token, which belongs in a theme scope. */
+
+/**
+ * Card
+ * @component card
+ */
+.card {
+	--t-radius-card: 8px;
+	border-radius: var(--t-radius-card);
+}

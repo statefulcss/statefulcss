@@ -1,6 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import stylelint from "stylelint";
 import { describe, expect, it } from "vitest";
@@ -94,16 +92,6 @@ describe.each(configs)("%s", (_name, config) => {
 			});
 			expect(resolved?.rules).toMatchObject({ "selector-no-unmatchable": null, "selector-no-invalid": null });
 		}
-	});
-
-	// Core's four whole components. The last stage adds the rest of the corpus; from here on, each rule that lands
-	// has to leave them clean.
-	const components = fileURLToPath(new URL("../../../core/fixtures/components", import.meta.url));
-	describe.each(readdirSync(components))("%s passes with no warning", (file) => {
-		const code = readFileSync(path.join(components, file), "utf8");
-		it.each(syntaxes)("%s", async (syntax) => {
-			expect(await warningsOf(config, project(), code, syntax)).toEqual([]);
-		});
 	});
 });
 

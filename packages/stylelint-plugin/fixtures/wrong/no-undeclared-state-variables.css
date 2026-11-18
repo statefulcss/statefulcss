@@ -1,0 +1,13 @@
+/* Fails statefulcss/no-undeclared-state-variables: "--s-opacity" is set while disabled but has no default. */
+
+/**
+ * Button
+ * @component button
+ */
+.button {
+	opacity: var(--s-opacity);
+
+	&:disabled {
+		--s-opacity: 0.5;
+	}
+}

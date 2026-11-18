@@ -1,0 +1,14 @@
+/* Fails statefulcss/visited-colors-only: ":visited" ignores "text-decoration-line". */
+
+/**
+ * Link
+ * @component link
+ */
+.link {
+	--s-color: var(--t-color-link);
+	color: var(--s-color);
+
+	&:visited {
+		text-decoration-line: none;
+	}
+}

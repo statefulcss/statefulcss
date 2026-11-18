@@ -1,0 +1,27 @@
+/* Fails statefulcss/part-variables: a paragraph that belongs to no part reads the variable prepared for the title. */
+
+/**
+ * Card
+ * @component card
+ */
+.card {
+	--p-title-color: var(--t-color-text);
+	--p-body-color: var(--t-color-text-muted);
+
+	&[data-tone="muted"] {
+		--p-title-color: var(--t-color-text-muted);
+		--p-body-color: var(--t-color-text-subtle);
+	}
+}
+
+@scope (.card) to ([data-component]) {
+	[data-part="title"] {
+		color: var(--p-title-color);
+	}
+	[data-part="body"] {
+		color: var(--p-body-color);
+	}
+	p {
+		color: var(--p-title-color);
+	}
+}

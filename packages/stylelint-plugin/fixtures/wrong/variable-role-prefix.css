@@ -1,0 +1,16 @@
+/* Fails statefulcss/variable-role-prefix: "--color" has no role prefix; the hover changes it, so it's "--s-color". */
+
+/**
+ * Link
+ * @component link
+ */
+.link {
+	--color: var(--t-color-link);
+	color: var(--color);
+
+	&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert])) {
+		&:hover {
+			--color: var(--t-color-link-hover);
+		}
+	}
+}

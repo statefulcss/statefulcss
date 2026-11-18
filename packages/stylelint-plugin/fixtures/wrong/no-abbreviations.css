@@ -1,0 +1,10 @@
+/* Fails statefulcss/no-abbreviations: "btn" is short for "button". */
+
+/**
+ * Button
+ * @component btn
+ */
+.btn {
+	--s-opacity: 1;
+	opacity: var(--s-opacity);
+}

@@ -1,0 +1,17 @@
+/* Fails statefulcss/bind-once, statefulcss/blocking-states-win: the hover repeats "opacity" and isn't guarded. */
+
+/**
+ * Button
+ * @component button
+ */
+.button {
+	--s-opacity: 1;
+	opacity: var(--s-opacity);
+
+	&:hover {
+		opacity: 0.9;
+	}
+	&:disabled {
+		--s-opacity: 0.5;
+	}
+}

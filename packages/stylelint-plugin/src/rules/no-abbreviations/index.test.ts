@@ -18,7 +18,7 @@ function on(message: string, line: number, column: number, endColumn: number): E
 
 testRule(noAbbreviations, {
 	accept: [
-		// The rules page's Fixed cases.
+		// The README's Fixed cases.
 		{
 			description: "an abbreviation in a token's name",
 			code: `[data-theme="default"] { --t-color-background-accent: blue; }`,
@@ -29,7 +29,17 @@ testRule(noAbbreviations, {
 		},
 		{
 			description: "an abbreviation in a component variable's name",
-			code: `.page { --c-card-padding: var(--t-space-1); }`,
+			code: `.card { padding: var(--c-card-padding, var(--t-space-1)); }`,
+		},
+		// A component variable's name is its component's: a consumer setting it isn't told to rename it.
+		{
+			description: "a consumer setting another component's variable",
+			code: `
+				.page { --c-card-pad: var(--t-space-1); --c-signature-pad-btn-color: red; }
+				:root { --c-card-pad: 0; }
+				.toolbar { & > [data-slot="action"] { --c-button-pad: 0; } }
+				@property --c-card-pad { syntax: "<length>"; inherits: true; initial-value: 0; }
+			`,
 		},
 		// A word of the component's own name, in its public variables.
 		{
@@ -48,7 +58,7 @@ testRule(noAbbreviations, {
 				}
 			`,
 		},
-		// The rules page's Not reported cases.
+		// The README's Not reported cases.
 		{
 			description: "HTML element names",
 			code: `.header { --c-nav-link-color: red; --c-header-img-size: 2rem; --c-header-svg-width: 1rem; }`,
@@ -78,7 +88,7 @@ testRule(noAbbreviations, {
 			description: "private names, by default",
 			code: `.card { --_pad: var(--t-space-1); padding: var(--_pad); }`,
 		},
-		// Beyond the rules page.
+		// Beyond the README's cases.
 		{
 			description: "a word on the list inside a longer word",
 			code: `.page { --c-page-padding: 0; --c-page-header-width: 0; --c-page-description-color: red; }`,
@@ -166,7 +176,7 @@ testRule(noAbbreviations, {
 		},
 	],
 	reject: [
-		// The rules page's Reported cases.
+		// The README's Reported cases.
 		{
 			description: "an abbreviation in a token's name",
 			code: `[data-theme="default"] { --t-bg-accent: blue; }`,
@@ -200,9 +210,25 @@ testRule(noAbbreviations, {
 		},
 		{
 			description: "an abbreviation in a component variable's name",
-			code: `.page { --c-card-pad: var(--t-space-1); }`,
+			code: `.card { padding: var(--c-card-pad, var(--t-space-1)); }`,
 			warnings: [
-				on(`Unexpected abbreviation "pad" in "--c-card-pad". Write "--c-card-padding" instead.`, 1, 9, 21),
+				on(`Unexpected abbreviation "pad" in "--c-card-pad". Write "--c-card-padding" instead.`, 1, 18, 53),
+			],
+		},
+		{
+			description:
+				"a component variable its component registers, reads and writes: once for @property, once for the block",
+			code: `
+				@property --c-card-pad { syntax: "<length>"; inherits: true; initial-value: 0; }
+				.card {
+					padding: var(--c-card-pad, 0);
+					margin: var(--c-card-pad, 0);
+					--c-card-pad: 1px;
+				}
+			`,
+			warnings: [
+				on(`Unexpected abbreviation "pad" in "--c-card-pad". Write "--c-card-padding" instead.`, 1, 11, 23),
+				on(`Unexpected abbreviation "pad" in "--c-card-pad". Write "--c-card-padding" instead.`, 5, 2, 14),
 			],
 		},
 		{
@@ -222,7 +248,7 @@ testRule(noAbbreviations, {
 				on(`Unexpected abbreviation "prim". Write "primary" instead.`, 2, 19, 23),
 			],
 		},
-		// Beyond the rules page.
+		// Beyond the README's cases.
 		{
 			description: "a component's class, each place it's written",
 			code: `
@@ -284,7 +310,7 @@ testRule(noAbbreviations, {
 		},
 		{
 			description: "a declaration in a nested at-rule",
-			code: `.page { @media (width > 40rem) { --c-card-pad: 2rem; } }`,
+			code: `.card { @media (width > 40rem) { --c-card-pad: 2rem; } }`,
 			warnings: [
 				on(`Unexpected abbreviation "pad" in "--c-card-pad". Write "--c-card-padding" instead.`, 1, 34, 46),
 			],

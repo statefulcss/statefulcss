@@ -70,33 +70,61 @@ export default defineRule<Options, Key>({
 
 		// A component variable starts with its component's name, which is checked where the class or attribute writes it:
 		// `pad` in `--c-signature-pad-color` names the Signature Pad, while `--c-card-pad` still gets "padding".
-		const components = model.components.map((component) => component.name.toLowerCase());
-		const from = (name: string, role: Role | undefined): number => {
-			const start = prefixLength(name);
-			if (role !== "component") return start;
-			const rest = name.slice(start).toLowerCase();
-			const own = components
-				.filter((component) => rest === component || rest.startsWith(`${component}-`))
-				.reduce((longest, component) => Math.max(longest, component.length), 0);
-			return start + own;
+		const nameOf = (component: number | undefined): string | undefined =>
+			component === undefined ? undefined : model.components[component]?.name.toLowerCase();
+		const startsWith = (name: string, component: string): boolean => {
+			const rest = name.slice(prefixLength(name)).toLowerCase();
+			return rest === component || rest.startsWith(`${component}-`);
 		};
+		// A component variable is the component's API, and its name is the component's to choose: it's checked only
+		// where its own component uses it, on one of its elements or registered in its file. Anywhere else, a
+		// consumer sets someone else's variable, and renaming it there would break the link.
+		const ownComponent = (name: string, element: number | undefined): string | undefined => {
+			const one = element === undefined ? undefined : model.elements[element];
+			const component = nameOf(one && "component" in one ? one.component : undefined);
+			return component !== undefined && startsWith(name, component) ? component : undefined;
+		};
+		const defined = model.components
+			.filter((component) => component.hasRootBlock)
+			.map((component) => component.name.toLowerCase());
+		const registeredComponent = (name: string): string | undefined =>
+			defined.filter((component) => startsWith(name, component)).sort((a, b) => b.length - a.length)[0];
+		const from = (name: string, component: string | undefined): number =>
+			prefixLength(name) + (component === undefined ? 0 : component.length);
 
-		// Variable names, where they're declared or registered: a selector list writes a declaration once.
+		// Variable names, where they're declared or registered: a selector list writes a declaration once. A component
+		// variable's own component reads it rather than writes it, so its reads count too.
 		const reported = new Set<number>();
+		const componentNames = new Set<string>();
 		for (const declaration of model.declarations) {
 			if (!checked(declaration.role) || reported.has(declaration.written)) continue;
-			const kind = model.elements[model.blocks[declaration.block]?.element ?? -1]?.kind;
+			const element = model.blocks[declaration.block]?.element;
+			const kind = model.elements[element ?? -1]?.kind;
 			if (kind === undefined || kind === "utility" || kind === "foreign") continue;
-			reported.add(declaration.written);
 			const name = declaration.property;
+			const component = declaration.role === "component" ? ownComponent(name, element) : undefined;
+			if (declaration.role === "component" && component === undefined) continue;
+			reported.add(declaration.written);
+			if (declaration.role === "component") componentNames.add(name);
 			if (!unreadable.test(name))
-				report(name, from(name, declaration.role), { node: declaration.node, part: "property" }, true);
+				report(name, from(name, component), { node: declaration.node, part: "property" }, true);
+		}
+		for (const read of model.reads) {
+			if (read.role !== "component" || read.declaration === undefined || componentNames.has(read.name))
+				continue;
+			const component = ownComponent(read.name, read.element);
+			const declaration = model.declarations[read.declaration];
+			if (component === undefined || !declaration || unreadable.test(read.name)) continue;
+			componentNames.add(read.name);
+			report(read.name, from(read.name, component), { node: declaration.node, part: "value" }, true);
 		}
 		for (const registration of model.registrations) {
 			const { name, node } = registration;
 			const index = node.params.indexOf(name);
 			if (!checked(registration.role) || unreadable.test(name) || index === -1) continue;
-			report(name, from(name, registration.role), { node, index, endIndex: index + name.length }, true);
+			const component = registration.role === "component" ? registeredComponent(name) : undefined;
+			if (registration.role === "component" && component === undefined) continue;
+			report(name, from(name, component), { node, index, endIndex: index + name.length }, true);
 		}
 
 		// Component classes and `data-*` attributes, everywhere a selector writes them.

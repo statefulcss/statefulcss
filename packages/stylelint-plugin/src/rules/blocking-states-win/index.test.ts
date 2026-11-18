@@ -381,6 +381,30 @@ testRule(blockingStatesWin, {
 				"&:disabled { --q-tabs-blocked: false; opacity: 0.5; }",
 			),
 		},
+		// A class on the document element is a condition of the page, not a component.
+		{
+			description: "a class on the document element, changed on hover and by a blocking state",
+			code: `
+				html.dark { --s-opacity: 1; opacity: var(--s-opacity); }
+				html.dark:hover { --s-opacity: 0.9; }
+				html.dark[inert] { --s-opacity: 0.5; }
+				:root.dark { --s-opacity: 1; opacity: var(--s-opacity); }
+				:root.dark:hover { --s-opacity: 0.9; }
+				:root.dark[inert] { --s-opacity: 0.5; }
+			`,
+		},
+		// The same guard, complete, holds whatever the @include emits.
+		{
+			description: "a complete guard holding an @include",
+			code: button(
+				lines(
+					`${guard} {`,
+					"\t@include selected-look;",
+					"\t&:hover { --s-color: var(--_color-hover); }",
+					"}",
+				),
+			).code,
+		},
 	],
 	reject: [
 		// The rules page's Reported cases.
@@ -994,6 +1018,37 @@ testRule(blockingStatesWin, {
 				lines(
 					"&:where(:not(:disabled)) {",
 					"\tcursor: pointer;",
+					"\t&:hover { --s-color: var(--_color-hover); }",
+					"}",
+				),
+			).code,
+			warnings: [
+				{
+					message: incompleteMixed('".button"', '"[aria-disabled="true"]", "[data-loading]" and "[inert]"'),
+					line: 6,
+					column: 10,
+					endLine: 6,
+					endColumn: 25,
+				},
+			],
+		},
+		// A class on its own is a component.
+		{
+			description: "a class on its own, changed on hover and by a blocking state",
+			code: `
+				.dark { --s-opacity: 1; opacity: var(--s-opacity); }
+				.dark:hover { --s-opacity: 0.9; }
+				.dark[inert] { --s-opacity: 0.5; }
+			`,
+			warnings: [{ message: unguarded(":hover", '".dark"'), line: 2, column: 6, endLine: 2, endColumn: 12 }],
+		},
+		// An @include may emit a semantic state, so a guard holding one isn't completed.
+		{
+			description: "an incomplete guard holding an @include, which --fix doesn't complete",
+			code: button(
+				lines(
+					"&:where(:not(:disabled)) {",
+					"\t@include selected-look;",
 					"\t&:hover { --s-color: var(--_color-hover); }",
 					"}",
 				),

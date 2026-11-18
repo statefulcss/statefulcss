@@ -203,12 +203,14 @@ export default defineRule<Record<never, never>, Key>({
 			);
 			// Completing a guard keeps everything inside it off while the added states hold. That's right only for
 			// interaction states of the elements it was counted for: a semantic state's look (`&[aria-pressed="true"]`),
-			// a plain declaration, or another element's branch (`.button, a`) would change too.
+			// a plain declaration, or another element's branch (`.button, a`) would change too. So would what unknown
+			// syntax inside it emits: an `@include` may write a semantic state.
 			const all = guardsAt.get(key) ?? guards;
 			const mixed = all.some(
 				(guard) =>
 					guard.element === undefined ||
 					!missing.has(guard.element) ||
+					holdsUnknown(model, guard) ||
 					guard.blocks.some((id) => {
 						const block = model.blocks[id];
 						// A focus state inside the guard has its own finding, and stops the completion above.
@@ -779,6 +781,15 @@ function isDirective(node: ChildNode | undefined): boolean {
 }
 
 /** A focus state, or a list that holds one: `:is(:hover, :focus-visible)`. */
+/** Whether syntax core can't read (`@include`, `#{$state}`) sits inside the rule a guard is written in. */
+function holdsUnknown(model: Model, guard: Guard): boolean {
+	const rule = guard.condition.at.node;
+	return model.unknowns.some((unknown) => {
+		for (let node = unknown.node.parent; node; node = node.parent) if (node === rule) return true;
+		return false;
+	});
+}
+
 function holdsFocus(condition: Condition): boolean {
 	return condition.focus || condition.inner.some(holdsFocus);
 }

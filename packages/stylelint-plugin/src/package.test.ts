@@ -7,7 +7,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { ruleMeta, ruleNames } from "./index.js";
-import { rulesUrl } from "./stylelint/plugin.js";
+import { everyRule } from "./rules/index.js";
+import { ruleNameOf, rulesUrl } from "./stylelint/plugin.js";
 
 const packageFolder = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repository = path.resolve(packageFolder, "../..");
@@ -28,6 +29,10 @@ const ruleFolders = readdirSync(rulesFolder, { withFileTypes: true })
 	.map((entry) => entry.name);
 
 describe("the package", () => {
+	it("lists every rule's name in rule-names, in the configs' order", () => {
+		expect(ruleNames).toEqual(everyRule.map(ruleNameOf));
+	});
+
 	it("has a README for every rule, and a rule for every README", () => {
 		expect(ruleFolders.map((name) => `statefulcss/${name}`).sort()).toEqual([...ruleNames].sort());
 	});

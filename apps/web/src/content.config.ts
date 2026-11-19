@@ -1,7 +1,7 @@
 import { defineCollection } from "astro:content";
 import { glob } from "astro/loaders";
 import { z } from "astro/zod";
-import { ruleNames } from "@statefulcss/stylelint-plugin";
+import { ruleNames } from "@statefulcss/stylelint-plugin/rule-names";
 
 import { lintRulesLoader } from "./loaders/lint-rules";
 

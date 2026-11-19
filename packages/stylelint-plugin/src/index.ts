@@ -7,8 +7,7 @@ import { metaOf, ruleNameOf, toPlugin } from "./stylelint/plugin.js";
 /** The rule plugins, in the form Stylelint accepts in `plugins`. */
 const plugins: stylelint.Plugin[] = [...rules.map((rule) => toPlugin(rule)), toConfigPlugin(configRule)];
 
-/** The name of every rule, for tools that list or document them. */
-export const ruleNames: readonly string[] = everyRule.map(ruleNameOf);
+export { ruleNames } from "./rule-names.js";
 
 /** Every rule's page and whether it can fix, by the rule's name. */
 export const ruleMeta: Readonly<Record<string, stylelint.RuleMeta>> = Object.fromEntries(

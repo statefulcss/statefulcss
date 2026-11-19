@@ -44,6 +44,10 @@
 		"./compatible": {
 			"types": "./dist/configs/compatible.d.ts",
 			"default": "./dist/configs/compatible.js"
+		},
+		"./rule-names": {
+			"types": "./dist/rule-names.d.ts",
+			"default": "./dist/rule-names.js"
 		}
 	},
 	"files": [

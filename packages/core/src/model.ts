@@ -44,6 +44,11 @@ export interface FileInfo {
 
 export interface Sheet {
 	readonly kind: "plain" | "scoped" | "module";
+	/**
+	 * Its build adds the file's scope to every selector, `@scope` limits included: an Astro `<style>` without
+	 * `is:global` or `is:inline`. Its limit is written `:global([data-component])` to ship as `[data-component]`.
+	 */
+	readonly scopesLimits: boolean;
 }
 
 /** Where something was written: a rule or at-rule, and the offsets inside its selector or parameters. */
@@ -94,6 +99,10 @@ export interface Scope {
 	readonly limit: string | undefined;
 	/** The limit is exactly the component attribute. */
 	readonly limitIsComponents: boolean;
+	/** The limit is exactly the component attribute inside `:global()`: `:global([data-component])`. */
+	readonly limitIsGlobalComponents: boolean;
+	/** Its sheet, as an index into `sheets`. */
+	readonly sheet: number;
 	/** Written inside a rule. */
 	readonly nested: boolean;
 	/** Undefined when the file has no root block for its component. */

@@ -1,6 +1,7 @@
 // Pass 3. Gives every block its element: finds the components, links their scopes and doc comments, and makes the
 // elements each component selects. Also gathers the guards and every place a selector names a part.
 import type { AtRule, ChildNode, Node, Rule } from "postcss";
+import type parser from "postcss-selector-parser";
 
 import type {
 	Component,
@@ -453,7 +454,9 @@ export function components(
 			root: scope.rootText,
 			rootKind: owner?.kind === "component" ? owner.identity.kind : undefined,
 			limit: scope.limit,
-			limitIsComponents: isComponentsLimit(scope.limit, names),
+			limitIsComponents: limitForm(scope.limit, names) === "components",
+			limitIsGlobalComponents: limitForm(scope.limit, names) === "global",
+			sheet: scope.sheet,
 			nested: scope.nested,
 			afterRootBlock: rootOrder === undefined ? undefined : scope.order > rootOrder,
 		};
@@ -538,14 +541,30 @@ function pathText(read: Classified): string {
 }
 
 /** Whether a scope's limit is exactly the component attribute, with no value. */
-function isComponentsLimit(limit: string | undefined, names: Names): boolean {
-	if (limit === undefined) return false;
+function limitForm(limit: string | undefined, names: Names): "components" | "global" | undefined {
+	if (limit === undefined) return undefined;
 	const parsed = parseSelectorList(limit);
-	if ("reason" in parsed) return false;
-	const [selector, ...others] = parsed.selectors;
+	if ("reason" in parsed) return undefined;
+	const only = onlyNode(parsed.selectors);
+	if (isComponentAttribute(only, names)) return "components";
+	if (only?.type === "pseudo" && only.value.toLowerCase() === ":global")
+		return isComponentAttribute(onlyNode(only.nodes), names) ? "global" : undefined;
+	return undefined;
+}
+
+/** The one simple selector of a list with one selector of one simple selector, comments aside. */
+function onlyNode(selectors: readonly parser.Selector[]): parser.Node | undefined {
+	const [selector, ...others] = selectors;
 	const [only, ...rest] = selector?.nodes.filter((node) => node.type !== "comment") ?? [];
-	if (!only || others.length > 0 || rest.length > 0 || only.type !== "attribute") return false;
-	return only.attribute.toLowerCase() === names.componentAttribute && only.operator === undefined;
+	return others.length > 0 || rest.length > 0 ? undefined : only;
+}
+
+function isComponentAttribute(node: parser.Node | undefined, names: Names): boolean {
+	return (
+		node?.type === "attribute" &&
+		node.attribute.toLowerCase() === names.componentAttribute &&
+		node.operator === undefined
+	);
 }
 
 /**

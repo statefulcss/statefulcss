@@ -380,3 +380,75 @@ describe("recommended in Sass, Vue and CSS Modules", () => {
 		expect(recommended.overrides?.length).toBeGreaterThan(1);
 	});
 });
+
+/** The setup the package README gives for Astro and Svelte: `postcss-html` reads their `<style>` blocks. */
+const components: stylelint.Config = {
+	...setup,
+	overrides: [{ files: ["**/*.astro", "**/*.svelte", "**/*.vue"], customSyntax: "postcss-html" }],
+};
+
+/** A component whose parts, content and slot are written in the `<style>` given. */
+const card = (style: string, limit: string, content: string, slot: string) => `
+	<div class="card" data-component><h2 data-part="title">Card</h2><slot /></div>
+	${style}
+		@layer components {
+			.card {
+				padding: 1rem;
+				& > ${slot} { margin: 0; }
+			}
+			@scope (.card) to (${limit}) {
+				[data-part="title"] { font-weight: 600; }
+				${content} { margin: 0; }
+			}
+		}
+	</style>
+`;
+
+describe("recommended in Astro and Svelte components", () => {
+	const project = temporaryProject();
+
+	it("passes the @scope limit each kind of <style> ships as the component attribute", async () => {
+		const global = ":global([data-component])";
+		expect(
+			await lintFiles(
+				project(),
+				{
+					"src/scoped.astro": card("<style>", global, ":global(p)", ':global([data-slot="action"])'),
+					"src/global.astro": card("<style is:global>", "[data-component]", "p", '[data-slot="action"]'),
+					"src/card.svelte": card(
+						"<style>",
+						"[data-component]",
+						":global(p)",
+						':global([data-slot="action"])',
+					),
+				},
+				components,
+			),
+		).toEqual({
+			[path.join("src", "scoped.astro")]: [],
+			[path.join("src", "global.astro")]: [],
+			[path.join("src", "card.svelte")]: [],
+		});
+	});
+
+	it("reports a limit that doesn't ship as the component attribute", async () => {
+		const global = ":global([data-component])";
+		expect(
+			await lintFiles(
+				project(),
+				{
+					"src/scoped.astro": card("<style>", "[data-component]", "p", '[data-slot="action"]'),
+					"src/global.astro": card("<style is:global>", global, "p", '[data-slot="action"]'),
+					"src/card.svelte": card("<style>", global, "p", '[data-slot="action"]'),
+					"src/card.vue": `<template><div></div></template>\n${card("<style scoped>", global, ":deep(p)", '[data-slot="action"]')}`,
+				},
+				components,
+			),
+		).toEqual({
+			[path.join("src", "scoped.astro")]: ["8: statefulcss/parts-in-scope"],
+			[path.join("src", "global.astro")]: ["8: statefulcss/parts-in-scope"],
+			[path.join("src", "card.svelte")]: ["8: statefulcss/parts-in-scope"],
+			[path.join("src", "card.vue")]: ["10: statefulcss/parts-in-scope"],
+		});
+	});
+});

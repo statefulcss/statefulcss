@@ -183,6 +183,20 @@ testRule(partsInScope, {
 			],
 		},
 		{
+			description: "a scope whose limit is written through :global(), which only an Astro <style> needs",
+			code: `
+				.card { color: red; }
+				@scope (.card) to (:global([data-component])) { [data-part="title"] { color: red; } }
+			`,
+			warnings: [
+				{
+					message: `Unexpected ":global()" in the limit "to (:global([data-component]))" on the scope of ".card". Only an Astro <style> needs it. Limit it with "to ([data-component])".`,
+					line: 2,
+					column: 16,
+				},
+			],
+		},
+		{
 			description: "a scope limited by any class",
 			code: `
 				@scope (.card) to ([class]) {

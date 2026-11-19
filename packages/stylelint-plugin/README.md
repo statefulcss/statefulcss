@@ -46,13 +46,14 @@ Both configs load the plugin themselves. Each also:
 
 - in `*.scss` and `*.sass`: Sass's at-rules (`@use`, `@mixin`, `@include`, `@if` and the others), `!default` and `!global`, and a mixin's `&` (`@mixin focused { &:focus-visible { … } }`), which stands for the rule that includes it; `declaration-property-value-no-unknown`, `value-no-invalid` and `media-query-no-invalid` are off, since they read a Sass variable, function or map as CSS;
 - in `*.vue`: Sass's at-rules, annotations and a mixin's `&`, Vue's `:deep()`, `:global()` and `:slotted()`, and, for a `<style module>` block, CSS Modules' names as in a module file;
+- in `*.astro` and `*.svelte`: `:global()`;
 - in `*.module.css`, `*.module.scss` and `*.module.sass`: CSS Modules' `composes`, `:global`, `:local`, `@value`, and the names declared in `:export { … }` and `:import(…) { … }`.
 
 `compatible` adds none of these: a project that extends its own config keeps the setup it has for its syntaxes.
 
-## Sass, Vue and CSS Modules
+## Sass, Vue, Astro, Svelte and CSS Modules
 
-The rules read plain CSS, SCSS, and the `<style>` blocks of a `.vue` file. Stylelint reads CSS only, until a parser is set for the other files. Install the parsers:
+The rules read plain CSS, SCSS, and the `<style>` blocks of a `.vue`, `.astro` or `.svelte` file. Stylelint reads CSS only, until a parser is set for the other files. Install the parsers:
 
 ```sh
 npm install --save-dev postcss-scss postcss-html
@@ -66,14 +67,16 @@ export default {
 	extends: ["@statefulcss/stylelint-plugin/recommended"],
 	overrides: [
 		{ files: ["**/*.scss"], customSyntax: "postcss-scss" },
-		{ files: ["**/*.vue"], customSyntax: "postcss-html" },
+		{ files: ["**/*.{vue,astro,svelte}"], customSyntax: "postcss-html" },
 	],
 };
 ```
 
 ```sh
-npx stylelint "**/*.{css,scss,vue}"
+npx stylelint "**/*.{css,scss,vue,astro,svelte}"
 ```
+
+A framework's scoped `<style>` (Astro's `<style>`, Vue's `<style scoped>`, Svelte's `<style>`) scopes a rule to the elements written in its file. The methodology works there too. Write the `@scope` limit so it ships as `to ([data-component])`: `to (:global([data-component]))` in Astro, which adds the file's scope to the limit, and `to ([data-component])` everywhere else. Select what comes from another file through the framework's escape: `:global()` in Astro and Svelte, `:deep()` or `:slotted()` in Vue. `statefulcss/parts-in-scope` checks the limit. In Astro, `scopedStyleStrategy: "where"` keeps the file's scope from adding specificity to every rule.
 
 CSS Modules need no parser: a `*.module.css` file is CSS. A value that `@value` or `:import()` names (`@value ink: red;` then `color: ink`) is read as CSS by `declaration-property-value-no-unknown`, which reports it in a `*.module.css` and a `.vue` file: the rule can't be told which names a file declares. A project that uses them switches it off for those files, and loses its check of their values:
 

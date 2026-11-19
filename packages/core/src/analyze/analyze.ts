@@ -5,6 +5,7 @@ import type { Block, Model, Unknown } from "../model.js";
 import { type Classified, classify, vocabularyFrom } from "./classify.js";
 import { components } from "./components.js";
 import { declarations } from "./declarations.js";
+import { scopesLimits } from "./files.js";
 import { namesFrom } from "./names.js";
 import { complexToString } from "./selectors.js";
 import { variables } from "./variables.js";
@@ -91,7 +92,10 @@ function read(root: Root | Document, settings: Settings): Model {
 	return {
 		...empty(root, settings),
 		file: { path: root.source?.input.file, cssModule: walked.sheets.includes("module") },
-		sheets: walked.sheets.map((kind) => ({ kind })),
+		sheets: walked.sheets.map((kind) => ({
+			kind,
+			scopesLimits: scopesLimits(kind, root.source?.input.file),
+		})),
 		components: placed.components,
 		scopes: placed.scopes,
 		elements: placed.elements.map((element, id) => ({

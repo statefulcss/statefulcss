@@ -119,7 +119,10 @@ describe("Vue files with several <style> blocks", () => {
 			parseVue("<style>.button { color: red; }</style><style module>.root { color: red; }</style>"),
 			defaults,
 		);
-		expect(model.sheets).toEqual([{ kind: "plain" }, { kind: "module" }]);
+		expect(model.sheets).toEqual([
+			{ kind: "plain", scopesLimits: false },
+			{ kind: "module", scopesLimits: false },
+		]);
 		expect(model.file).toEqual({ path: "/project/src/Button.vue", cssModule: true });
 	});
 });

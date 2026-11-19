@@ -13,13 +13,13 @@ describe("the model", () => {
 	inEverySyntax("a plain file isn't a CSS Module", ({ read }) => {
 		const model = read(".root { color: red; }");
 		expect(model.file.cssModule).toBe(false);
-		expect(model.sheets).toEqual([{ kind: "plain" }]);
+		expect(model.sheets).toEqual([{ kind: "plain", scopesLimits: false }]);
 	});
 
 	inEverySyntax("a CSS Module is one", ({ read }) => {
 		const model = read(".root { color: red; }", { module: true });
 		expect(model.file.cssModule).toBe(true);
-		expect(model.sheets).toEqual([{ kind: "module" }]);
+		expect(model.sheets).toEqual([{ kind: "module", scopesLimits: false }]);
 	});
 
 	inEverySyntax("at-rules that don't style elements", ({ read }) => {
@@ -36,7 +36,7 @@ describe("the model", () => {
 		const { root, ...data } = model;
 		const json = JSON.stringify(data, (key, value: unknown) => (key === "node" ? undefined : value));
 		expect(JSON.parse(json)).toMatchObject({
-			sheets: [{ kind: "plain" }],
+			sheets: [{ kind: "plain", scopesLimits: false }],
 			atRules: [{ name: "import" }],
 			unknowns: [{ reason: "unknown-at-rule", detail: "@include", elements: [] }],
 		});

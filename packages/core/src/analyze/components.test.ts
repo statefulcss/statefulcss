@@ -144,6 +144,8 @@ describe("a whole component", () => {
 					rootKind: "class",
 					limit: "[data-component]",
 					limitIsComponents: true,
+					limitIsGlobalComponents: false,
+					sheet: 0,
 					nested: false,
 					afterRootBlock: true,
 				},
@@ -806,16 +808,24 @@ describe("scopes", () => {
 			@scope (.card) to ([data-component="x"]) { [data-part="d"] { color: red; } }
 			@scope (.card) to ([data-component], .x) { [data-part="e"] { color: red; } }
 			@scope (.card) { [data-part="f"] { color: red; } }
+			@scope (.card) to (:global([data-component])) { [data-part="g"] { color: red; } }
+			@scope (.card) to (:global([data-component="x"])) { [data-part="h"] { color: red; } }
+			@scope (.card) to (:global([data-component], .x)) { [data-part="i"] { color: red; } }
 		`);
-		expect(model.scopes.map((scope) => [scope.limit, scope.limitIsComponents])).toEqual([
-			["[data-component]", true],
-			["[class]", false],
-			["[data-part]", false],
-			['[data-component="x"]', false],
-			["[data-component], .x", false],
-			[undefined, false],
+		expect(
+			model.scopes.map((scope) => [scope.limit, scope.limitIsComponents, scope.limitIsGlobalComponents]),
+		).toEqual([
+			["[data-component]", true, false],
+			["[class]", false, false],
+			["[data-part]", false, false],
+			['[data-component="x"]', false, false],
+			["[data-component], .x", false, false],
+			[undefined, false, false],
+			[":global([data-component])", false, true],
+			[':global([data-component="x"])', false, false],
+			[":global([data-component], .x)", false, false],
 		]);
-		expect(model.components[0]?.scopes).toEqual([0, 1, 2, 3, 4, 5]);
+		expect(model.components[0]?.scopes).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
 	});
 
 	inEverySyntax("a scope nested in the root block, and one core doesn't read", ({ read }) => {

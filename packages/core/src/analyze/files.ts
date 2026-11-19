@@ -2,8 +2,9 @@ import type { Root } from "postcss";
 
 /**
  * What kind of stylesheet a root is. In a Vue file each `<style>` block is a root: a plain block styles the whole
- * page, a `scoped` one only its component, and a `module` one is a CSS Module. Outside Vue, `*.module.css` (or
- * `.scss`) is a CSS Module and anything else is plain.
+ * page, a `scoped` one only its component, and a `module` one is a CSS Module. An Astro file scopes its `<style>`
+ * blocks to the component unless they're `is:global` or `is:inline`. Elsewhere, `*.module.css` (or `.scss`) is a CSS
+ * Module and anything else is plain.
  */
 export type SheetKind = "plain" | "scoped" | "module";
 
@@ -14,6 +15,7 @@ export function sheetKind(root: Root, path: string | undefined): SheetKind {
 	if (names !== undefined) {
 		if (names.includes("module")) return "module";
 		if (names.includes("scoped")) return "scoped";
+		if (isAstro(path) && !names.includes("is:global") && !names.includes("is:inline")) return "scoped";
 		return "plain";
 	}
 	return path && /\.module\.[a-z]+$/i.test(path) ? "module" : "plain";
@@ -33,6 +35,19 @@ function styleAttributes(markup: string): string[] | undefined {
 		at = at === 0 ? -1 : lower.lastIndexOf("<style", at - 1);
 	}
 	return undefined;
+}
+
+/**
+ * Whether a sheet's build adds the file's scope to every selector, `@scope` limits included. Astro does, so a limit
+ * written `to ([data-component])` stops only at components written in the same file. Vue and Svelte leave the
+ * `@scope` prelude as written.
+ */
+export function scopesLimits(kind: SheetKind, path: string | undefined): boolean {
+	return kind === "scoped" && isAstro(path);
+}
+
+function isAstro(path: string | undefined): boolean {
+	return path !== undefined && /\.astro$/i.test(path);
 }
 
 /** Reads a tag's attributes from `start`, the HTML way, if the tag ends at the end of `markup` (but for space). */

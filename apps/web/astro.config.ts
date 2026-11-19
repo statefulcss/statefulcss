@@ -1,20 +1,10 @@
-import { unified } from "@astrojs/markdown-remark";
 import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
-import {
-	transformerMetaHighlight,
-	transformerMetaWordHighlight,
-	transformerNotationDiff,
-	transformerNotationFocus,
-	transformerNotationHighlight,
-	transformerNotationWordHighlight,
-} from "@shikijs/transformers";
 import { defineConfig, fontProviders } from "astro/config";
-import rehypeAutolinkHeadings from "rehype-autolink-headings";
-import rehypeSlug from "rehype-slug";
 
 import csp from "./integrations/csp";
 import { getSiteUrl } from "./src/config/site";
+import { markdownProcessor, shikiConfig } from "./src/markdown/config";
 
 // https://astro.build/config
 export default defineConfig({
@@ -33,32 +23,8 @@ export default defineConfig({
 		}),
 	],
 	markdown: {
-		processor: unified({
-			rehypePlugins: [
-				rehypeSlug,
-				[
-					rehypeAutolinkHeadings,
-					{
-						behavior: "wrap",
-						test: ["h2", "h3", "h4", "h5", "h6"],
-					},
-				],
-			],
-		}),
-		shikiConfig: {
-			themes: {
-				light: "github-light",
-				dark: "github-dark",
-			},
-			transformers: [
-				transformerNotationDiff(),
-				transformerNotationFocus(),
-				transformerNotationHighlight(),
-				transformerNotationWordHighlight(),
-				transformerMetaHighlight(),
-				transformerMetaWordHighlight(),
-			],
-		},
+		processor: markdownProcessor,
+		shikiConfig,
 	},
 	fonts: [
 		{

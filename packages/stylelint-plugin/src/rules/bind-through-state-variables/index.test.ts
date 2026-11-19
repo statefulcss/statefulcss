@@ -1,4 +1,7 @@
-import { testRule } from "../../testing/test-rule.js";
+import { describe, expect, it } from "vitest";
+
+import recommended from "../../configs/recommended.js";
+import { lint, sourceFor, syntaxes, temporaryProject, testRule } from "../../testing/test-rule.js";
 import bindThroughStateVariables from "./index.js";
 
 testRule(bindThroughStateVariables, {
@@ -93,6 +96,28 @@ testRule(bindThroughStateVariables, {
 					&[data-emphasis="primary"] { --_background-color-hover: var(--t-color-background-accent); }
 					&:hover { --s-background-color: var(--_background-color-hover); }
 					&:active { --s-background-color: var(--t-color-background-pressed); }
+				}
+			`,
+		},
+		{
+			description: "the hidden state that spares until-found, beside a container query writing its variable",
+			code: `
+				.panel {
+					--s-display: flex;
+					display: var(--s-display);
+					@container (inline-size < 20rem) { --s-display: block; }
+					&[hidden]:where(:not([hidden="until-found" i])) { --s-display: none; }
+				}
+			`,
+		},
+		{
+			description: "a variant inside :where(), combined with a state, adds no specificity",
+			code: `
+				.button {
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&:hover:where([data-emphasis="quiet"]) { --s-opacity: 0.9; }
+					&:active { --s-opacity: 0.8; }
 				}
 			`,
 		},
@@ -359,7 +384,7 @@ testRule(bindThroughStateVariables, {
 			warnings: [
 				{
 					message:
-						'Unexpected "color" reading "--_icon-color", which changes in ":hover". Move this value into the default of "--p-after-color" on ".card", and read "var(--p-after-color)" instead.',
+						'Unexpected "color" reading "--_icon-color", which changes in ":hover". Take it with "--_icon-color: inherit" on ".card::after", move this value into the default of "--s-color" there, and read "var(--s-color)" instead.',
 					line: 4,
 					column: 20,
 					endLine: 4,
@@ -367,7 +392,7 @@ testRule(bindThroughStateVariables, {
 				},
 				{
 					message:
-						'Unexpected "color" reading "--_icon-color", which changes in ":hover". Move this value into the default of "--p-icon-color" on ".card", and read "var(--p-icon-color)" instead.',
+						'Unexpected "color" reading "--_icon-color", which changes in ":hover". Take it with "--_icon-color: inherit" on part "icon", move this value into the default of "--s-color" there, and read "var(--s-color)" instead.',
 					line: 8,
 					column: 10,
 					endLine: 8,
@@ -375,7 +400,7 @@ testRule(bindThroughStateVariables, {
 				},
 				{
 					message:
-						'Unexpected "color" reading "--_icon-color", which changes in ":hover". Move this value into the default of "--p-icon-before-color" on ".card", and read "var(--p-icon-before-color)" instead.',
+						'Unexpected "color" reading "--_icon-color", which changes in ":hover". Take it with "--_icon-color: inherit" on "::before" of part "icon", move this value into the default of "--s-color" there, and read "var(--s-color)" instead.',
 					line: 9,
 					column: 22,
 					endLine: 9,
@@ -397,11 +422,32 @@ testRule(bindThroughStateVariables, {
 			warnings: [
 				{
 					message:
-						'Unexpected "color" reading "--_accent", which changes in "[data-tone="danger"]". Move this value into the default of "--p-label-color" on ".card", and read "var(--p-label-color)" instead.',
+						'Unexpected "color" reading "--_accent", which changes in "[data-tone="danger"]". Move this value into the default of "--s-color" on part "label", and read "var(--s-color)" instead.',
 					line: 6,
 					column: 51,
 					endLine: 6,
 					endColumn: 65,
+				},
+			],
+		},
+		{
+			description: "a part reads the root's private, which reads a changing private",
+			code: `
+				.card {
+					--_gutter: var(--t-space-4);
+					--_inset: calc(var(--_gutter) / 2);
+					&[data-density="compact"] { --_gutter: var(--t-space-2); }
+				}
+				@scope (.card) to ([data-component]) {
+					[data-part="body"] { padding: var(--_inset); }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "padding" reading "--_inset", which reads "--_gutter", which changes in "[data-density="compact"]". Take it with "--_inset: inherit" on part "body", move this value into the default of "--s-padding" there, and read "var(--s-padding)" instead.',
+					line: 7,
+					column: 32,
 				},
 			],
 		},
@@ -417,7 +463,7 @@ testRule(bindThroughStateVariables, {
 			warnings: [
 				{
 					message:
-						'Unexpected "margin-block" reading "--_gap", which changes in "[data-density="compact"]". Move this value into the default of "--p-action-margin-block" on ".card", and read "var(--p-action-margin-block)" instead.',
+						'Unexpected "margin-block" reading "--_gap", which changes in "[data-density="compact"]". Take it with "--_gap: inherit" on slot "action", move this value into the default of "--s-margin-block" there, and read "var(--s-margin-block)" instead.',
 					line: 4,
 					column: 66,
 					endLine: 4,
@@ -510,6 +556,44 @@ testRule(bindThroughStateVariables, {
 			],
 		},
 		{
+			description: "a variant and the hidden state that spares until-found write the same state variable",
+			code: `
+				.panel {
+					--s-display: flex;
+					display: var(--s-display);
+					&[data-layout="grid"] { --s-display: grid; }
+					&[hidden]:where(:not([hidden="until-found" i])) { --s-display: none; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--s-display" written by the variant "[data-layout="grid"]" while a state writes it too, in "[hidden]:not([hidden="until-found" i])". Set "--_display" in the variant instead, and give "--s-display" the default "var(--_display)".',
+					line: 4,
+					column: 26,
+				},
+			],
+		},
+		{
+			description: "a variant inside :not(), combined with a state, adds its specificity",
+			code: `
+				.button {
+					--s-opacity: 1;
+					opacity: var(--s-opacity);
+					&:hover:not([data-emphasis="quiet"]) { --s-opacity: 0.9; }
+					&:active { --s-opacity: 0.8; }
+				}
+			`,
+			warnings: [
+				{
+					message:
+						'Unexpected "--s-opacity" written by ":hover:not([data-emphasis="quiet"])", a variant combined with a state, while another state writes it too, in ":active". Set a private in ":not([data-emphasis="quiet"])" instead, and let ":hover" set "--s-opacity" from it.',
+					line: 4,
+					column: 41,
+				},
+			],
+		},
+		{
 			description: "a selector list of two variants is reported once",
 			code: `
 				.button {
@@ -562,7 +646,7 @@ testRule(bindThroughStateVariables, {
 			warnings: [
 				{
 					message:
-						'Unexpected "border-color" reading "--_color", which changes in ":hover". Move this value into the default of "--p-after-border-color" on "a", and read "var(--p-after-border-color)" instead.',
+						'Unexpected "border-color" reading "--_color", which changes in ":hover". Take it with "--_color: inherit" on "a::after", move this value into the default of "--s-border-color" there, and read "var(--s-border-color)" instead.',
 					line: 4,
 					column: 27,
 					endLine: 4,
@@ -592,7 +676,7 @@ testRule(bindThroughStateVariables, {
 		},
 		// A selector list of pseudo-elements gets one instruction for each binding.
 		{
-			description: "a selector list of two pseudo-elements reading a changing private",
+			description: "a selector list of two pseudo-elements reading a changing private is reported once",
 			code: `
 				.a {
 					--_opacity: 0;
@@ -603,15 +687,7 @@ testRule(bindThroughStateVariables, {
 			warnings: [
 				{
 					message:
-						'Unexpected "opacity" reading "--_opacity", which changes in ":hover". Move this value into the default of "--p-after-opacity" on ".a", and read "var(--p-after-opacity)" instead.',
-					line: 4,
-					column: 33,
-					endLine: 4,
-					endColumn: 48,
-				},
-				{
-					message:
-						'Unexpected "opacity" reading "--_opacity", which changes in ":hover". Move this value into the default of "--p-before-opacity" on ".a", and read "var(--p-before-opacity)" instead.',
+						'Unexpected "opacity" reading "--_opacity", which changes in ":hover". Take it with "--_opacity: inherit" on ".a::after" and ".a::before", move this value into the default of "--s-opacity" there, and read "var(--s-opacity)" instead.',
 					line: 4,
 					column: 33,
 					endLine: 4,
@@ -659,4 +735,190 @@ testRule(bindThroughStateVariables, {
 			`,
 		},
 	],
+});
+
+// An element reading its owner's changing private binds the property through its own state variable. The advice,
+// followed word for word, passes every rule; a part variable's default would be one the owner never changes.
+describe("an element reading its owner's changing private, with the advice followed", () => {
+	const project = temporaryProject();
+	const cases: [description: string, reported: string, followed: string][] = [
+		[
+			"a part",
+			`.card {
+	--_gutter: var(--t-space-4);
+	--s-padding: var(--_gutter);
+	padding: var(--s-padding);
+
+	&[data-density="compact"] {
+		--_gutter: var(--t-space-2);
+	}
+}
+
+@scope (.card) to ([data-component]) {
+	[data-part="body"] {
+		--_gutter: inherit;
+		padding: var(--_gutter);
+	}
+}`,
+			`.card {
+	--_gutter: var(--t-space-4);
+	--s-padding: var(--_gutter);
+	padding: var(--s-padding);
+
+	&[data-density="compact"] {
+		--_gutter: var(--t-space-2);
+	}
+}
+
+@scope (.card) to ([data-component]) {
+	[data-part="body"] {
+		--_gutter: inherit;
+		--s-padding: var(--_gutter);
+		padding: var(--s-padding);
+	}
+}`,
+		],
+		[
+			"the root's pseudo-element",
+			`.button {
+	--_accent: red;
+	--s-color: var(--_accent);
+	color: var(--s-color);
+
+	&[data-intent="danger"] {
+		--_accent: darkred;
+	}
+
+	&::after {
+		background-color: var(--_accent);
+	}
+}`,
+			`.button {
+	--_accent: red;
+	--s-color: var(--_accent);
+	color: var(--s-color);
+
+	&[data-intent="danger"] {
+		--_accent: darkred;
+	}
+
+	&::after {
+		--_accent: inherit;
+		--s-background-color: var(--_accent);
+		background-color: var(--s-background-color);
+	}
+}`,
+		],
+		[
+			"a part's pseudo-element",
+			`.card {
+	--_icon-color: var(--t-color-foreground-base);
+	--s-color: var(--_icon-color);
+	color: var(--s-color);
+
+	&:hover {
+		--_icon-color: var(--t-color-foreground-strong);
+	}
+}
+
+@scope (.card) to ([data-component]) {
+	[data-part="icon"]::before {
+		color: var(--_icon-color);
+	}
+}`,
+			`.card {
+	--_icon-color: var(--t-color-foreground-base);
+	--s-color: var(--_icon-color);
+	color: var(--s-color);
+
+	&:hover {
+		--_icon-color: var(--t-color-foreground-strong);
+	}
+}
+
+@scope (.card) to ([data-component]) {
+	[data-part="icon"]::before {
+		--_icon-color: inherit;
+		--s-color: var(--_icon-color);
+		color: var(--s-color);
+	}
+}`,
+		],
+		[
+			"a slot at the end of the placement path",
+			`.card {
+	--_gap: var(--t-space-2);
+	--s-gap: var(--_gap);
+	gap: var(--s-gap);
+
+	&[data-density="compact"] {
+		--_gap: var(--t-space-1);
+	}
+
+	& > [data-part="footer"] > [data-slot="action"] {
+		margin-block: var(--_gap);
+	}
+}`,
+			`.card {
+	--_gap: var(--t-space-2);
+	--s-gap: var(--_gap);
+	gap: var(--s-gap);
+
+	&[data-density="compact"] {
+		--_gap: var(--t-space-1);
+	}
+
+	& > [data-part="footer"] > [data-slot="action"] {
+		--_gap: inherit;
+		--s-margin-block: var(--_gap);
+		margin-block: var(--s-margin-block);
+	}
+}`,
+		],
+		[
+			"a page element's pseudo-element",
+			`a {
+	--_color: blue;
+	--s-color: var(--_color);
+	color: var(--s-color);
+
+	&:hover {
+		--_color: navy;
+	}
+
+	&::after {
+		border-color: var(--_color);
+	}
+}`,
+			`a {
+	--_color: blue;
+	--s-color: var(--_color);
+	color: var(--s-color);
+
+	&:hover {
+		--_color: navy;
+	}
+
+	&::after {
+		--_color: inherit;
+		--s-border-color: var(--_color);
+		border-color: var(--s-border-color);
+	}
+}`,
+		],
+	];
+
+	describe.each(cases)("%s", (_description, reported, followed) => {
+		it.each(syntaxes)("passes every rule once the advice is followed (%s)", async (syntax) => {
+			const before = await lint(sourceFor(syntax, { code: reported }), project(), recommended);
+			expect(before.invalid).toEqual([]);
+			// Without the `inherit`, `no-undeclared-state-variables` asks for it too.
+			expect(before.warnings.map((warning) => warning.rule)).toContain(
+				"statefulcss/bind-through-state-variables",
+			);
+			const after = await lint(sourceFor(syntax, { code: followed }), project(), recommended);
+			expect(after.invalid).toEqual([]);
+			expect(after.warnings.map((warning) => warning.text)).toEqual([]);
+		});
+	});
 });

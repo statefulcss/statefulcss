@@ -19,6 +19,17 @@ const messages = {
 		owner: string,
 	) =>
 		`Unexpected "${property}" reading "${name}", which reads ${chain}, which changes in ${place}. Move this value into the default of "${variable}" on ${owner}, and read "var(${variable})" instead.`,
+	changingTaken: (property: string, name: string, place: string, variable: string, element: string) =>
+		`Unexpected "${property}" reading "${name}", which changes in ${place}. Take it with "${name}: inherit" on ${element}, move this value into the default of "${variable}" there, and read "var(${variable})" instead.`,
+	changingTakenChain: (
+		property: string,
+		name: string,
+		chain: string,
+		place: string,
+		variable: string,
+		element: string,
+	) =>
+		`Unexpected "${property}" reading "${name}", which reads ${chain}, which changes in ${place}. Take it with "${name}: inherit" on ${element}, move this value into the default of "${variable}" there, and read "var(${variable})" instead.`,
 	variantAndState: (variable: string, variant: string, states: string, name: string) =>
 		`Unexpected "${variable}" written by the variant ${variant} while a state writes it too, in ${states}. Set "${name}" in the variant instead, and give "${variable}" the default "var(${name})".`,
 	combinationAndState: (
@@ -47,7 +58,6 @@ export default defineRule<Record<never, never>, Key>({
 	messages,
 	check(model, { settings }) {
 		const name = (id: Id): string => nameOf(model, settings, id);
-		const ownership = ownershipOf(model);
 
 		// One finding for each written declaration, name, message and binding: a selector list is reported once for each
 		// variable it binds, so each binding keeps its own instruction.
@@ -69,34 +79,28 @@ export default defineRule<Record<never, never>, Key>({
 				if (read?.role !== "private" || read.via !== "var" || read.source === undefined) continue;
 				const source = model.variables[read.source];
 				if (!source?.changing) continue;
-				const supplier = ownership.supplier(source) ?? source;
 				const change = changeOf(model, source);
 				if (!change) continue;
-				const binding = bindingOf(model, element, supplier.element, declaration.property);
+				// The element binds the property through its own state variable, whose default reads the private. A
+				// private of its owner's (a part, a slot or a pseudo-element reading its component's) is taken with
+				// `inherit` first. A part variable would change only if the owner's variants and states wrote it.
+				const variable = `--s-${declaration.property}`;
+				const taken = source.element !== element.id;
 				const place = listOf(change.blocks.map((one) => placeText(one)));
+				const chain = change.chain.map((one) => `"${one}"`).join(", which reads ");
 				const at = { node: declaration.node, part: "value" } as const;
-				report(
-					declaration,
-					`${read.name}\n${binding.variable}`,
+				const args =
 					change.chain.length === 0
-						? {
-								message: "changingPrivate",
-								args: [declaration.property, read.name, place, binding.variable, name(binding.owner)],
-								at,
-							}
-						: {
-								message: "changingChain",
-								args: [
-									declaration.property,
-									read.name,
-									change.chain.map((one) => `"${one}"`).join(", which reads "),
-									place,
-									binding.variable,
-									name(binding.owner),
-								],
-								at,
-							},
-				);
+						? [declaration.property, read.name, place, variable, name(element.id)]
+						: [declaration.property, read.name, chain, place, variable, name(element.id)];
+				const message = taken
+					? change.chain.length === 0
+						? "changingTaken"
+						: "changingTakenChain"
+					: change.chain.length === 0
+						? "changingPrivate"
+						: "changingChain";
+				report(declaration, `${read.name}\n${variable}`, { message, args, at });
 			}
 		}
 
@@ -112,8 +116,7 @@ export default defineRule<Record<never, never>, Key>({
 				const block = declaration && model.blocks[declaration.block];
 				if (!block || block.kind === "own" || block.kind === "supports" || block.kind === "unknown") continue;
 				if (visited(block)) continue;
-				if (block.conditions.some((condition) => condition.kind === "variant"))
-					variants.push([declaration, block]);
+				if (block.kind === "variant" || block.conditions.some(outranks)) variants.push([declaration, block]);
 				else if (block.kind === "state") states.push(block);
 			}
 			if (states.length === 0) continue;
@@ -210,6 +213,14 @@ function changeOf(
 	return undefined;
 }
 
+/**
+ * Whether a condition makes its block a variant combined with a state, which outranks a plain state: a variant
+ * written outside `:where()`. Inside it, the variant adds no specificity.
+ */
+function outranks(condition: Block["conditions"][number]): boolean {
+	return condition.kind === "variant" && !condition.inWhere;
+}
+
 /** Whether a block is in `:visited`, where the browser ignores what a variable is set to. */
 function visited(block: Block | undefined): boolean {
 	return block?.kind === "state" && block.groups.includes("visited");
@@ -227,39 +238,4 @@ function placeText(block: Block): string {
 	if (conditions && queries.length > 0) return `"${conditions}" in "${queries.join(" ")}"`;
 	if (conditions) return `"${conditions}"`;
 	return `"${queries.join(" ")}"`;
-}
-
-/**
- * The variable a property binds to, and the element that declares it. A property reading its own element's private
- * binds its own state variable. A root's, a part's or a global element's pseudo-element reading its host's private
- * binds the host's part variable (`--p-after-opacity`); a part, or a part's pseudo-element, reading the root's binds the root's
- * (`--p-icon-color`, `--p-tab-after-opacity`). Anything else binds its own state variable.
- */
-function bindingOf(
-	model: Model,
-	element: Element,
-	owner: Id,
-	property: string,
-): { variable: string; owner: Id } {
-	if (owner !== element.id) {
-		const ownerElement = model.elements[owner];
-		if (element.kind === "pseudo-element") {
-			const host = model.elements[element.host];
-			if ((host?.kind === "part" || host?.kind === "root" || host?.kind === "global") && host.id === owner)
-				return { variable: `--p-${element.name}-${property}`, owner };
-			if (
-				host?.kind === "part" &&
-				ownerElement?.kind === "root" &&
-				model.components[host.component]?.root === owner
-			)
-				return { variable: `--p-${host.name}-${element.name}-${property}`, owner };
-		}
-		if (
-			(element.kind === "part" || element.kind === "slot") &&
-			ownerElement?.kind === "root" &&
-			model.components[element.component]?.root === owner
-		)
-			return { variable: `--p-${element.name}-${property}`, owner };
-	}
-	return { variable: `--s-${property}`, owner: element.id };
 }

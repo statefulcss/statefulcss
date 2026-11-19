@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { longhandsOf, overlaps } from "./shorthands.js";
 
 describe("the longhands a shorthand sets", () => {
-	// Sources: the rules page's "Shared pieces" (shorthands) and `state-variable-names`.
 	it("a box shorthand sets its four sides, and a flow-relative one its two", () => {
 		expect(longhandsOf("padding")).toEqual([
 			"padding-top",
@@ -107,7 +106,6 @@ describe("the longhands a shorthand sets", () => {
 });
 
 describe("whether two properties overlap", () => {
-	// Source: the rules page, rule 3: "an overlap involving a state variable".
 	const rows: [a: string, b: string, overlap: boolean][] = [
 		// A shorthand and its longhand
 		["padding", "padding-top", true],

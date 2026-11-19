@@ -1,0 +1,17 @@
+/* Fails statefulcss/parts-in-scope: the title part is styled outside the Card's scope. */
+
+/**
+ * Card
+ * @component card
+ */
+.card {
+	--p-title-color: var(--t-color-text);
+
+	&[data-tone="muted"] {
+		--p-title-color: var(--t-color-text-muted);
+	}
+}
+
+.card [data-part="title"] {
+	color: var(--p-title-color);
+}

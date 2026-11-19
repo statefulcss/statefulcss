@@ -173,6 +173,11 @@ interface BlockBase {
 	readonly scope: Id | undefined;
 	/** How a block inside a scope writes the scope's root, when it does. */
 	readonly scopeRoot: ScopeRootForm | undefined;
+	/**
+	 * Where that `:scope` or `&` is written, when the block writes it: in the block's own rule, or in the rule around it
+	 * that wrote it (`:scope { &:hover { } }`).
+	 */
+	readonly scopeRootAt: Position | undefined;
 	/** From the component root to the subject. Sibling context is a position variant, not a step. */
 	readonly path: readonly Step[];
 	/** From the selector. */
@@ -192,7 +197,8 @@ interface BlockBase {
 /**
  * Where declarations sit: one resolved selector of one rule, inside its at-rules. A rule whose declarations are
  * written around a nested rule that declares something makes one block for each run, so blocks, declarations and
- * a variable's writes are all in the order the file writes them.
+ * a variable's writes are all in the order the file writes them. A rule with nothing in it, or only what core can't
+ * read (an `@include`), is a block with no declarations, so its selector is still read; it splits no run.
  */
 export type Block = BlockBase &
 	(
@@ -321,7 +327,8 @@ export interface Guard {
 	/** Its `inner` conditions are the list; a `:has()` state that joined it is one of them. */
 	readonly condition: Condition;
 	/**
-	 * The settings' blocking states it excludes, each on its own, for every way the block can match. A compound
+	 * The settings' blocking states it excludes, each on its own, for every way the block can match, as the settings
+	 * write them: `:not(:nth-child(2n + 1))` excludes the entry `:nth-child(2n+1)`. A compound
 	 * (`:not(:disabled[data-loading])`, `:not(:root:disabled)`) excludes neither state alone; `:is()` inside
 	 * (`:not(:is(:focus, :disabled))`) excludes each of its states, in any order.
 	 */
@@ -337,8 +344,8 @@ export interface PartReference {
 	/** Under a selector list naming two components (`.card, .button { & > [data-part="x"] { } }`), each has its own. */
 	readonly component: Id | undefined;
 	/**
-	 * Every block whose selector names it there: a rule nested in the one that writes it names it too. Empty when the
-	 * rule declares nothing itself, as with only an `@include` inside.
+	 * Every block whose selector names it there: a rule nested in the one that writes it names it too. A rule with only
+	 * an `@include` inside, or nothing, has a block with no declarations.
 	 */
 	readonly blocks: readonly Id[];
 	/**

@@ -84,15 +84,31 @@ export interface Vocabulary {
 	readonly blocking: ReadonlySet<string>;
 	readonly interaction: ReadonlySet<string>;
 	readonly stateAttributes: ReadonlySet<string>;
+	/** Each entry of `blockingStates` as the settings write it, by the form a condition is compared in. */
+	readonly blockingEntries: ReadonlyMap<string, readonly string[]>;
 }
 
 export function vocabularyFrom(settings: Settings, names: Names): Vocabulary {
+	const blockingEntries = new Map<string, string[]>();
+	for (const entry of settings.blockingStates) {
+		const compared = normalize(entry);
+		blockingEntries.set(compared, [...(blockingEntries.get(compared) ?? []), entry]);
+	}
 	return {
 		names,
-		blocking: new Set(settings.blockingStates.map(normalize)),
+		blocking: new Set(blockingEntries.keys()),
 		interaction: new Set(settings.interactionStates.map(normalize)),
 		stateAttributes: new Set(settings.stateAttributes.map((name) => name.toLowerCase())),
+		blockingEntries,
 	};
+}
+
+/**
+ * The entries of `blockingStates` a blocking state's condition matches, as the settings write them:
+ * `.button:not(:nth-child(2n + 1))` matches the entry `:nth-child(2n+1)`.
+ */
+export function blockingEntriesOf(vocabulary: Vocabulary, condition: Condition): readonly string[] {
+	return vocabulary.blockingEntries.get(normalize(condition.text)) ?? [];
 }
 
 /** ARIA attributes that say what's happening to an element. Every other ARIA attribute says what it is. */
@@ -157,6 +173,11 @@ interface Reading {
 	/** The compound's place in the block's path; undefined for what comes before the root. */
 	readonly step: number | undefined;
 	readonly vocabulary: Vocabulary;
+	/**
+	 * The attributes the compound writes on their own, as a state: `hidden` in `[hidden]:where(:not([hidden="until-found"
+	 * i]))`. A value of one of them is a condition of that state, not a variant.
+	 */
+	readonly presentStates: ReadonlySet<string>;
 }
 
 /** Reads one block's selector and at-rules. Pure: it reads nothing but its arguments. */
@@ -195,7 +216,14 @@ export function classify(
 		const on: On = isContext ? "context" : isSubject ? "subject" : index === rootIndex ? "root" : "path";
 		const before: On = isSubject && split.pseudoElement !== undefined ? "host" : on;
 		const step = isContext ? undefined : path.length;
-		const reading = (source: Rule | AtRule, where: On): Reading => ({ source, on: where, step, vocabulary });
+		const presentStates = presentStatesOf(split.conditions);
+		const reading = (source: Rule | AtRule, where: On): Reading => ({
+			source,
+			on: where,
+			step,
+			vocabulary,
+			presentStates,
+		});
 
 		// The siblings before it say where it is. A part among them is named outside any placement path.
 		for (const position of link.positions) {
@@ -380,8 +408,12 @@ function startOf(compound: Compound, fallback: Rule | AtRule): Position {
 	return first ? positionOf(first) : { node: fallback, index: 0, endIndex: 0 };
 }
 
-/** What names a component in a compound: its first class, else its component attribute's value. */
+/**
+ * What names a component in a compound: its first class, else its component attribute's value. The document element
+ * is never a component: a class on it (`html.dark`, `:root.dark`) is a condition of the page.
+ */
 export function identityOf(compound: Compound, names: Names): Identity | undefined {
+	if (isDocumentElement(compound)) return undefined;
 	let className: Part | undefined;
 	let attribute: Part | undefined;
 	for (const part of compound.parts) {
@@ -401,6 +433,16 @@ export function identityOf(compound: Compound, names: Names): Identity | undefin
 	if (attribute?.node.type === "attribute" && attribute.node.value)
 		return { kind: "attribute", value: attribute.node.value, at: positionOf(attribute) };
 	return undefined;
+}
+
+/** Whether a compound names the document element, with `html` or `:root`, before any pseudo-element. */
+function isDocumentElement(compound: Compound): boolean {
+	for (const { node } of compound.parts) {
+		if (isPseudoElement(node)) return false;
+		if (node.type === "tag" && node.value.toLowerCase() === "html") return true;
+		if (node.type === "pseudo" && node.value.toLowerCase() === ":root") return true;
+	}
+	return false;
 }
 
 /** A compound split into what names the element and what narrows it. */
@@ -439,6 +481,8 @@ function splitCompound(
 	// wherever `:is()` stands in it. On an element nothing else names (`:where(ul, ol)`), it's what names it.
 	const typeIsVariant =
 		!role.isContext && compound.parts.some((current) => namesElement(current.node, names));
+	// A class on the document element (`html.dark`) is a condition of the page: the document element is never a component.
+	const documentElement = isDocumentElement(compound);
 
 	for (const [index, current] of compound.parts.entries()) {
 		const { node } = current;
@@ -451,7 +495,7 @@ function splitCompound(
 		else if (node.type === "class") {
 			// An extra class on the same element, or a class on what comes before the root, is a condition core
 			// can't classify.
-			if (className || role.isContext) conditions.push(current);
+			if (className || role.isContext || documentElement) conditions.push(current);
 			else identity.push((className = current));
 		} else if (node.type === "attribute") {
 			const name = node.attribute.toLowerCase();
@@ -530,9 +574,7 @@ function conditionsOf(node: parser.Node, reading: Reading, inWhere: boolean): Co
 	const base = { ...baseOf(node, reading, inWhere), text: textOf(node) };
 	switch (node.type) {
 		case "attribute":
-			return [
-				{ ...base, attribute: attributeOf(node), ...attributeKind(node, base.text, reading.vocabulary) },
-			];
+			return [{ ...base, attribute: attributeOf(node), ...attributeKind(node, base.text, reading) }];
 		case "pseudo":
 			return pseudoConditions(node, reading, inWhere);
 		// An extra class, wherever it's written, is a state or a variant core can't tell apart.
@@ -564,14 +606,30 @@ function attributeOf(node: parser.Attribute): AttributeSelector {
 
 type Kind = Pick<Condition, "kind" | "group">;
 
-function attributeKind(node: parser.Attribute, text: string, vocabulary: Vocabulary): Kind {
+function attributeKind(node: parser.Attribute, text: string, reading: Reading): Kind {
+	const { vocabulary } = reading;
 	const name = node.attribute.toLowerCase();
 	if (vocabulary.blocking.has(text)) return { kind: "state", group: "blocking" };
 	if (vocabulary.interaction.has(text)) return { kind: "state", group: "interaction" };
-	// A presence attribute is a state; so is an ARIA state, and an attribute the project lists as one.
-	if (vocabulary.stateAttributes.has(name) || node.operator === undefined || ariaStates.has(name))
+	// A presence attribute is a state; so is an ARIA state, and an attribute the project lists as one. A value of an
+	// attribute the compound writes as a state says which form of that state it is: `[hidden="until-found"]` beside
+	// `[hidden]`.
+	if (
+		vocabulary.stateAttributes.has(name) ||
+		node.operator === undefined ||
+		ariaStates.has(name) ||
+		reading.presentStates.has(name)
+	)
 		return { kind: "state", group: "semantic" };
 	return { kind: "variant", group: undefined };
+}
+
+/** The attributes a compound writes on their own, with no value: each is a state. */
+function presentStatesOf(parts: readonly Part[]): ReadonlySet<string> {
+	const names = new Set<string>();
+	for (const { node } of parts)
+		if (node.type === "attribute" && node.operator === undefined) names.add(node.attribute.toLowerCase());
+	return names;
 }
 
 function pseudoConditions(node: parser.Pseudo, reading: Reading, inWhere: boolean): Condition[] {
@@ -723,7 +781,7 @@ function readHas(selector: parser.Selector, reading: Reading, inWhere: boolean):
 			const name = attributeName(node);
 			if (name === names.componentAttribute || name === names.partAttribute || name === names.slotAttribute)
 				continue;
-			own.push(...conditionsOf(node, reading, inWhere));
+			own.push(...conditionsOf(node, { ...reading, presentStates: new Set() }, inWhere));
 		}
 		conditions.push(...own);
 		path.push({

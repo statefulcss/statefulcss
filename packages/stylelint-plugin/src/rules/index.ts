@@ -1,0 +1,35 @@
+import bindOnce from "./bind-once/index.js";
+import bindThroughStateVariables from "./bind-through-state-variables/index.js";
+import blockingStatesWin from "./blocking-states-win/index.js";
+import configCheck from "./config-check/index.js";
+import noAbbreviations from "./no-abbreviations/index.js";
+import noUndeclaredStateVariables from "./no-undeclared-state-variables/index.js";
+import partVariables from "./part-variables/index.js";
+import partsInScope from "./parts-in-scope/index.js";
+import type { RuleDefinition } from "./rule.js";
+import themeTokens from "./theme-tokens/index.js";
+import variableRolePrefix from "./variable-role-prefix/index.js";
+import visitedColorsOnly from "./visited-colors-only/index.js";
+
+/** Every rule over a stylesheet, in the order the configs list them. */
+export const rules: readonly RuleDefinition[] = [
+	variableRolePrefix,
+	themeTokens,
+	bindOnce,
+	bindThroughStateVariables,
+	blockingStatesWin,
+	visitedColorsOnly,
+	noUndeclaredStateVariables,
+	partsInScope,
+	partVariables,
+	noAbbreviations,
+];
+
+/** The config check, a rule over the config: the configs list it after the others. */
+export const configRule = configCheck;
+
+/** Every rule's name, level and fix, in the order the configs list them. */
+export const everyRule: readonly Pick<RuleDefinition, "name" | "severity" | "fixable">[] = [
+	...rules,
+	configRule,
+];

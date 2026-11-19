@@ -75,6 +75,7 @@ function read(root: Root | Document, settings: Settings): Model {
 			reach: place.reach,
 			scope: block.scope,
 			scopeRoot: block.scopeRoot,
+			scopeRootAt: block.scopeRootAt,
 			path: read.path,
 			conditions: place.conditions,
 			queries: read.queries,

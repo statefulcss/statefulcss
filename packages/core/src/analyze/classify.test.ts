@@ -23,7 +23,6 @@ const guardOf = (block: Classified | undefined): Condition | undefined =>
 	block?.conditions.find((condition) => condition.kind === "guard");
 
 describe("what a condition is", () => {
-	// Sources: the selector-classification and state-vocabulary decisions; the methodology's "Markup defines state".
 	const rows: [selector: string, kind: string, groups: string[]][] = [
 		// Variants: an attribute with a value, an ARIA property, a position
 		['[data-size="small"]', "variant", []],
@@ -89,6 +88,36 @@ describe("what a condition is", () => {
 		const css = rows.map(([selector]) => `.button${selector} { color: red; }`).join("\n");
 		expect(kinds(classifyAll(parse(css)))).toEqual(rows.map(([, kind, groups]) => [kind, groups]));
 	});
+
+	inEverySyntax(
+		"a value of an attribute the compound writes as a state is a condition of that state",
+		({ parse }) => {
+			const blocks = classifyAll(
+				parse(`
+				.panel[hidden]:where(:not([hidden="until-found" i])) { --s-display: none; }
+				.panel:where(:not([hidden="until-found" i])) { --s-display: none; }
+				.panel[hidden] :where(:not([hidden="until-found" i])) { --s-display: none; }
+				.panel[hidden]:has(> [hidden="until-found"]) { --s-display: none; }
+			`),
+			);
+			expect(blocks.map(conditions)).toEqual([
+				[
+					["[hidden]", "state", "semantic", "subject"],
+					[':not([hidden="until-found" i])', "state", "semantic", "subject"],
+				],
+				// On its own, or on another element, the value is a variant.
+				[[':not([hidden="until-found" i])', "variant", undefined, "subject"]],
+				[
+					["[hidden]", "state", "semantic", "root"],
+					[':not([hidden="until-found" i])', "variant", undefined, "subject"],
+				],
+				[
+					["[hidden]", "state", "semantic", "subject"],
+					[':has(> [hidden="until-found"])', "variant", undefined, "subject"],
+				],
+			]);
+		},
+	);
 
 	inEverySyntax("an attribute the settings list as a state", ({ parse }) => {
 		const css = '.dialog[data-state="open"] { opacity: 1; }';
@@ -197,7 +226,6 @@ describe("what a condition is", () => {
 });
 
 describe("queries", () => {
-	// Sources: the rules page's "Shared pieces" (block kind) and rule 3's cases.
 	inEverySyntax("a query is a context state, and @supports is neither", ({ parse }) => {
 		const blocks = classifyAll(
 			parse(`
@@ -261,7 +289,6 @@ describe("queries", () => {
 });
 
 describe("guards", () => {
-	// Sources: the rules page, rule 7's cases; the methodology's "Combinations of variants and states".
 	inEverySyntax("a :not() that lists a blocking state is a guard, not a state", ({ parse }) => {
 		const blocks = classifyAll(
 			parse(`
@@ -399,7 +426,7 @@ describe(":has()", () => {
 		]);
 	});
 
-	// The audit's probe (3.5): the same two steps, with `:disabled` on the control or on the input.
+	// The same two steps, with `:disabled` on the control or on the input.
 	inEverySyntax("each condition belongs to the step it's written on", ({ parse }) => {
 		const blocks = classifyAll(
 			parse(`
@@ -571,7 +598,6 @@ describe("the path from the component root to the subject", () => {
 		]);
 	});
 
-	// Sources: the rules page, rule 9's cases and `variants-set-values`.
 	inEverySyntax("a condition on the root, when the subject is something else", ({ parse }) => {
 		const blocks = classifyAll(
 			parse(`
@@ -622,7 +648,6 @@ describe("the path from the component root to the subject", () => {
 		]);
 	});
 
-	// Sources: the rules page, rules 3 and 4; the parts page, the tab's `::after`.
 	inEverySyntax("a pseudo-element, and the conditions on its host", ({ parse }) => {
 		const blocks = classifyAll(
 			parse(`
@@ -660,7 +685,6 @@ describe("the path from the component root to the subject", () => {
 		]);
 	});
 
-	// Source: the global-elements decision.
 	inEverySyntax("what comes before the root is context", ({ parse }) => {
 		const blocks = classifyAll(
 			parse(`
@@ -719,7 +743,6 @@ describe("the path from the component root to the subject", () => {
 });
 
 describe("selectors that name no component", () => {
-	// Sources: the global-elements decision; the rules page, rule 2's cases.
 	inEverySyntax("global elements, with their states", ({ parse }) => {
 		const blocks = classifyAll(
 			parse(`
@@ -795,7 +818,6 @@ describe("selectors that name no component", () => {
 		expect(block?.themeScope).toEqual({ theme: "espresso" });
 	});
 
-	// Source: the vue-styles decision.
 	inEverySyntax("what :deep() and :global() select is foreign", ({ parse }) => {
 		const blocks = classifyAll(
 			parse(`
@@ -810,7 +832,7 @@ describe("selectors that name no component", () => {
 });
 
 describe("where a selector names a part", () => {
-	// Sources: the rules page, rule 9; the correction that an element is a component or a part, never both.
+	// An element is a component or a part, never both.
 	inEverySyntax("on the subject, a step, the root, before the root, in :has() or in :not()", ({ parse }) => {
 		const blocks = classifyAll(
 			parse(`

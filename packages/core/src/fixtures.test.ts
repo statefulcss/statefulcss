@@ -1,8 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { noUndeclaredStateVariables } from "./testing/no-undeclared-state-variables.js";
-import { partsInScope } from "./testing/parts-in-scope.js";
 import { summarize } from "./testing/summarize.js";
 import { sourceFor, syntaxes } from "./testing/syntaxes.js";
 
@@ -26,14 +24,6 @@ describe("whole components", () => {
 			});
 			for (const summary of rest) expect(summary).toBe(first);
 			expect(first).toMatchSnapshot();
-		});
-
-		it(`${file} passes the two test-only checks`, () => {
-			for (const syntax of syntaxes) {
-				const model = sourceFor(syntax).read(css, { file });
-				expect(partsInScope(model)).toEqual([]);
-				expect(noUndeclaredStateVariables(model)).toEqual([]);
-			}
 		});
 	}
 });

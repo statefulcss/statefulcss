@@ -4,6 +4,7 @@ import {
 	ConfigError,
 	defaults,
 	defineConfig,
+	findConfig,
 	loadConfig,
 	nonStatePseudoClasses,
 	type Settings,
@@ -40,8 +41,9 @@ describe("Settings", () => {
 });
 
 describe("exports", () => {
-	it("has the loader, its error and the defaults", () => {
+	it("has the loaders, their error and the defaults", () => {
 		expect(loadConfig).toBeTypeOf("function");
+		expect(findConfig).toBeTypeOf("function");
 		expect(new ConfigError("unreadable", "message", { file: "statefulcss.config.json" })).toBeInstanceOf(
 			Error,
 		);

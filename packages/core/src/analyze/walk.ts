@@ -4,7 +4,7 @@ import { defaults } from "@statefulcss/config";
 import type { AtRule, ChildNode, Comment, Container, Declaration, Document, Node, Root, Rule } from "postcss";
 import type parser from "postcss-selector-parser";
 
-import type { OtherAtRule, ScopeRootForm, UnknownReason } from "../model.js";
+import type { OtherAtRule, Position, ScopeRootForm, UnknownReason } from "../model.js";
 import { type SheetKind, sheetKind } from "./files.js";
 import {
 	closingParenthesis,
@@ -46,7 +46,8 @@ export interface WalkedRule {
 
 /**
  * One resolved selector of one run of declarations. A rule's declarations are one run, unless a nested rule that
- * declares something is written among them: then each run is a block of its own, in the order they're written.
+ * declares something is written among them: then each run is a block of its own, in the order they're written. A rule
+ * with nothing in it, or a run with something core can't read (`@include`), is a block too, with what it can see.
  */
 export interface WalkedBlock {
 	/** The rule, or the at-rule when declarations sit directly in a nested `@media` or in an `@scope`. */
@@ -63,6 +64,8 @@ export interface WalkedBlock {
 	readonly scope: number | undefined;
 	/** How it writes its scope's root, when it does: `:scope > …` or `& > …`. */
 	readonly scopeRoot: ScopeRootForm | undefined;
+	/** Where that `:scope` or `&` is written: in this rule, or in the rule around it that wrote it. */
+	readonly scopeRootAt: Position | undefined;
 	readonly sheet: number;
 }
 
@@ -125,7 +128,13 @@ const otherAtRules = new Set([
 /** A selector that rules nested in it resolve against. */
 interface Parent {
 	readonly selector: Complex;
-	readonly scopeRoot: ScopeRootForm | undefined;
+	readonly scopeRoot: WrittenScopeRoot | undefined;
+}
+
+/** How a rule directly in a scope writes the scope's root, and where. */
+interface WrittenScopeRoot {
+	readonly form: ScopeRootForm;
+	readonly at: Position;
 }
 
 interface Context {
@@ -206,8 +215,10 @@ export function walk(root: Root | Document, partAttribute = defaults.partAttribu
  */
 function walkContainer(container: Container, context: Context, found: Found, declares?: Rule | AtRule): void {
 	let run: Declaration[] = [];
-	const blocksOf = (declarations: readonly Declaration[]): WalkedBlock[] =>
-		declares && declarations.length > 0
+	// The run holds something core can't read, such as an `@include`, that may declare anything.
+	let unread = false;
+	const blocksOf = (declarations: readonly Declaration[], always: boolean): WalkedBlock[] =>
+		declares && (declarations.length > 0 || always)
 			? (context.parents ?? []).map((parent) => blockOf(declares, parent, context, declarations))
 			: [];
 
@@ -219,19 +230,33 @@ function walkContainer(container: Container, context: Context, found: Found, dec
 			} else if (node.type === "comment") visitComment(node, context, found);
 			else {
 				const before = found.blocks.length;
+				const unknownsBefore = found.unknowns.length;
 				if (node.type === "rule") visitRule(node, context, found);
 				else visitAtRule(node, context, found);
-				// Only what declares something splits a run: the run goes before the blocks it made.
-				if (found.blocks.length > before && run.length > 0) {
-					found.blocks.splice(before, 0, ...blocksOf(run));
+				if (
+					node.type === "atrule" &&
+					found.unknowns
+						.slice(unknownsBefore)
+						.some((one) => one.node === node && one.reason === "unknown-at-rule")
+				)
+					unread = true;
+				// Only what declares something splits a run: the run goes before the blocks it made. A block with no
+				// declarations splits nothing, so the run's block comes after it.
+				const declared = found.blocks.slice(before).some((block) => block.declarations.length > 0);
+				if (declared && (run.length > 0 || unread)) {
+					found.blocks.splice(before, 0, ...blocksOf(run, unread));
 					run = [];
+					unread = false;
 				}
 			}
 		} catch (error) {
 			unknown(found, context, node, "internal", error instanceof Error ? error.message : String(error));
 		}
 	}
-	found.blocks.push(...blocksOf(run));
+	// A rule with nothing in it, or only what core can't read, is still a block: its selector is written, with no
+	// declarations core can see.
+	const empty = (container.nodes ?? []).every((node) => node.type === "comment");
+	found.blocks.push(...blocksOf(run, unread || (empty && container.type === "rule")));
 }
 
 function visitRule(rule: Rule, context: Context, found: Found): void {
@@ -259,7 +284,7 @@ function visitRule(rule: Rule, context: Context, found: Found): void {
 			unknown(found, context, rule, "unparsable-selector", "& outside a rule");
 			continue;
 		}
-		const written = context.scopeTop ? scopeRootForm(selector) : undefined;
+		const written = context.scopeTop ? scopeRootOf(selector, rule) : undefined;
 		for (const alternative of expandPartLists(own, context.partAttribute))
 			for (const parent of context.parents ?? [undefined]) {
 				const complex = resolve(alternative, parent?.selector);
@@ -347,7 +372,8 @@ function blockOf(
 		atRules: context.atRules,
 		layer: layerOf(context),
 		scope: context.scope,
-		scopeRoot: parent.scopeRoot,
+		scopeRoot: parent.scopeRoot?.form,
+		scopeRootAt: parent.scopeRoot?.at,
 		sheet: context.sheet,
 	};
 }
@@ -380,11 +406,19 @@ function isDocComment(comment: Comment): boolean {
 	return !inline && comment.text.startsWith("*");
 }
 
-/** How a selector written directly in a scope names the scope's root. */
-function scopeRootForm(selector: parser.Selector): ScopeRootForm | undefined {
-	if (selector.nodes.some((node) => node.type === "pseudo" && node.value.toLowerCase() === ":scope"))
-		return ":scope";
-	return selector.nodes.some((node) => node.type === "nesting") ? "&" : undefined;
+/** How a selector written directly in a scope names the scope's root, and where in the rule's selector. */
+function scopeRootOf(selector: parser.Selector, rule: Rule): WrittenScopeRoot | undefined {
+	const scope = selector.nodes.find(
+		(node) => node.type === "pseudo" && node.value.toLowerCase() === ":scope",
+	);
+	const nesting = selector.nodes.find((node) => node.type === "nesting");
+	const written = scope ?? nesting;
+	if (!written) return undefined;
+	const index = written.sourceIndex ?? 0;
+	return {
+		form: scope ? ":scope" : "&",
+		at: { node: rule, index, endIndex: index + String(written).trim().length },
+	};
 }
 
 interface ScopePrelude {

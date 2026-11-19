@@ -83,7 +83,8 @@ describe("rules", () => {
 			[[".card:hover"], 4, undefined, "components"],
 		]);
 		expect(walked.scopes.map((scope) => [scope.order, scope.layer])).toEqual([[1, undefined]]);
-		expect(selectors(walked)).toEqual(['.button [data-part="icon"]', ".card:hover"]);
+		// The empty `.button` is a block too, with no declarations; `.card` only holds a nested rule.
+		expect(selectors(walked)).toEqual([".button", '.button [data-part="icon"]', ".card:hover"]);
 	});
 });
 
@@ -146,7 +147,7 @@ describe("nesting", () => {
 		{ skip: { css: "CSS nesting has no &-suffix", vue: "a plain <style> block has no &-suffix" } },
 	);
 
-	// The audit's probe (3.11): the selector goes on one line, and quoted text stays as written.
+	// The selector goes on one line, and quoted text stays as written.
 	inEverySyntax("quoted whitespace and parentheses stay as written", ({ parse }) => {
 		const walked = walk(
 			parse(`[data-component="( x )"] { color: red; }\n.a:not( .b ,\n  [title="a  ( b )"] ) { color: red; }`),
@@ -238,6 +239,40 @@ describe("scopes", () => {
 			['.button [data-part="badge"]:hover', undefined],
 			[".button", ":scope"],
 			['.button[data-size="small"] [data-part="icon"]', ":scope"],
+		]);
+	});
+
+	inEverySyntax("where a block writes its scope's root", ({ parse }) => {
+		const walked = walk(
+			parse(`
+				@scope (.button) to ([data-component]) {
+					:scope > [data-part="icon"] { inline-size: 1em; &:hover { color: red; } }
+					[data-part="badge"], & > [data-part="label"] { color: red; }
+					.dark /* note */ :SCOPE [data-part="title"] { color: red; }
+					:scope:hover { @media (width > 40rem) { color: red; } }
+				}
+				.card { @scope (&) to ([data-component]) { & [data-part="body"] { margin: 0; } } }
+			`),
+		);
+		expect(
+			walked.blocks.map((block) => {
+				const at = block.scopeRootAt;
+				const rule = at?.node.type === "rule" ? at.node : undefined;
+				return [
+					complexToString(block.selector),
+					rule?.selector.slice(at?.index, at?.endIndex),
+					rule?.selector,
+				];
+			}),
+		).toEqual([
+			['.button > [data-part="icon"]', ":scope", ':scope > [data-part="icon"]'],
+			['.button > [data-part="icon"]:hover', ":scope", ':scope > [data-part="icon"]'],
+			['.button [data-part="badge"]', undefined, undefined],
+			['.button > [data-part="label"]', "&", '[data-part="badge"], & > [data-part="label"]'],
+			// PostCSS leaves the comment out of the selector, which is what the offsets count in.
+			['.dark .button [data-part="title"]', ":SCOPE", '.dark  :SCOPE [data-part="title"]'],
+			[".button:hover", ":scope", ":scope:hover"],
+			['.card [data-part="body"]', "&", '& [data-part="body"]'],
 		]);
 	});
 
@@ -347,7 +382,7 @@ describe("scopes", () => {
 		expect([part?.source.type, part?.node.sourceIndex]).toEqual(["atrule", 3]);
 	});
 
-	// The audit's probe (3.11): a parenthesis in a quoted value doesn't end the root or the limit.
+	// A parenthesis in a quoted value doesn't end the root or the limit.
 	inEverySyntax("a parenthesis inside a quoted value in the prelude", ({ parse }) => {
 		const walked = walk(
 			parse(

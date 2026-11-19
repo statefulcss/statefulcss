@@ -6,7 +6,6 @@ const reads = (value: string) =>
 	readsOf(value).map((read) => [read.name, read.position, read.hasFallback, read.inFallback]);
 
 describe("the variables a value reads", () => {
-	// Sources: the rules page's "Shared pieces" (reads); the methodology's ten rules; `state-variable-names`.
 	it("a var() that is the whole value", () => {
 		expect(reads("var(--s-color)")).toEqual([["--s-color", "whole", false, false]]);
 		expect(reads("  VAR( --s-color )  ")).toEqual([["--s-color", "whole", false, false]]);
@@ -79,7 +78,6 @@ describe("the variables a value reads", () => {
 });
 
 describe("a value core can't read", () => {
-	// Source: the unknown-syntax decision, clarified 2026-11-14.
 	it("holds SCSS or Less interpolation, a SCSS variable, v-bind() or a template placeholder", () => {
 		for (const value of [
 			"$gap",

@@ -49,10 +49,11 @@
 	"files": [
 		"dist",
 		"README.md",
+		"src/rules/*/README.md",
 		"LICENSE"
 	],
 	"scripts": {
-		"build": "tsc -p tsconfig.build.json",
+		"build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.build.json",
 		"dev": "tsc -p tsconfig.build.json --watch",
 		"test": "vitest run",
 		"test:watch": "vitest",
@@ -61,7 +62,8 @@
 	},
 	"dependencies": {
 		"@statefulcss/config": "workspace:*",
-		"@statefulcss/core": "workspace:*"
+		"@statefulcss/core": "workspace:*",
+		"stylelint-config-recommended": "^19.0.0"
 	},
 	"peerDependencies": {
 		"stylelint": "^18.0.0"
@@ -69,7 +71,11 @@
 	"devDependencies": {
 		"@repo/eslint-config": "workspace:*",
 		"@repo/tsconfig": "workspace:*",
+		"@types/node": "catalog:",
 		"eslint": "catalog:",
+		"postcss": "^8.5.32",
+		"postcss-html": "^2.0.0",
+		"postcss-scss": "^4.0.9",
 		"stylelint": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:"

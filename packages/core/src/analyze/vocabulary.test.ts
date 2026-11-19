@@ -17,8 +17,8 @@ import { classify, vocabularyFrom } from "./classify.js";
 import { namesFrom } from "./names.js";
 import { walk } from "./walk.js";
 
-// Sources: the shared-settings decision (each state list has one form) and the second audit's 3.1. A spelling
-// config accepts must mean the same to core, so both are tested through the config file.
+// Each state list has one form. A spelling config accepts must mean the same to core, so both are tested
+// through the config file.
 
 const roots: string[] = [];
 
@@ -128,7 +128,7 @@ describe("a state list's entry means the same in config and core", () => {
 		},
 	);
 
-	// The audit's probes: these loaded, and core read each as something else.
+	// Each of these used to load, and core read it as something else.
 	it.each<[key: string, config: StatefulCSSConfig]>([
 		["blockingStates[0]", { blockingStates: ["data-busy"] }],
 		["interactionStates[0]", { interactionStates: ["data-drag"] }],

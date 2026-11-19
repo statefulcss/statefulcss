@@ -57,6 +57,16 @@ const missingFolder: Folder = {
 /** Node's CommonJS modules, which it keeps by file path. */
 const commonJsModules = createRequire(import.meta.url).cache;
 
+/** The settings for a file, and the folder its `themeFiles` patterns are matched from. */
+export interface FoundConfig {
+	readonly settings: Settings;
+	/**
+	 * The config file's folder (a `package.json`'s, for its `"statefulcss"` key). With no config, the folder the search
+	 * stopped at: the repository root, or the filesystem root outside a repository.
+	 */
+	readonly folder: string;
+}
+
 /**
  * The settings for a file: from the nearest `statefulcss.config` (or `"statefulcss"` key in `package.json`), checked,
  * with the defaults filled in.
@@ -67,6 +77,16 @@ const commonJsModules = createRequire(import.meta.url).cache;
  * @throws {ConfigError} When the config can't be read or checked, or a folder has more than one.
  */
 export async function loadConfig(fromPath: string): Promise<Settings> {
+	return (await findConfig(fromPath)).settings;
+}
+
+/**
+ * The settings for a file, as `loadConfig` gives them, with the folder of the config they came from. A file's path
+ * relative to that folder is what `themeFiles` matches.
+ *
+ * @throws {ConfigError} When the config can't be read or checked, or a folder has more than one.
+ */
+export async function findConfig(fromPath: string): Promise<FoundConfig> {
 	let directory = path.dirname(path.resolve(fromPath));
 	for (;;) {
 		const folder = await readFolder(directory);
@@ -89,11 +109,11 @@ export async function loadConfig(fromPath: string): Promise<Settings> {
 		const outcome = file === packageJson ? packageJsonOutcome : file && (await loadFile(file));
 		if (outcome) {
 			if ("error" in outcome) throw outcome.error;
-			return outcome.settings;
+			return { settings: outcome.settings, folder: directory };
 		}
 
 		const parent = path.dirname(directory);
-		if (folder.isRepositoryRoot || parent === directory) return defaults;
+		if (folder.isRepositoryRoot || parent === directory) return { settings: defaults, folder: directory };
 		directory = parent;
 	}
 }

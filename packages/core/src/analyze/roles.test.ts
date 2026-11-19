@@ -22,7 +22,6 @@ describe("a variable's role, from its name", () => {
 			expect(roleOf(name)).toBe("none");
 	});
 
-	// Source: the rules page, rule 1: "a prefix with no name".
 	it("is still the prefix's role when no name follows it", () => {
 		expect(roleOf("--t-")).toBe("token");
 		expect(roleOf("--_")).toBe("private");

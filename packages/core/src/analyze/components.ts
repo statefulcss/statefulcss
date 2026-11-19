@@ -13,7 +13,14 @@ import type {
 	PartReference,
 	Scope,
 } from "../model.js";
-import { type Classified, classify, identityOf, type PartMention, type Vocabulary } from "./classify.js";
+import {
+	blockingEntriesOf,
+	type Classified,
+	classify,
+	identityOf,
+	type PartMention,
+	type Vocabulary,
+} from "./classify.js";
 import { readDocComment } from "./doc-comment.js";
 import { kebabCase } from "./files.js";
 import type { Names } from "./names.js";
@@ -371,7 +378,13 @@ export function components(
 				guards.push({
 					element: guarded,
 					condition: { ...condition, guard },
-					blocking: condition.inner.flatMap(excludedBlockingStates),
+					blocking: [
+						...new Set(
+							condition.inner
+								.flatMap(excludedBlockingStates)
+								.flatMap((state) => blockingEntriesOf(vocabulary, state)),
+						),
+					],
 					blocks: [],
 				});
 			}
@@ -558,10 +571,9 @@ function placeOf(
  * The blocking states a guard's entry excludes on its own. A compound excludes none of its states alone, and a
  * `:has()` state isn't one of the settings'. `:is()` inside the exclusion excludes each of its alternatives.
  */
-function excludedBlockingStates(entry: Condition): string[] {
+function excludedBlockingStates(entry: Condition): Condition[] {
 	if (entry.compound || entry.has) return [];
-	if (entry.inner.length === 0)
-		return entry.kind === "state" && entry.group === "blocking" ? [entry.text] : [];
+	if (entry.inner.length === 0) return entry.kind === "state" && entry.group === "blocking" ? [entry] : [];
 	return entry.text.startsWith(":not(") || entry.text.startsWith(":has(")
 		? []
 		: entry.inner.flatMap(excludedBlockingStates);

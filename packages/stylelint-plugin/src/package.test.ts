@@ -39,6 +39,21 @@ describe("the package", () => {
 		expect(files).toEqual(expect.arrayContaining(["README.md", "LICENSE", "package.json"]));
 	});
 
+	it(
+		"ships no built file whose source is gone, since the build empties dist first",
+		{ timeout: 30_000 },
+		() => {
+			const built = packed().filter((file) => file.startsWith("dist/"));
+			const sourceOf = (file: string): string =>
+				path.join(packageFolder, file.replace(/^dist\//, "src/").replace(/\.d\.ts$|\.js$/, ".ts"));
+			expect(built.filter((file) => !existsSync(sourceOf(file)))).toEqual([]);
+			const { scripts } = JSON.parse(readFileSync(path.join(packageFolder, "package.json"), "utf8")) as {
+				scripts: { build: string };
+			};
+			expect(scripts.build).toMatch(/^node -e "require\('node:fs'\)\.rmSync\('dist', /);
+		},
+	);
+
 	it("links its README to files that are there once it's installed", () => {
 		const readme = readFileSync(path.join(packageFolder, "README.md"), "utf8");
 		const links = [...readme.matchAll(/\]\((?!https?:)([^)#]+)(?:#[^)]*)?\)/g)].map(

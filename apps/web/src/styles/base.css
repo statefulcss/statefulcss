@@ -5,8 +5,9 @@ html {
 	letter-spacing: var(--t-font-letter-spacing-base, 0);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
-	scroll-padding-block-start: var(--t-app-scroll-padding-block-start, 1.5rlh);
 	tab-size: 4;
+	scroll-padding-block-start: var(--t-app-scroll-padding-block-start, 1.5rlh);
+	min-block-size: 100svh;
 }
 
 body {

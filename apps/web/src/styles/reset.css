@@ -18,11 +18,6 @@ html {
 	text-size-adjust: 100%;
 }
 
-/* A short page fills the screen. `svh` is the height with the mobile toolbar showing, so it never scrolls. */
-body {
-	min-block-size: 100svh;
-}
-
 /* Media is a block, so it leaves no gap below it for letters like "g". */
 :where(img, svg, video, canvas, audio, iframe, embed, object) {
 	display: block;

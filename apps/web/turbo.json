@@ -2,7 +2,7 @@
 	"extends": ["//"],
 	"tasks": {
 		"build": {
-			"env": ["PUBLIC_SITE_URL"]
+			"env": ["PUBLIC_SITE_URL", "PUBLIC_CF_WEB_ANALYTICS_TOKEN"]
 		},
 		"check-types": {
 			"description": "astro check and astro build both write Vite's dependency cache; running them at once can fail with ENOTEMPTY.",

@@ -72,6 +72,8 @@ testRule(visitedColorsOnly, {
 						-webkit-border-after-color: purple;
 						-webkit-border-start-color: purple;
 						-webkit-border-end-color: purple;
+						stroke-color: purple;
+						-epub-text-emphasis-color: purple;
 					}
 				}
 			`,
@@ -169,6 +171,33 @@ testRule(visitedColorsOnly, {
 				.link:where(:visited) { opacity: 0.8; }
 			`,
 			warnings: [ignored("opacity", '":visited"', 1, 25)],
+		},
+		// Safari applies the color of WebKit's logical border shorthands and of "-epub-text-emphasis": each is told its
+		// color longhand, as the standard shorthands are.
+		{
+			description: "prefixed shorthands whose color alone applies",
+			code: `
+				a:visited {
+					-webkit-border-before: 1px solid purple;
+					-webkit-border-after: 1px solid purple;
+					-webkit-border-start: 1px solid purple;
+					-webkit-border-end: 1px solid purple;
+					-epub-text-emphasis: filled purple;
+				}
+			`,
+			warnings: [
+				["-webkit-border-before", "-webkit-border-before-color"],
+				["-webkit-border-after", "-webkit-border-after-color"],
+				["-webkit-border-start", "-webkit-border-start-color"],
+				["-webkit-border-end", "-webkit-border-end-color"],
+				["-epub-text-emphasis", "-epub-text-emphasis-color"],
+			].map(([property = "", longhand = ""], index) => ({
+				message: `Unexpected "${property}" in ":visited", where only its color applies and the rest is ignored. Write "${longhand}" for the color, and set anything else outside ":visited".`,
+				line: 2 + index,
+				column: 2,
+				endLine: 2 + index,
+				endColumn: 2 + property.length,
+			})),
 		},
 		// WebKit's logical border colors apply; their widths don't.
 		{

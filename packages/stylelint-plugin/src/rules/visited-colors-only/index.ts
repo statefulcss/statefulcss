@@ -27,7 +27,8 @@ type Key = keyof typeof messages;
  * The properties `:visited` applies, from MDN's list: the color properties, with every border color's longhand and
  * logical form, and `fill` and `stroke`. `caret-color`, WebKit's text fill and stroke colors and WebKit's logical
  * border colors (`-webkit-border-before-color`) are kept too, since Chromium applies them (checked in Chrome 158 for
- * the border colors), so they're never reported as ignored.
+ * the border colors), so they're never reported as ignored. So are `stroke-color` and `-epub-text-emphasis-color`,
+ * which Safari applies.
  */
 const applied = new Set([
 	"color",
@@ -56,6 +57,8 @@ const applied = new Set([
 	"-webkit-border-after-color",
 	"-webkit-border-start-color",
 	"-webkit-border-end-color",
+	"stroke-color",
+	"-epub-text-emphasis-color",
 ]);
 
 /** Shorthands whose color part `:visited` applies, with that color's longhand. */
@@ -77,6 +80,11 @@ const shorthands = new Map([
 	["text-decoration", "text-decoration-color"],
 	["text-emphasis", "text-emphasis-color"],
 	["-webkit-text-stroke", "-webkit-text-stroke-color"],
+	["-webkit-border-before", "-webkit-border-before-color"],
+	["-webkit-border-after", "-webkit-border-after-color"],
+	["-webkit-border-start", "-webkit-border-start-color"],
+	["-webkit-border-end", "-webkit-border-end-color"],
+	["-epub-text-emphasis", "-epub-text-emphasis-color"],
 ]);
 
 /**

@@ -13,7 +13,7 @@ export const siteConfig = {
 	},
 	themeColor: "#0a0a0a",
 	robots: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
-	rssPath: "/rss.xml",
+	rssPath: "/changelog/rss.xml",
 	sitemapPath: "/sitemap-index.xml",
 } as const;
 

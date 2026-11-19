@@ -1,65 +1,89 @@
-import type { CollectionEntry } from "astro:content";
-import readingTime from "reading-time";
+import { getCollection, type CollectionEntry } from "astro:content";
 
-import { formatPageTitle, getSiteUrl, siteConfig, toCanonicalUrl, type JsonLdSchema } from "@config/site";
+import { sidebar } from "@config/sidebar";
+import {
+	formatPageTitle,
+	getSiteUrl,
+	isProductionSite,
+	siteConfig,
+	toCanonicalUrl,
+	type JsonLdSchema,
+} from "@config/site";
 
-export const docsSections = {
-	concepts: {
-		collection: "docsConcepts",
-		description: "Core ideas and mental models for Stateful CSS.",
-		path: "/docs/concepts/",
-		title: "Concepts",
-	},
-	architecture: {
-		collection: "docsArchitecture",
-		description: "How to architect Stateful CSS components.",
-		path: "/docs/architecture/",
-		title: "Architecture",
-	},
-	tools: {
-		collection: "docsTools",
-		description: "Tools and workflows for building with Stateful CSS.",
-		path: "/docs/tools/",
-		title: "Tools",
-	},
-} as const;
+export type DocsEntry = CollectionEntry<"docs">;
+export type ChangelogEntry = CollectionEntry<"changelog">;
 
-export type DocsSection = keyof typeof docsSections;
-export type DocsCollectionName = (typeof docsSections)[DocsSection]["collection"];
-export type DocsEntry =
-	CollectionEntry<"docsArchitecture"> | CollectionEntry<"docsConcepts"> | CollectionEntry<"docsTools">;
+/** The page /docs/ shows. */
+const DOCS_HOME = "introduction";
 
-export function compareByOrderAndTitle<T extends DocsEntry>(a: T, b: T): number {
-	return a.data.order - b.data.order || a.data.title.localeCompare(b.data.title);
+/** Drafts are built and linked everywhere but production. */
+export const showDrafts = !isProductionSite;
+
+export interface SidebarItem {
+	id: string;
+	title: string;
+	/** Missing for a draft that isn't built. */
+	href?: string;
+	draft: boolean;
+	current: boolean;
 }
 
-export function comparePostsByDate(a: CollectionEntry<"blog">, b: CollectionEntry<"blog">): number {
-	return b.data.publishedAt.getTime() - a.data.publishedAt.getTime();
+export interface SidebarSection {
+	label?: string;
+	items: SidebarItem[];
 }
 
-export function getDocsEntryPath(section: DocsSection, entry: DocsEntry): string {
-	return `${docsSections[section].path}${entry.id}/`;
+export function getDocsPath(id: string): string {
+	return id === DOCS_HOME ? "/docs/" : `/docs/${id}/`;
 }
 
-export function getBlogPostPath(entry: CollectionEntry<"blog">): string {
-	return `/blog/${entry.id}/`;
+export function isBuilt(entry: DocsEntry): boolean {
+	return entry.data.status === "published" || showDrafts;
 }
 
-export function getEntryCanonicalUrl(fallbackPath: string, canonical?: string): string {
-	return toCanonicalUrl(canonical ?? fallbackPath);
+/** Every docs page, drafts included. */
+export async function getDocs(): Promise<DocsEntry[]> {
+	return getCollection("docs");
 }
 
-export function getEntryModifiedDate(updatedAt?: Date, fallback?: Date): Date | undefined {
-	return updatedAt ?? fallback;
+/** The sidebar's sections, with only the pages that have a file, and only the sections with a page. */
+export function getSidebar(entries: DocsEntry[], currentId?: string): SidebarSection[] {
+	const byId = new Map(entries.map((entry) => [entry.id, entry]));
+
+	return sidebar
+		.map((group) => ({
+			label: group.label,
+			items: group.pages.flatMap((id): SidebarItem[] => {
+				const entry = byId.get(id);
+				if (!entry) return [];
+				return [
+					{
+						id,
+						title: entry.data.title,
+						href: isBuilt(entry) ? getDocsPath(id) : undefined,
+						draft: entry.data.status === "draft",
+						current: id === currentId,
+					},
+				];
+			}),
+		}))
+		.filter((section) => section.items.length > 0);
 }
 
-export function getReadingTime(content = ""): ReturnType<typeof readingTime> {
-	return readingTime(content);
+/** The linked pages before and after the current one, in sidebar order. */
+export function getPager(sections: SidebarSection[]): { previous?: SidebarItem; next?: SidebarItem } {
+	const linked = sections.flatMap((section) => section.items).filter((item) => item.href || item.current);
+	const index = linked.findIndex((item) => item.current);
+	if (index === -1) return {};
+	return { previous: linked[index - 1], next: linked[index + 1] };
+}
+
+export async function getChangelog(): Promise<ChangelogEntry[]> {
+	return (await getCollection("changelog")).sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
 }
 
 export function getCollectionPageSchema(path: string, title: string, description: string): JsonLdSchema {
-	const canonicalUrl = getEntryCanonicalUrl(path);
-	const siteUrl = getSiteUrl();
+	const canonicalUrl = toCanonicalUrl(path);
 
 	return {
 		"@context": "https://schema.org",
@@ -70,121 +94,49 @@ export function getCollectionPageSchema(path: string, title: string, description
 		description,
 		inLanguage: siteConfig.language,
 		isPartOf: {
-			"@id": `${siteUrl}/#website`,
+			"@id": `${getSiteUrl()}/#website`,
 		},
 	};
 }
 
-function getBreadcrumbListSchema(
-	canonicalUrl: string,
-	items: Array<{ name: string; path: string }>,
-): JsonLdSchema {
-	return {
-		"@context": "https://schema.org",
-		"@type": "BreadcrumbList",
-		"@id": `${canonicalUrl}#breadcrumb`,
-		itemListElement: items.map((item, index) => ({
-			"@type": "ListItem",
-			position: index + 1,
-			name: item.name,
-			item: getEntryCanonicalUrl(item.path),
-		})),
-	};
-}
-
-export function getBlogPostMeta(post: CollectionEntry<"blog">): {
-	canonicalUrl: string;
-	modifiedDate: Date;
-	path: string;
-	schema: JsonLdSchema[];
-} {
-	const path = getBlogPostPath(post);
-	const canonicalUrl = getEntryCanonicalUrl(path, post.data.canonical);
+export function getDocsEntrySchema(entry: DocsEntry): JsonLdSchema[] {
+	const path = getDocsPath(entry.id);
+	const canonicalUrl = toCanonicalUrl(path);
 	const siteUrl = getSiteUrl();
-	const modifiedDate =
-		getEntryModifiedDate(post.data.updatedAt, post.data.publishedAt) ?? post.data.publishedAt;
+	const crumbs = [
+		{ name: "Docs", path: "/docs/" },
+		...(path === "/docs/" ? [] : [{ name: entry.data.title, path }]),
+	];
 
-	return {
-		path,
-		canonicalUrl,
-		modifiedDate,
-		schema: [
-			{
-				"@context": "https://schema.org",
-				"@type": "BlogPosting",
-				"@id": `${canonicalUrl}#blogposting`,
-				mainEntityOfPage: {
-					"@id": `${canonicalUrl}#webpage`,
-				},
-				headline: post.data.title,
-				description: post.data.description,
-				url: canonicalUrl,
-				datePublished: post.data.publishedAt,
-				dateModified: modifiedDate,
-				...(post.data.tags.length ? { keywords: post.data.tags } : {}),
-				inLanguage: siteConfig.language,
-				author: {
-					"@id": `${siteUrl}/#organization`,
-				},
-				publisher: {
-					"@id": `${siteUrl}/#organization`,
-				},
+	return [
+		{
+			"@context": "https://schema.org",
+			"@type": "TechArticle",
+			"@id": `${canonicalUrl}#techarticle`,
+			mainEntityOfPage: {
+				"@id": `${canonicalUrl}#webpage`,
 			},
-			getBreadcrumbListSchema(canonicalUrl, [
-				{ name: siteConfig.name, path: "/" },
-				{ name: "Blog", path: "/blog/" },
-				{ name: post.data.title, path },
-			]),
-		],
-	};
-}
-
-export function getDocsEntryMeta(
-	section: DocsSection,
-	entry: DocsEntry,
-): {
-	canonicalUrl: string;
-	modifiedDate?: Date;
-	path: string;
-	schema: JsonLdSchema[];
-} {
-	const path = getDocsEntryPath(section, entry);
-	const sectionConfig = docsSections[section];
-	const canonicalUrl = getEntryCanonicalUrl(path, entry.data.canonical);
-	const siteUrl = getSiteUrl();
-	const modifiedDate = getEntryModifiedDate(entry.data.updatedAt);
-
-	return {
-		path,
-		canonicalUrl,
-		modifiedDate,
-		schema: [
-			{
-				"@context": "https://schema.org",
-				"@type": "TechArticle",
-				"@id": `${canonicalUrl}#techarticle`,
-				mainEntityOfPage: {
-					"@id": `${canonicalUrl}#webpage`,
-				},
-				headline: entry.data.title,
-				description: entry.data.description,
-				url: canonicalUrl,
-				...(modifiedDate ? { dateModified: modifiedDate } : {}),
-				...(entry.data.tags.length ? { keywords: entry.data.tags } : {}),
-				inLanguage: siteConfig.language,
-				author: {
-					"@id": `${siteUrl}/#organization`,
-				},
-				publisher: {
-					"@id": `${siteUrl}/#organization`,
-				},
+			headline: entry.data.title,
+			description: entry.data.summary,
+			url: canonicalUrl,
+			inLanguage: siteConfig.language,
+			author: {
+				"@id": `${siteUrl}/#organization`,
 			},
-			getBreadcrumbListSchema(canonicalUrl, [
-				{ name: siteConfig.name, path: "/" },
-				{ name: "Docs", path: "/docs/" },
-				{ name: sectionConfig.title, path: sectionConfig.path },
-				{ name: entry.data.title, path },
-			]),
-		],
-	};
+			publisher: {
+				"@id": `${siteUrl}/#organization`,
+			},
+		},
+		{
+			"@context": "https://schema.org",
+			"@type": "BreadcrumbList",
+			"@id": `${canonicalUrl}#breadcrumb`,
+			itemListElement: crumbs.map((crumb, index) => ({
+				"@type": "ListItem",
+				position: index + 1,
+				name: crumb.name,
+				item: toCanonicalUrl(crumb.path),
+			})),
+		},
+	];
 }

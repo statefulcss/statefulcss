@@ -1,0 +1,98 @@
+---
+import type { MarkdownHeading } from "astro";
+
+import type { JsonLdSchema } from "@config/site";
+import Layout from "@layouts/Layout.astro";
+import { getPager, type SidebarSection } from "@utils/content";
+
+interface Props {
+	title: string;
+	summary: string;
+	draft: boolean;
+	headings: MarkdownHeading[];
+	sidebar: SidebarSection[];
+	canonical: string;
+	image: string;
+	schema: JsonLdSchema[];
+}
+
+const { title, summary, draft, headings, sidebar, canonical, image, schema } = Astro.props;
+const { previous, next } = getPager(sidebar);
+const contents = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
+---
+
+<Layout
+	title={title}
+	description={summary}
+	canonical={canonical}
+	type="article"
+	image={image}
+	schema={schema}
+>
+	<div class="docs">
+		<nav class="docs-sidebar" aria-label="Docs">
+			{sidebar.map((section, index) => (
+				<div data-part="section">
+					{section.label && (
+						<span data-part="label" id={`docs-section-${index}`}>
+							{section.label}
+						</span>
+					)}
+					<ul aria-labelledby={section.label ? `docs-section-${index}` : undefined}>
+						{section.items.map((item) => (
+							<li data-draft={item.draft || undefined}>
+								{item.href ? (
+									<a href={item.href} aria-current={item.current ? "page" : undefined}>
+										{item.title}
+									</a>
+								) : (
+									<span>{item.title}</span>
+								)}
+								{item.draft && <span data-part="draft">Draft</span>}
+							</li>
+						))}
+					</ul>
+				</div>
+			))}
+		</nav>
+
+		<article class="docs-page" data-draft={draft || undefined}>
+			<header>
+				<h1>{title}</h1>
+				{draft && <p data-part="draft">Draft</p>}
+				<p data-part="summary">{summary}</p>
+			</header>
+
+			{contents.length > 0 && (
+				<nav class="docs-contents" aria-label="On this page">
+					<ul>
+						{contents.map((heading) => (
+							<li data-depth={heading.depth}>
+								<a href={`#${heading.slug}`}>{heading.text}</a>
+							</li>
+						))}
+					</ul>
+				</nav>
+			)}
+
+			<div data-part="content">
+				<slot />
+			</div>
+
+			{(previous || next) && (
+				<nav class="docs-pager" aria-label="Previous and next pages">
+					{previous?.href && (
+						<a href={previous.href} rel="prev" data-part="previous">
+							<span>Previous</span> {previous.title}
+						</a>
+					)}
+					{next?.href && (
+						<a href={next.href} rel="next" data-part="next">
+							<span>Next</span> {next.title}
+						</a>
+					)}
+				</nav>
+			)}
+		</article>
+	</div>
+</Layout>

@@ -9,6 +9,9 @@ const split = (condition: string, interaction: string, rest: string, element = '
 const incomplete = (element: string, missing: string, one = false) =>
 	`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while ${one ? "it holds. Add it" : "they hold. Add them"} to its ":not()".`;
 
+const incompleteFocus = (element: string, missing: string) =>
+	`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while they hold. The guard also holds focus, which adding them would hide on a blocked element that stays focusable: give the pointer interaction states their own guard, listing every blocking state, and keep focus outside it.`;
+
 const incompleteMixed = (element: string, missing: string) =>
 	`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while they hold. The guard also holds other styles, which adding them would change: give the interaction states their own guard, listing every blocking state.`;
 
@@ -207,6 +210,23 @@ testRule(blockingStatesWin, {
 			`,
 		},
 		// Beyond the README's cases.
+		{
+			description: "focus on something inside kept outside the guard, and hover in a complete one",
+			code: button(
+				lines(
+					"& .caption:focus-visible { outline: 3px solid red; }",
+					`${guard} {`,
+					"\t&:hover { --s-color: var(--_color-hover); }",
+					"}",
+				),
+			).code,
+		},
+		{
+			description: "a bare guard listing every blocking state",
+			code: button(
+				'&:not(:disabled, [aria-disabled="true"], [data-loading], [inert]):hover { --s-color: var(--_color-hover); }',
+			).code,
+		},
 		{
 			description: "a :has() state in the guard, quoted differently from its block",
 			code: `
@@ -957,7 +977,7 @@ testRule(blockingStatesWin, {
 				.code,
 			warnings: [
 				{
-					message: incomplete('".button"', '"[aria-disabled="true"]", "[data-loading]" and "[inert]"'),
+					message: incompleteFocus('".button"', '"[aria-disabled="true"]", "[data-loading]" and "[inert]"'),
 					line: 6,
 					column: 10,
 					endLine: 6,
@@ -982,6 +1002,90 @@ testRule(blockingStatesWin, {
 			warnings: [
 				{
 					message: incomplete('".button"', '"[aria-disabled="true"]", "[data-loading]" and "[inert]"'),
+					line: 6,
+					column: 10,
+					endLine: 6,
+					endColumn: 25,
+				},
+			],
+		},
+
+		// A guard outside `:where()` weighs as much as what it lists, so adding a state can make it beat a rule that
+		// used to win, on an element the added state doesn't hold: `:has(input:disabled)` adds a type selector.
+		{
+			description: "a bare guard leaving out a blocking state, which --fix doesn't complete",
+			code: button(
+				lines(
+					"&:not(:disabled):hover { --s-color: var(--_color-hover); }",
+					"&:has(input:disabled) { --s-opacity: 0.6; }",
+				),
+			).code,
+			warnings: [
+				{
+					message:
+						'Unexpected guard on ".button" leaving out "[aria-disabled="true"]", "[data-loading]", "[inert]" and ":has(input:disabled)", so interaction states still apply while they hold. Write it as ":where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert], :has(input:disabled)))": inside ":where()", the states it lists add no specificity.',
+					line: 6,
+					column: 3,
+					endLine: 6,
+					endColumn: 18,
+				},
+			],
+		},
+		{
+			description: "a bare guard leaving out one blocking state, which --fix doesn't complete",
+			code: button(
+				'&:not(:disabled, [aria-disabled="true"], [data-loading]):hover { --s-color: var(--_color-hover); }',
+			).code,
+			warnings: [
+				{
+					message:
+						'Unexpected guard on ".button" leaving out "[inert]", so interaction states still apply while it holds. Write it as ":where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert]))": inside ":where()", the states it lists add no specificity.',
+					line: 6,
+					column: 3,
+				},
+			],
+		},
+		{
+			description: "a guard inside :where() leaving out a :has() state, completed",
+			...button(
+				lines(
+					"&:where(:not(:disabled)):hover { --s-color: var(--_color-hover); }",
+					"&:has(input:disabled) { --s-opacity: 0.6; }",
+				),
+				lines(
+					'&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert], :has(input:disabled))):hover { --s-color: var(--_color-hover); }',
+					"&:has(input:disabled) { --s-opacity: 0.6; }",
+				),
+			),
+			warnings: [
+				{
+					message: incomplete(
+						'".button"',
+						'"[aria-disabled="true"]", "[data-loading]", "[inert]" and ":has(input:disabled)"',
+					),
+					line: 6,
+					column: 10,
+					endLine: 6,
+					endColumn: 25,
+				},
+			],
+		},
+
+		// A guard holding focus, on the element or on something inside it, is split rather than completed: the added
+		// states would hide that focus style on a blocked element that stays focusable.
+		{
+			description: "an incomplete guard holding focus on something inside, which --fix doesn't complete",
+			code: button(
+				lines(
+					"&:where(:not(:disabled)) {",
+					"\t& .caption:focus-visible { outline: 3px solid red; }",
+					"\t&:hover { --s-color: var(--_color-hover); }",
+					"}",
+				),
+			).code,
+			warnings: [
+				{
+					message: incompleteFocus('".button"', '"[aria-disabled="true"]", "[data-loading]" and "[inert]"'),
 					line: 6,
 					column: 10,
 					endLine: 6,

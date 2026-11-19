@@ -25,6 +25,10 @@ const messages = {
 		`Unexpected "${condition}" on ${element} outside a guard, so a blocked element still reacts to ${interaction}. Split it: write ${interaction} inside "${guard}", and ${rest} outside it.`,
 	incomplete: (element: string, missing: string, count: string) =>
 		`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while ${count === "1" ? "it holds. Add it" : "they hold. Add them"} to its ":not()".`,
+	incompleteBare: (element: string, missing: string, guard: string, count: string) =>
+		`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while ${count === "1" ? "it holds" : "they hold"}. Write it as "${guard}": inside ":where()", the states it lists add no specificity.`,
+	incompleteFocus: (element: string, missing: string, count: string) =>
+		`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while ${count === "1" ? "it holds" : "they hold"}. The guard also holds focus, which adding ${count === "1" ? "it" : "them"} would hide on a blocked element that stays focusable: give the pointer interaction states their own guard, listing every blocking state, and keep focus outside it.`,
 	incompleteShared: (element: string, missing: string, count: string) =>
 		`Unexpected guard on ${element} leaving out ${missing}, so interaction states still apply while ${count === "1" ? "it holds" : "they hold"}. The elements sharing it have different blocking states: write a guard for each, listing its own.`,
 	incompleteMixed: (element: string, missing: string, count: string) =>
@@ -222,13 +226,25 @@ export default defineRule<Record<never, never>, Key>({
 						);
 					}),
 			);
+			// A guard outside `:where()` weighs as much as the states it lists: adding one (`:has(input:disabled)`) can
+			// make it beat a rule that used to win, on an element none of the added states holds.
+			const bare = all.some((guard) => !guard.condition.inWhere);
 			for (const id of checked) {
 				const left = missing.get(id) ?? [];
 				if (left.length === 0) continue;
-				const edit = shared && !focus && !mixed ? completion(at, left) : undefined;
+				const message: Key = !shared
+					? "incompleteShared"
+					: focus
+						? "incompleteFocus"
+						: mixed
+							? "incompleteMixed"
+							: bare
+								? "incompleteBare"
+								: "incomplete";
+				const edit = message === "incomplete" ? completion(at, left) : undefined;
 				report(key, {
-					message: !shared ? "incompleteShared" : mixed ? "incompleteMixed" : "incomplete",
-					args: [name(id), ""],
+					message,
+					args: message === "incompleteBare" ? [name(id), "", wrapped(at, left)] : [name(id), ""],
 					at,
 					...(edit ? { edits: [edit] } : {}),
 					list: { index: 1, items: left },
@@ -678,9 +694,19 @@ function statesText(block: Block, groups: readonly Condition["group"][]): string
 
 /** The edit that adds the missing states at the end of a guard's `:not()`, when its written text is that. */
 function completion(at: Position, missing: readonly string[]): Edit | undefined {
-	const written = (at.node.type === "rule" ? at.node.selector : at.node.params).slice(at.index, at.endIndex);
+	const written = writtenAt(at);
 	if (!/^:not\(/i.test(written) || !written.endsWith(")")) return undefined;
 	return { kind: "replace", at, expects: written, text: `${written.slice(0, -1)}, ${missing.join(", ")})` };
+}
+
+/** A bare guard as it should be written: its `:not()` with the missing states added, inside `:where()`. */
+function wrapped(at: Position, missing: readonly string[]): string {
+	const edit = completion(at, missing);
+	return `:where(${edit?.kind === "replace" ? edit.text : writtenAt(at)})`;
+}
+
+function writtenAt(at: Position): string {
+	return (at.node.type === "rule" ? at.node.selector : at.node.params).slice(at.index, at.endIndex);
 }
 
 /**
@@ -780,7 +806,6 @@ function isDirective(node: ChildNode | undefined): boolean {
 	return node?.type === "comment" && /^\s*stylelint-(?:disable|enable)/.test(node.text);
 }
 
-/** A focus state, or a list that holds one: `:is(:hover, :focus-visible)`. */
 /** Whether syntax core can't read (`@include`, `#{$state}`) sits inside the rule a guard is written in. */
 function holdsUnknown(model: Model, guard: Guard): boolean {
 	const rule = guard.condition.at.node;
@@ -790,6 +815,7 @@ function holdsUnknown(model: Model, guard: Guard): boolean {
 	});
 }
 
+/** A focus state, or a list that holds one: `:is(:hover, :focus-visible)`. */
 function holdsFocus(condition: Condition): boolean {
 	return condition.focus || condition.inner.some(holdsFocus);
 }

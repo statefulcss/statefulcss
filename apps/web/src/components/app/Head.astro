@@ -104,6 +104,10 @@ const serializeJsonLd = (item: JsonLdSchema) => JSON.stringify(item).replaceAll(
 
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width" />
+{/* Declared before any stylesheet, so the layer order holds whichever stylesheet loads first. */}
+<style is:inline>
+	@layer reset, base, themes, components, utilities;
+</style>
 <title>{pageTitle}</title>
 <meta name="description" content={description} />
 <meta name="application-name" content={siteConfig.name} />

@@ -13,6 +13,8 @@ export default defineConfig({
 	},
 	site: getSiteUrl(),
 	trailingSlash: "always",
+	// Scoped <style> blocks select their file with :where(), so the scope adds no specificity.
+	scopedStyleStrategy: "where",
 	build: {
 		// Every inline <style> adds a hash to the CSP header, which Cloudflare caps at 2,000 characters.
 		inlineStylesheets: "never",

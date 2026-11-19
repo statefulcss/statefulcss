@@ -14,6 +14,7 @@ const component = "src/styles/components/button.css";
  * its end. Lines are counted in the case's CSS.
  */
 const scheme = '"[data-color-scheme="dark"]"';
+const darkDefault = '"[data-theme="default"][data-color-scheme="dark"]"';
 
 function on(message: string, code: string, text: string, occurrence = 0): ExpectedWarning {
 	const css = dedent(code);
@@ -124,10 +125,31 @@ const code = {
 			--t-color-ring: none;
 		}
 	`,
+	durationAlias: `
+		[data-theme="default"] {
+			--t-duration-fast: 200ms;
+			--t-color-transition-duration: var(--t-duration-fast);
+		}
+		[data-theme="default"][data-color-scheme="dark"] {
+			--t-color-transition-duration: var(--t-duration-fast);
+			--t-color-border: var(--brand-border);
+		}
+	`,
+	colorAlias: `
+		@property --t-accent { syntax: "<color>"; inherits: true; initial-value: navy; }
+		[data-theme="default"] {
+			--t-gray-9: #111;
+			--t-color-text: var(--t-gray-9);
+		}
+		[data-theme="default"][data-color-scheme="dark"] {
+			--t-color-text: var(--t-gray-9);
+			--t-ring: var(--t-accent);
+		}
+	`,
 	wholeColorTokens: `
 		[data-color-scheme="dark"] {
 			--t-color-shadow: rgb(0 0 0 / .2);
-			--t-color-border: var(--brand-border);
+			--t-color-border: var(--brand-color-border);
 			--t-ink: CanvasText;
 		}
 	`,
@@ -589,6 +611,31 @@ testRule(themeTokens, {
 				endColumn: 2 + name.length,
 			})),
 		},
+		// A lone `var()` is a color when the token it reads is one. The token's own name is no evidence: a duration
+		// whose name holds "color" isn't a color, and "light-dark()" would drop it.
+		{
+			description: "a color scheme declaring an alias of a duration, whatever its own name holds",
+			code: code.durationAlias,
+			file: themeFile("default"),
+			warnings: [
+				on(
+					tokenOnColorSchemeOther("--t-color-transition-duration", darkDefault),
+					code.durationAlias,
+					"--t-color-transition-duration",
+					1,
+				),
+				on(tokenOnColorSchemeOther("--t-color-border", darkDefault), code.durationAlias, "--t-color-border"),
+			],
+		},
+		{
+			description: "a color scheme declaring an alias of a color this file declares or registers",
+			code: code.colorAlias,
+			file: themeFile("default"),
+			warnings: [
+				on(tokenOnColorScheme("--t-color-text", darkDefault), code.colorAlias, "--t-color-text", 1),
+				on(tokenOnColorScheme("--t-ring", darkDefault), code.colorAlias, "--t-ring"),
+			],
+		},
 		// A list of themes in another theme's folder.
 		{
 			description: "two themes in another theme's folder, each told its own folder",
@@ -870,6 +917,14 @@ describe("settings", () => {
 				`,
 				file: "styles/themes/base/index.css",
 			},
+			{
+				description: "imports of real theme files whose unquoted url() escapes a space or parentheses",
+				code: `
+					@import url(./accent\\ blue.css);
+					@import url(./tone\\(bright\\).css);
+				`,
+				file: "styles/themes/base/index.css",
+			},
 		],
 		reject: [
 			{
@@ -893,6 +948,56 @@ describe("settings", () => {
 						column: 9,
 						endLine: 2,
 						endColumn: 44,
+					},
+				],
+			},
+		],
+	});
+
+	// A browser reads an import's URL with its CSS escapes and percent-encoding decoded, so a file named exactly in
+	// the settings matches however its name is spelled.
+	testRule(themeTokens, {
+		settings: {
+			themeFiles: [
+				"styles/themes/base/index.css",
+				"styles/themes/base/index.scss",
+				"styles/themes/base/index.vue",
+				"styles/themes/base/accent blue.css",
+				"styles/themes/base/tone(bright).css",
+				"styles/themes/base/a#b.css",
+				"styles/themes/base/a,b.css",
+			],
+		},
+		accept: [
+			{
+				description: "imports of files the settings name, spelled with escapes and percent-encoding",
+				code: `
+					@import url(./accent\\ blue.css);
+					@import "./accent\\20 blue.css";
+					@import './accent\\ blue.css';
+					@import url(./tone\\(bright\\).css);
+					@import "./tone\\28 bright\\29.css";
+					@import url(./a%23b.css);
+					@import "./a%2Cb.css";
+					@import url("./accent%20blue.css");
+				`,
+				file: "styles/themes/base/index.css",
+			},
+		],
+		reject: [
+			{
+				description: "an escaped import of a file the settings don't name",
+				code: `
+					@import url(./accent\\ red.css);
+				`,
+				file: "styles/themes/base/index.css",
+				warnings: [
+					{
+						message: `Unexpected import of "./accent\\ red.css" in a theme file. A theme file imports only other theme files, matching "styles/themes/base/index.css", "styles/themes/base/index.scss", "styles/themes/base/index.vue", "styles/themes/base/accent blue.css", "styles/themes/base/tone(bright).css", "styles/themes/base/a#b.css" or "styles/themes/base/a,b.css".`,
+						line: 1,
+						column: 9,
+						endLine: 1,
+						endColumn: 31,
 					},
 				],
 			},

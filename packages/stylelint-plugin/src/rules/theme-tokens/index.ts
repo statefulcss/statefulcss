@@ -203,12 +203,12 @@ export default defineRule<Record<never, never>, Key>({
 			if (name === "import") {
 				const url = importedUrl(node.params);
 				if (url === undefined) continue;
-				const target = path.posix.normalize(path.posix.join(path.posix.dirname(file), pathOf(url)));
+				const target = path.posix.normalize(path.posix.join(path.posix.dirname(file), pathOf(url.value)));
 				if (isThemeFile(target, settings)) continue;
 				add([
 					{
 						message: "importOutside",
-						args: [url, patterns],
+						args: [url.written, patterns],
 						at: { node, index: 0, endIndex: node.params.length },
 					},
 				]);
@@ -379,24 +379,81 @@ function normalizePattern(pattern: string): string {
 }
 
 /**
- * The URL a relative `@import` names, as written: `./espresso/index.css` from `@import "./espresso/index.css"
- * layer(themes)`, `./my theme.css?v=2` from `@import url("./my theme.css?v=2")`. Undefined for anything else (a
- * package, an absolute path, a URL), whose file the rule can't know.
+ * The URL a relative `@import` names: `./espresso/index.css` from `@import "./espresso/index.css" layer(themes)`,
+ * `./my theme.css?v=2` from `@import url("./my theme.css?v=2")`. `written` is its text in the file, `value` the URL
+ * the browser reads, with CSS escapes decoded (`url(./accent\ blue.css)`, `"./tone\28 bright\29.css"`). Undefined
+ * for anything else (a package, an absolute path, a URL), whose file the rule can't know.
  */
-function importedUrl(params: string): string | undefined {
-	const match = /^\s*(?:url\(\s*)?(?:"([^"]*)"|'([^']*)'|([^"'()\s]+))/i.exec(params);
-	const url = match?.[1] ?? match?.[2] ?? match?.[3];
-	return url && /^\.\.?\//.test(url) ? url : undefined;
+function importedUrl(params: string): { written: string; value: string } | undefined {
+	const opening = /^\s*(url\(\s*)?/i.exec(params);
+	let index = opening?.[0].length ?? 0;
+	const quote = params[index];
+	let written: string;
+	if (quote === '"' || quote === "'") {
+		const close = closingQuote(params, index + 1, quote);
+		if (close === undefined) return undefined;
+		written = params.slice(index + 1, close);
+	} else {
+		// An unquoted URL ends at a space or ")" that isn't escaped; in `url()`, a quote or "(" can't stand bare in it.
+		const start = index;
+		while (index < params.length) {
+			const char = params[index] ?? "";
+			if (char === "\\") index += 2;
+			else if (/[\s()"']/.test(char)) break;
+			else index += 1;
+		}
+		written = params.slice(start, Math.min(index, params.length));
+	}
+	const value = unescapeCss(written);
+	return /^\.\.?\//.test(value) ? { written, value } : undefined;
 }
 
-/** The file a URL names: without its `?query` or `#fragment`, with `%20` and the like decoded. */
-function pathOf(url: string): string {
-	const bare = url.replace(/[?#].*$/s, "");
-	try {
-		return decodeURI(bare);
-	} catch {
-		return bare;
+/** Where a string that opens before `from` closes: the next `quote` that no backslash escapes. */
+function closingQuote(text: string, from: number, quote: string): number | undefined {
+	for (let index = from; index < text.length; index++) {
+		const char = text[index];
+		if (char === "\\") index += 1;
+		else if (char === quote) return index;
 	}
+	return undefined;
+}
+
+/**
+ * Text with its CSS escapes decoded: a backslash and up to six hex digits (and one space after them) is that code
+ * point, a backslash before a line break is nothing, and a backslash before anything else is that character.
+ */
+function unescapeCss(text: string): string {
+	return text.replace(
+		/\\(?:([\da-f]{1,6})(?:\r\n|[ \t\r\n\f])?|(\r\n|[\r\n\f])|([\s\S]))/gi,
+		(_, hex, _break, char) => {
+			if (hex !== undefined) {
+				const code = Number.parseInt(hex as string, 16);
+				return code === 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)
+					? "\uFFFD"
+					: String.fromCodePoint(code);
+			}
+			return (char as string | undefined) ?? "";
+		},
+	);
+}
+
+/**
+ * The file a URL names: without its `?query` or `#fragment`, with each segment's percent-encoding decoded (`%20`,
+ * `%23`, `%2C`). A segment that would decode to a `/` or doesn't decode stays as it is.
+ */
+function pathOf(url: string): string {
+	return url
+		.replace(/[?#].*$/s, "")
+		.split("/")
+		.map((segment) => {
+			try {
+				const decoded = decodeURIComponent(segment);
+				return decoded.includes("/") ? segment : decoded;
+			} catch {
+				return segment;
+			}
+		})
+		.join("/");
 }
 
 /** The outermost rule a node is written in, itself included: the rule that writes a theme scope's attribute. */

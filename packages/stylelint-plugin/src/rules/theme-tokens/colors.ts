@@ -1,19 +1,34 @@
 // Whether a token holds one color, so `light-dark()` can give it both values. Judged from its registration, its value
-// and, for a lone `var()`, its name; a token the rule can't tell is treated as no color.
+// and, for a lone `var()`, the token it reads; a token the rule can't tell is treated as no color.
 import type { Declaration, Model } from "@statefulcss/core";
 
 /**
  * Whether a token declaration holds one color, the whole value: `light-dark()` takes two colors, so a shadow, a border
- * shorthand or a duration moves as it is, whatever its name says. A registration decides; then the value; a lone
- * `var()` the value can't tell goes by the token's name.
+ * shorthand or a duration moves as it is, whatever its name says. A registration decides; then the value. A lone
+ * `var()` is a color when the token it reads is one: judged the same way where this file declares or registers it,
+ * and by that token's name otherwise. The token's own name is no evidence: `--t-color-transition-duration` is a
+ * duration.
  */
 export function isColorToken(model: Model, declaration: Declaration): boolean {
-	const { property } = declaration;
-	const value = declaration.value.trim();
-	const syntax = model.registrations.find((registration) => registration.name === property)?.syntax;
+	return isColorValue(model, declaration.property, declaration.value, new Set());
+}
+
+function isColorValue(model: Model, property: string, written: string, seen: Set<string>): boolean {
+	const value = written.trim();
+	const syntax = registered(model, property);
 	if (syntax !== undefined) return /^\s*<color>\s*$/i.test(syntax);
 	if (isColor(value)) return true;
-	return wholeCall(value) === "var" && namesColor(property);
+	const read = wholeCall(value) === "var" ? /^var\(\s*(--[\w-]+)/i.exec(value)?.[1] : undefined;
+	if (read === undefined || seen.has(read)) return false;
+	seen.add(read);
+	if (registered(model, read) !== undefined) return isColorValue(model, read, "", seen);
+	const declared = model.declarations.filter((one) => one.property === read);
+	if (declared.length === 0) return namesColor(read);
+	return declared.every((one) => isColorValue(model, read, one.value, new Set(seen)));
+}
+
+function registered(model: Model, name: string): string | undefined {
+	return model.registrations.find((registration) => registration.name === name)?.syntax;
 }
 
 /** A name with `color` (or `colour`) among its words: `--t-color-text`, `--t-border-color`. */
@@ -24,13 +39,11 @@ function namesColor(name: string): boolean {
 		.some((word) => word === "color" || word === "colour");
 }
 
-/** A whole value that is one color: a hex color, a color function, a named color, or a `var()` of a color token. */
+/** A whole value that is one color: a hex color, a color function or a named color. */
 function isColor(value: string): boolean {
 	if (/^#[\da-f]{3,8}$/i.test(value)) return true;
 	const call = wholeCall(value);
 	if (call !== undefined && colorFunctions.has(call)) return true;
-	const variable = /^var\(\s*(--[\w-]+)/i.exec(value)?.[1];
-	if (call === "var" && variable !== undefined) return namesColor(variable);
 	return named.has(value.toLowerCase());
 }
 

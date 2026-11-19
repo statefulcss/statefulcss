@@ -173,6 +173,11 @@ interface Reading {
 	/** The compound's place in the block's path; undefined for what comes before the root. */
 	readonly step: number | undefined;
 	readonly vocabulary: Vocabulary;
+	/**
+	 * The attributes the compound writes on their own, as a state: `hidden` in `[hidden]:where(:not([hidden="until-found"
+	 * i]))`. A value of one of them is a condition of that state, not a variant.
+	 */
+	readonly presentStates: ReadonlySet<string>;
 }
 
 /** Reads one block's selector and at-rules. Pure: it reads nothing but its arguments. */
@@ -211,7 +216,14 @@ export function classify(
 		const on: On = isContext ? "context" : isSubject ? "subject" : index === rootIndex ? "root" : "path";
 		const before: On = isSubject && split.pseudoElement !== undefined ? "host" : on;
 		const step = isContext ? undefined : path.length;
-		const reading = (source: Rule | AtRule, where: On): Reading => ({ source, on: where, step, vocabulary });
+		const presentStates = presentStatesOf(split.conditions);
+		const reading = (source: Rule | AtRule, where: On): Reading => ({
+			source,
+			on: where,
+			step,
+			vocabulary,
+			presentStates,
+		});
 
 		// The siblings before it say where it is. A part among them is named outside any placement path.
 		for (const position of link.positions) {
@@ -562,9 +574,7 @@ function conditionsOf(node: parser.Node, reading: Reading, inWhere: boolean): Co
 	const base = { ...baseOf(node, reading, inWhere), text: textOf(node) };
 	switch (node.type) {
 		case "attribute":
-			return [
-				{ ...base, attribute: attributeOf(node), ...attributeKind(node, base.text, reading.vocabulary) },
-			];
+			return [{ ...base, attribute: attributeOf(node), ...attributeKind(node, base.text, reading) }];
 		case "pseudo":
 			return pseudoConditions(node, reading, inWhere);
 		// An extra class, wherever it's written, is a state or a variant core can't tell apart.
@@ -596,14 +606,30 @@ function attributeOf(node: parser.Attribute): AttributeSelector {
 
 type Kind = Pick<Condition, "kind" | "group">;
 
-function attributeKind(node: parser.Attribute, text: string, vocabulary: Vocabulary): Kind {
+function attributeKind(node: parser.Attribute, text: string, reading: Reading): Kind {
+	const { vocabulary } = reading;
 	const name = node.attribute.toLowerCase();
 	if (vocabulary.blocking.has(text)) return { kind: "state", group: "blocking" };
 	if (vocabulary.interaction.has(text)) return { kind: "state", group: "interaction" };
-	// A presence attribute is a state; so is an ARIA state, and an attribute the project lists as one.
-	if (vocabulary.stateAttributes.has(name) || node.operator === undefined || ariaStates.has(name))
+	// A presence attribute is a state; so is an ARIA state, and an attribute the project lists as one. A value of an
+	// attribute the compound writes as a state says which form of that state it is: `[hidden="until-found"]` beside
+	// `[hidden]`.
+	if (
+		vocabulary.stateAttributes.has(name) ||
+		node.operator === undefined ||
+		ariaStates.has(name) ||
+		reading.presentStates.has(name)
+	)
 		return { kind: "state", group: "semantic" };
 	return { kind: "variant", group: undefined };
+}
+
+/** The attributes a compound writes on their own, with no value: each is a state. */
+function presentStatesOf(parts: readonly Part[]): ReadonlySet<string> {
+	const names = new Set<string>();
+	for (const { node } of parts)
+		if (node.type === "attribute" && node.operator === undefined) names.add(node.attribute.toLowerCase());
+	return names;
 }
 
 function pseudoConditions(node: parser.Pseudo, reading: Reading, inWhere: boolean): Condition[] {
@@ -755,7 +781,7 @@ function readHas(selector: parser.Selector, reading: Reading, inWhere: boolean):
 			const name = attributeName(node);
 			if (name === names.componentAttribute || name === names.partAttribute || name === names.slotAttribute)
 				continue;
-			own.push(...conditionsOf(node, reading, inWhere));
+			own.push(...conditionsOf(node, { ...reading, presentStates: new Set() }, inWhere));
 		}
 		conditions.push(...own);
 		path.push({

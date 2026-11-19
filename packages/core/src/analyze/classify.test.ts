@@ -89,6 +89,36 @@ describe("what a condition is", () => {
 		expect(kinds(classifyAll(parse(css)))).toEqual(rows.map(([, kind, groups]) => [kind, groups]));
 	});
 
+	inEverySyntax(
+		"a value of an attribute the compound writes as a state is a condition of that state",
+		({ parse }) => {
+			const blocks = classifyAll(
+				parse(`
+				.panel[hidden]:where(:not([hidden="until-found" i])) { --s-display: none; }
+				.panel:where(:not([hidden="until-found" i])) { --s-display: none; }
+				.panel[hidden] :where(:not([hidden="until-found" i])) { --s-display: none; }
+				.panel[hidden]:has(> [hidden="until-found"]) { --s-display: none; }
+			`),
+			);
+			expect(blocks.map(conditions)).toEqual([
+				[
+					["[hidden]", "state", "semantic", "subject"],
+					[':not([hidden="until-found" i])', "state", "semantic", "subject"],
+				],
+				// On its own, or on another element, the value is a variant.
+				[[':not([hidden="until-found" i])', "variant", undefined, "subject"]],
+				[
+					["[hidden]", "state", "semantic", "root"],
+					[':not([hidden="until-found" i])', "variant", undefined, "subject"],
+				],
+				[
+					["[hidden]", "state", "semantic", "subject"],
+					[':has(> [hidden="until-found"])', "variant", undefined, "subject"],
+				],
+			]);
+		},
+	);
+
 	inEverySyntax("an attribute the settings list as a state", ({ parse }) => {
 		const css = '.dialog[data-state="open"] { opacity: 1; }';
 		expect(kinds(classifyAll(parse(css)))).toEqual([["variant", []]]);

@@ -258,6 +258,123 @@ describe("recommended in Sass, Vue and CSS Modules", () => {
 		});
 	});
 
+	it("accepts a parent selector in a Sass mixin, and still reports one with no rule around it", async () => {
+		const mixin = `
+			@mixin focused {
+				&:focus-visible {
+					outline: 2px solid red;
+				}
+			}
+
+			.button {
+				@include focused;
+			}
+		`;
+		const said = await lintFiles(project(), {
+			"src/mixin.scss": mixin,
+			"src/mixin.vue": `<template><div class="button" /></template>\n<style lang="scss">\n${dedent(mixin)}\n</style>`,
+			"src/parent.css": "& .button { color: red; }",
+			"src/parent.scss": "& .button { color: red; }",
+		});
+		expect(said).toEqual({
+			[path.join("src", "mixin.scss")]: [],
+			[path.join("src", "mixin.vue")]: [],
+			[path.join("src", "parent.css")]: ["1: nesting-selector-no-missing-scoping-root"],
+			[path.join("src", "parent.scss")]: ["1: nesting-selector-no-missing-scoping-root"],
+		});
+	});
+
+	/** CSS Modules' values, exports and imports, with nothing reading the names they declare. */
+	const moduleNames = `
+		@value ink: red;
+
+		:export {
+			brand: red;
+		}
+
+		:import("./base.css") {
+			other: source;
+		}
+
+		.card {
+			color: red;
+		}
+	`;
+	/** The same, with the names read. */
+	const moduleValues = `
+		@value ink: red;
+
+		:import("./base.css") {
+			other: source;
+		}
+
+		.card {
+			color: ink;
+			background-color: other;
+		}
+	`;
+	const inVueModule = (code: string): string =>
+		`<template><div /></template>\n<style module>\n${dedent(code)}\n</style>`;
+
+	it("accepts CSS Modules' @value, :export and :import(), and still reports a misspelled block", async () => {
+		const typo = ":exprt {\n\tbrand: red;\n}";
+		const said = await lintFiles(project(), {
+			"src/names.module.css": moduleNames,
+			"src/names.module.scss": moduleNames,
+			"src/names.vue": inVueModule(moduleNames),
+			"src/typo.module.css": typo,
+			"src/typo.module.scss": typo,
+			"src/typo.vue": inVueModule(typo),
+		});
+		const reported = (line: number) => [
+			`${line + 1}: property-no-unknown`,
+			`${line}: selector-pseudo-class-no-unknown`,
+		];
+		expect(said).toEqual({
+			[path.join("src", "names.module.css")]: [],
+			[path.join("src", "names.module.scss")]: [],
+			[path.join("src", "names.vue")]: [],
+			[path.join("src", "typo.module.css")]: reported(1),
+			[path.join("src", "typo.module.scss")]: reported(1),
+			[path.join("src", "typo.vue")]: reported(3),
+		});
+	});
+
+	it("passes values CSS Modules name with the README's rule for them switched off", async () => {
+		const files = {
+			"src/values.module.css": moduleValues,
+			"src/values.module.scss": moduleValues,
+			"src/values.vue": inVueModule(moduleValues),
+		};
+		expect(await lintFiles(project(), files)).toEqual({
+			[path.join("src", "values.module.css")]: [
+				"8: declaration-property-value-no-unknown",
+				"9: declaration-property-value-no-unknown",
+			],
+			[path.join("src", "values.module.scss")]: [],
+			[path.join("src", "values.vue")]: [
+				"10: declaration-property-value-no-unknown",
+				"11: declaration-property-value-no-unknown",
+			],
+		});
+		const moduleValuesSetup: stylelint.Config = {
+			extends: [recommended],
+			overrides: [
+				{ files: ["**/*.scss"], customSyntax: "postcss-scss" },
+				{ files: ["**/*.vue"], customSyntax: "postcss-html" },
+				{
+					files: ["**/*.module.css", "**/*.vue"],
+					rules: { "declaration-property-value-no-unknown": null },
+				},
+			],
+		};
+		expect(await lintFiles(project(), files, moduleValuesSetup)).toEqual({
+			[path.join("src", "values.module.css")]: [],
+			[path.join("src", "values.module.scss")]: [],
+			[path.join("src", "values.vue")]: [],
+		});
+	});
+
 	it("adds nothing to compatible, which leaves syntaxes to the project's own config", () => {
 		expect(compatible.overrides).toHaveLength(1);
 		expect(recommended.overrides?.length).toBeGreaterThan(1);

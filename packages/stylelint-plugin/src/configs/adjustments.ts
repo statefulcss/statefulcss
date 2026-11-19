@@ -98,12 +98,28 @@ const sassNames: Rules = {
 	// `stylelint-config-recommended` ignores it.
 	"at-rule-prelude-no-invalid": [true, { ignoreAtRules: ["media", "mixin", "function"] }],
 	"annotation-no-unknown": [true, { ignoreAnnotations: ["default", "global"] }],
+	// A mixin's `&` is the selector of the rule that includes it: `.button { @include focused; }`.
+	"nesting-selector-no-missing-scoping-root": [true, { ignoreAtRules: ["mixin"] }],
 };
 
-/** CSS Modules' own names: `composes`, `:global` and `:local`, and `@value`. */
+/**
+ * CSS Modules' blocks whose declarations name values rather than set properties: `:export { brand: red; }` and
+ * `:import("./base.css") { other: source; }`.
+ */
+const cssModulesBlocks = [":export", "/^:import\\(/"];
+
+/** CSS Modules' own properties and blocks, which `property-no-unknown` doesn't know. */
+const cssModulesProperties: Rules = {
+	"property-no-unknown": [true, { ignoreProperties: ["composes"], ignoreSelectors: cssModulesBlocks }],
+};
+
+/** CSS Modules' own names: `composes`, `:global`, `:local`, `:export` and `:import()`, and `@value`. */
 const cssModulesNames = (atRules: readonly string[]): Rules => ({
-	"property-no-unknown": [true, { ignoreProperties: ["composes"] }],
-	"selector-pseudo-class-no-unknown": [true, { ignorePseudoClasses: ["global", "local"] }],
+	...cssModulesProperties,
+	"selector-pseudo-class-no-unknown": [
+		true,
+		{ ignorePseudoClasses: ["global", "local", "export", "import"] },
+	],
 	"at-rule-no-unknown": [true, { ignoreAtRules: [...atRules, "value"] }],
 });
 
@@ -131,12 +147,13 @@ export const syntaxOverrides: NonNullable<stylelint.Config["overrides"]> = [
 		files: ["**/*.vue"],
 		rules: {
 			...sassNames,
-			// Vue's own pseudo-classes, and CSS Modules' in a `<style module>` block.
+			// Vue's own pseudo-classes, and CSS Modules' names in a `<style module>` block.
 			"selector-pseudo-class-no-unknown": [
 				true,
-				{ ignorePseudoClasses: ["deep", "global", "slotted", "local"] },
+				{ ignorePseudoClasses: ["deep", "global", "slotted", "local", "export", "import"] },
 			],
-			"property-no-unknown": [true, { ignoreProperties: ["composes"] }],
+			...cssModulesProperties,
+			"at-rule-no-unknown": [true, { ignoreAtRules: [...sassAtRules, "value"] }],
 		},
 	},
 	{ files: ["**/*.module.css"], rules: cssModulesNames([]) },

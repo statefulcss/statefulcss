@@ -14,9 +14,11 @@ It reads the Stylelint config each file is linted with, not the stylesheet:
 
 Each problem is said once for a run, on the first file it's shown on. A run is one `stylelint` command, one `stylelint.lint()` call, or one PostCSS plugin made with `stylelint()`. An editor lints each file it shows in a run of its own, so it shows the warning on every file, and two projects linted in one process each get it. A problem that only some files have, through Stylelint's `overrides`, is said on the first of those files. A disable comment that hides it on one file leaves it to the next file of the run.
 
+Two things change that count. With Stylelint's `--cache`, a file whose result is cached isn't linted, so this rule doesn't run on it: a run that lints only cached files doesn't say the problem, and a run that lints some says it on the first of those. And a run whose files are given different `referenceFiles` says it once for each set of them: each set is read as a run of its own.
+
 It's reported where the file starts: on line 1, column 1, or in a `.vue` file where its first `<style>` block's content starts.
 
-A config that can't be used isn't this rule's: a `statefulcss.config` file that can't be read, an unknown setting, a value of the wrong kind, or a project setting written as a rule option (`themeFiles` on `theme-tokens`). Every Stateful CSS rule refuses those as an invalid option, so turning this rule off never hides them.
+A config that can't be used isn't this rule's: a `statefulcss.config` file that can't be read, an unknown setting, a value of the wrong kind, or a project setting written as a rule option (`themeFiles` on `theme-tokens`). The rules that read stylesheets refuse those as an invalid option, so turning this rule off never hides them. This rule doesn't read the settings: with only it on, a settings file that can't be used isn't reported.
 
 ## Why
 

@@ -19,23 +19,22 @@
 		"preview": "astro preview",
 		"deploy": "wrangler deploy --env=\"\"",
 		"deploy:production": "wrangler deploy --env=\"\"",
-		"deploy:preview": "wrangler deploy --env preview",
-		"types:cf": "wrangler types"
+		"deploy:preview": "wrangler deploy --env preview"
 	},
 	"dependencies": {
-		"astro": "^7.4.1"
+		"astro": "^7.4.12"
 	},
 	"devDependencies": {
 		"@astrojs/check": "^0.9.11",
-		"@astrojs/markdown-remark": "^7.3.3",
-		"@astrojs/mdx": "^8.1.0",
+		"@astrojs/markdown-remark": "^7.3.9",
+		"@astrojs/mdx": "^8.1.6",
 		"@astrojs/rss": "^4.0.19",
-		"@astrojs/sitemap": "^3.7.4",
+		"@astrojs/sitemap": "^3.7.5",
 		"@axe-core/playwright": "^4.14.0",
 		"@playwright/test": "^1.64.1",
 		"@repo/eslint-config": "workspace:*",
 		"@resvg/resvg-wasm": "^2.6.2",
-		"@shikijs/transformers": "^4.5.0",
+		"@shikijs/transformers": "^4.6.0",
 		"@typescript-eslint/parser": "catalog:",
 		"eslint": "catalog:",
 		"eslint-plugin-astro": "^3.2.1",
@@ -45,6 +44,6 @@
 		"satori": "0.63.2",
 		"typescript": "catalog:",
 		"vitest": "catalog:",
-		"wrangler": "4.151.3"
+		"wrangler": "4.164.0"
 	}
 }

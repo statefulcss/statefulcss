@@ -148,3 +148,81 @@ describe.each(configs)("%s", (_name, config) => {
 		]);
 	});
 });
+
+/** The guard that keeps interaction states off a blocked element, as the default settings list the blocking states. */
+const guard = '&:where(:not(:disabled, [aria-disabled="true"], [data-loading], [inert]))';
+
+describe.each(configs)("%s", (_name, config) => {
+	const project = temporaryProject();
+
+	it.each(syntaxes)("accepts a guard on each side of focus, in the order of states (%s)", async (syntax) => {
+		const code = `
+.button {
+	--_background-color: var(--t-color-neutral-100);
+	--_background-color-hover: var(--t-color-neutral-200);
+	--_background-color-active: var(--t-color-neutral-300);
+	--s-background-color: var(--_background-color);
+	--s-outline-width: 0px;
+	--s-opacity: 1;
+	background-color: var(--s-background-color);
+	outline: var(--s-outline-width) solid var(--t-color-focus);
+	opacity: var(--s-opacity);
+
+	${guard} {
+		&:hover { --s-background-color: var(--_background-color-hover); }
+	}
+	&:focus-visible { --s-outline-width: 2px; }
+	${guard} {
+		&:active { --s-background-color: var(--_background-color-active); }
+	}
+	&:disabled { --s-opacity: 0.5; }
+}
+`;
+		expect(await warningsOf(config, project(), code, syntax)).toEqual([]);
+	});
+
+	it.each(syntaxes)("accepts a combined state's guard after its semantic state (%s)", async (syntax) => {
+		const code = `
+.button {
+	--_background-color: var(--t-color-neutral-100);
+	--_background-color-hover: var(--t-color-neutral-200);
+	--_background-color-pressed: var(--t-color-neutral-300);
+	--_background-color-pressed-hover: var(--t-color-neutral-400);
+	--s-background-color: var(--_background-color);
+	background-color: var(--s-background-color);
+
+	${guard} {
+		&:hover { --s-background-color: var(--_background-color-hover); }
+	}
+	&[aria-pressed="true"] { --s-background-color: var(--_background-color-pressed); }
+	${guard} {
+		&[aria-pressed="true"]:where(:hover) { --s-background-color: var(--_background-color-pressed-hover); }
+	}
+}
+`;
+		expect(await warningsOf(config, project(), code, syntax)).toEqual([]);
+	});
+
+	it.each(syntaxes)("accepts a component's defaults in a block of their own (%s)", async (syntax) => {
+		const code = ".button {\n\t& {\n\t\t--s-opacity: 1;\n\t}\n\n\topacity: var(--s-opacity);\n}";
+		expect(await warningsOf(config, project(), code, syntax)).toEqual([]);
+	});
+});
+
+describe("compatible, listed after a config that refuses a repeated selector and a nested `&` block", () => {
+	const project = temporaryProject();
+	// What `stylelint-config-standard` turns on.
+	const existing: stylelint.Config = {
+		rules: { "no-duplicate-selectors": true, "block-no-redundant-nested-style-rules": true },
+	};
+	const code = `.button {\n\t& {\n\t\t--s-opacity: 1;\n\t}\n\n\topacity: var(--s-opacity);\n\n\t${guard} {\n\t\t&:hover { --s-opacity: 0.9; }\n\t}\n\t&:focus-visible { --s-opacity: 0.8; }\n\t${guard} {\n\t\t&:active { --s-opacity: 0.7; }\n\t}\n}`;
+
+	it.each(syntaxes)("switches both off (%s)", async (syntax) => {
+		expect(await warningsOf(existing, project(), code, syntax)).toEqual([
+			"block-no-redundant-nested-style-rules: error",
+			"no-duplicate-selectors: error",
+			"no-duplicate-selectors: error",
+		]);
+		expect(await warningsOf({ extends: [existing, compatible] }, project(), code, syntax)).toEqual([]);
+	});
+});

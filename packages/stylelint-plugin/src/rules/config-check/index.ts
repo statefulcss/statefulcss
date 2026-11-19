@@ -35,6 +35,8 @@ const duplicateCustomProperties = "declaration-block-no-duplicate-custom-propert
 /** Stylelint's rules the methodology contradicts, each with the reason both configs switch it off. */
 const contradicted: Readonly<Record<string, string>> = {
 	"no-descending-specificity": "it reports state blocks written in the methodology's order",
+	"no-duplicate-selectors":
+		"it reports a second guard around interaction states, which the order of states needs",
 };
 
 export default defineConfigRule({

@@ -30,6 +30,9 @@ export const adjusted: Rules = {
 	],
 	// It compares selectors across the file, and reports state blocks written in the methodology's order.
 	"no-descending-specificity": null,
+	// It reports a block's second `&:where(:not(…))` guard, which the order of states needs where focus sits between
+	// two interaction states, or a combined state follows its semantic state. Its options can't ignore only guards.
+	"no-duplicate-selectors": null,
 	// `bind-once` reports a repeated custom property, with the `@supports` form that replaces it.
 	"declaration-block-no-duplicate-custom-properties": null,
 };
@@ -56,6 +59,8 @@ export const contradicted: Rules = {
 	"declaration-empty-line-before": null,
 	// Tokens and component variables are declared in other files, and a library's variables in none.
 	"no-unknown-custom-properties": null,
+	// `stylelint-config-standard` refuses `& { … }`, the block a component may keep its defaults in.
+	"block-no-redundant-nested-style-rules": null,
 };
 
 /** Stylelint's docs say the two selector rules are for CSS only. */

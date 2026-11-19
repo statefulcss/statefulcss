@@ -37,10 +37,10 @@ Both configs load the plugin themselves. Each also:
 
 - turns on `declaration-no-important`, `selector-no-unmatchable`, `selector-no-invalid` and `declaration-block-no-shorthand-property-overrides`, the last three through `stylelint-config-recommended` in `recommended`;
 - sets `declaration-block-no-duplicate-properties` to a warning that suggests `@supports` for a fallback, with its fix off, so `--fix` never deletes the fallback;
-- switches off `no-descending-specificity`, which reports state blocks written in the methodology's order, and `declaration-block-no-duplicate-custom-properties`, whose repeat `statefulcss/bind-once` reports;
+- switches off `no-descending-specificity`, which reports state blocks written in the methodology's order, `no-duplicate-selectors`, which reports a block's second `&:where(:not(…))` guard (focus sits between two interaction states, and a combined state's guard follows its semantic state), and `declaration-block-no-duplicate-custom-properties`, whose repeat `statefulcss/bind-once` reports;
 - switches `selector-no-unmatchable` and `selector-no-invalid` off for `*.scss`, `*.sass` and `*.less`, as Stylelint's docs advise. Overrides go by file name, so a `.vue` file's `<style lang="scss">` block keeps them on.
 
-`compatible` also switches off `custom-property-pattern`, `selector-class-pattern`, `custom-property-empty-line-before`, `declaration-empty-line-before` and `no-unknown-custom-properties`, which reject private names such as `--_gap`, CSS Modules classes such as `.Button`, or the way a component groups its defaults.
+`compatible` also switches off `custom-property-pattern`, `selector-class-pattern`, `custom-property-empty-line-before`, `declaration-empty-line-before`, `no-unknown-custom-properties` and `block-no-redundant-nested-style-rules`, which reject private names such as `--_gap`, CSS Modules classes such as `.Button`, the way a component groups its defaults, or the `& { … }` block it may keep them in.
 
 `recommended` also accepts what Sass, Vue and CSS Modules add to CSS, by file name:
 

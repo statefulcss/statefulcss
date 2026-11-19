@@ -1,6 +1,6 @@
-// The fixture corpus: whole components that must pass both configs with no warning, and whole components with a
-// mistake, whose first line names the rules they must fail. Each runs as plain CSS, SCSS and a `.vue` file's
-// `<style>` block.
+// The fixture corpus: whole components that must pass both configs with no warning, whole components with a
+// mistake, whose first line names the rules they must fail, and whole components that pass once `--fix` has run.
+// Each runs as plain CSS, SCSS and a `.vue` file's `<style>` block.
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,6 +20,8 @@ const configs = [
 const correct = fileURLToPath(new URL("../../core/fixtures/components", import.meta.url));
 /** Components with a mistake, each one naming the rules it fails on its first line. */
 const wrong = fileURLToPath(new URL("../fixtures/wrong", import.meta.url));
+/** Components whose only mistakes `--fix` repairs. */
+const fixable = fileURLToPath(new URL("../fixtures/fixable", import.meta.url));
 
 const read = (folder: string): (readonly [string, string])[] =>
 	readdirSync(folder)
@@ -50,6 +52,24 @@ describe.each(configs)("the corpus under %s", (_name, config) => {
 			const { warnings, invalid } = await lint(sourceFor(syntax, { code }), project(), config);
 			expect(invalid).toEqual([]);
 			expect([...new Set(warnings.map((warning) => warning.rule))].sort()).toEqual(failsOf(code));
+		});
+	});
+
+	describe.each(read(fixable))("%s is fixed to pass with no warning", (_file, code) => {
+		it.each(syntaxes)("%s", async (syntax) => {
+			const source = sourceFor(syntax, { code });
+			const before = await lint(source, project(), config);
+			expect(before.warnings).not.toEqual([]);
+			const fixed = await lint(source, project(), config, true);
+			const output = { ...source, code: fixed.code ?? "" };
+			expect(output.code).not.toBe(source.code);
+			// Linted twice after the fix: clean both times, and a second fix changes nothing.
+			for (let run = 0; run < 2; run++) {
+				const { warnings, invalid } = await lint(output, project(), config);
+				expect(invalid).toEqual([]);
+				expect(warnings.map((warning) => warning.text)).toEqual([]);
+			}
+			expect((await lint(output, project(), config, true)).code).toBe(output.code);
 		});
 	});
 

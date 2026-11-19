@@ -1,0 +1,35 @@
+/* Hover, focus and active in the order of states, with no guard: `--fix` guards hover and active, each on its own
+   side of focus, which stays outside the guard. */
+
+/**
+ * Button
+ * @component button
+ */
+.button {
+	--_background-color: var(--t-color-neutral-100);
+	--_background-color-hover: var(--t-color-neutral-200);
+	--_background-color-active: var(--t-color-neutral-300);
+	--s-background-color: var(--_background-color);
+	--s-outline-width: 0px;
+	--s-opacity: 1;
+	background-color: var(--s-background-color);
+	outline: var(--s-outline-width) solid var(--t-color-focus);
+	opacity: var(--s-opacity);
+
+	&:hover {
+		--s-background-color: var(--_background-color-hover);
+	}
+
+	&:focus-visible {
+		--s-outline-width: 2px;
+	}
+
+	/* Pressed with the pointer */
+	&:active {
+		--s-background-color: var(--_background-color-active);
+	}
+
+	&:disabled {
+		--s-opacity: 0.5;
+	}
+}

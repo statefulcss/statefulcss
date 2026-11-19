@@ -84,6 +84,9 @@ const duplicatesUnreported =
 const contradicted =
 	'Unexpected "no-descending-specificity": it reports state blocks written in the methodology\'s order. Turn it ' +
 	`off, as "recommended" and "compatible" do. (${ruleName})`;
+const duplicateGuards =
+	'Unexpected "no-duplicate-selectors": it reports a second guard around interaction states, which the order of ' +
+	`states needs. Turn it off, as "recommended" and "compatible" do. (${ruleName})`;
 
 /** Said on the first line, at the level both configs give the rule. */
 const onFirstLine = (text: string): Said => ({ text, line: 1, column: 1, severity: "warning" });
@@ -142,6 +145,11 @@ describe(ruleName, () => {
 	inEverySyntax('rejects: "no-descending-specificity" on', { code }, async (source) => {
 		const config = configWith({ "no-descending-specificity": [true, { severity: "warning" }] });
 		expect(await saidIn(source, config)).toEqual({ said: [onFirstLine(contradicted)], invalid: [] });
+	});
+
+	inEverySyntax('rejects: "no-duplicate-selectors" on', { code }, async (source) => {
+		const config = configWith({ "no-duplicate-selectors": true });
+		expect(await saidIn(source, config)).toEqual({ said: [onFirstLine(duplicateGuards)], invalid: [] });
 	});
 
 	inEverySyntax("rejects: every problem at once, each said once", { code }, async (source) => {

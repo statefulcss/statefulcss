@@ -132,6 +132,11 @@
 			groupName: "github actions",
 		},
 		{
+			description: "The website tests run in Playwright's container image, whose browsers match one @playwright/test version, so both update together.",
+			matchPackageNames: ["@playwright/test", "mcr.microsoft.com/playwright"],
+			groupName: "playwright",
+		},
+		{
 			description: "Raising engines minimums is a breaking change for consumers; change them deliberately.",
 			matchDepTypes: ["engines"],
 			enabled: false,

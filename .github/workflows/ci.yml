@@ -118,9 +118,10 @@ jobs:
     runs-on: ubuntu-latest
     # Chromium and its system libraries come with the image, so nothing is installed from apt or a CDN.
     # Its version must match @playwright/test in apps/web/package.json; Renovate updates both together.
+    # It runs as the runner's user (1001), who owns the checkout; as root, git refuses the repository.
     container:
       image: mcr.microsoft.com/playwright:v1.65.1-noble
-      options: --ipc=host
+      options: --user 1001 --ipc=host
     timeout-minutes: 20
 
     steps:

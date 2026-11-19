@@ -101,7 +101,7 @@ jobs:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |
           # Anything that can change the built site: the app itself, shared configs, and dependencies.
-          paths=(apps/web packages/eslint-config packages/tsconfig package.json pnpm-lock.yaml pnpm-workspace.yaml)
+          paths=(apps/web packages/eslint-config packages/tsconfig package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .nvmrc .github/actions/setup .github/workflows/ci.yml)
           if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
             echo "Base commit unavailable; treating the website as changed."
             echo "web=true" >> "$GITHUB_OUTPUT"
@@ -116,6 +116,11 @@ jobs:
     needs: changes
     if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
+    # Chromium and its system libraries come with the image, so nothing is installed from apt or a CDN.
+    # Its version must match @playwright/test in apps/web/package.json; Renovate updates both together.
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
+      options: --ipc=host
     timeout-minutes: 20
 
     steps:
@@ -129,10 +134,6 @@ jobs:
 
       - name: Build web
         run: pnpm turbo run build --filter=web
-
-      - name: Install Chromium
-        working-directory: apps/web
-        run: pnpm exec playwright install --with-deps chromium
 
       - name: Run website tests
         working-directory: apps/web

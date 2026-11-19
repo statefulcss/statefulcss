@@ -2,6 +2,8 @@
 	"$schema": "https://cdn.jsdelivr.net/npm/wrangler@4/config-schema.json",
 	"name": "statefulcss-website",
 	"compatibility_date": "2026-10-01",
+	"workers_dev": false,
+	"preview_urls": false,
 	"assets": {
 		"directory": "./dist",
 		"not_found_handling": "404-page",

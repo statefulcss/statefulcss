@@ -92,6 +92,20 @@ body {
 	overflow: auto;
 }
 
+/* A long path or name in running text breaks rather than widening the page. */
+:where(:not(pre) > code) {
+	overflow-wrap: anywhere;
+}
+
+/* Tables */
+
+/* A table wider than the page scrolls inside itself. */
+:where(table) {
+	display: block;
+	max-inline-size: 100%;
+	overflow-x: auto;
+}
+
 /* Elements */
 
 :where(hr) {

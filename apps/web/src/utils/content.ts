@@ -1,6 +1,7 @@
 import { getCollection, type CollectionEntry } from "astro:content";
 
 import { sidebar } from "@config/sidebar";
+import { getRulePath } from "@loaders/lint-rules";
 import {
 	formatPageTitle,
 	getSiteUrl,
@@ -12,6 +13,7 @@ import {
 
 export type DocsEntry = CollectionEntry<"docs">;
 export type ChangelogEntry = CollectionEntry<"changelog">;
+export type LintRuleEntry = CollectionEntry<"lintRules">;
 
 /** The page /docs/ shows. */
 const DOCS_HOME = "introduction";
@@ -53,7 +55,9 @@ export function getSidebar(entries: DocsEntry[], currentId?: string): SidebarSec
 	return sidebar
 		.map((group) => ({
 			label: group.label,
-			items: group.pages.flatMap((id): SidebarItem[] => {
+			items: group.pages.flatMap((page): SidebarItem[] => {
+				if (typeof page !== "string") return [{ ...page, draft: false, current: page.id === currentId }];
+				const id = page;
 				const entry = byId.get(id);
 				if (!entry) return [];
 				return [
@@ -101,12 +105,27 @@ export function getCollectionPageSchema(path: string, title: string, description
 
 export function getDocsEntrySchema(entry: DocsEntry): JsonLdSchema[] {
 	const path = getDocsPath(entry.id);
+	const crumbs = path === "/docs/" ? [] : [{ name: entry.data.title, path }];
+	return getArticleSchema(path, entry.data.title, entry.data.summary, crumbs);
+}
+
+export function getLintRuleSchema(rule: LintRuleEntry): JsonLdSchema[] {
+	const path = getRulePath(rule.id);
+	return getArticleSchema(path, rule.data.title, rule.data.summary, [
+		{ name: "Lint Rules", path: "/docs/lint-rules/" },
+		{ name: rule.data.title, path },
+	]);
+}
+
+/** A docs article and its breadcrumbs, which start at Docs. */
+function getArticleSchema(
+	path: string,
+	title: string,
+	description: string,
+	crumbs: { name: string; path: string }[],
+): JsonLdSchema[] {
 	const canonicalUrl = toCanonicalUrl(path);
 	const siteUrl = getSiteUrl();
-	const crumbs = [
-		{ name: "Docs", path: "/docs/" },
-		...(path === "/docs/" ? [] : [{ name: entry.data.title, path }]),
-	];
 
 	return [
 		{
@@ -116,8 +135,8 @@ export function getDocsEntrySchema(entry: DocsEntry): JsonLdSchema[] {
 			mainEntityOfPage: {
 				"@id": `${canonicalUrl}#webpage`,
 			},
-			headline: entry.data.title,
-			description: entry.data.summary,
+			headline: title,
+			description,
 			url: canonicalUrl,
 			inLanguage: siteConfig.language,
 			author: {
@@ -131,7 +150,7 @@ export function getDocsEntrySchema(entry: DocsEntry): JsonLdSchema[] {
 			"@context": "https://schema.org",
 			"@type": "BreadcrumbList",
 			"@id": `${canonicalUrl}#breadcrumb`,
-			itemListElement: crumbs.map((crumb, index) => ({
+			itemListElement: [{ name: "Docs", path: "/docs/" }, ...crumbs].map((crumb, index) => ({
 				"@type": "ListItem",
 				position: index + 1,
 				name: crumb.name,

@@ -1,0 +1,50 @@
+---
+import { getCollection } from "astro:content";
+
+import DocsLayout from "@layouts/DocsLayout.astro";
+import { getRulePath } from "@loaders/lint-rules";
+import { getOgImagePath } from "@og/templates";
+import { getCollectionPageSchema, getDocs, getSidebar } from "@utils/content";
+
+const path = "/docs/lint-rules/";
+const title = "Lint Rules";
+const summary =
+	"Every rule in the Stateful CSS Stylelint plugin: what it checks, how severe it is, and whether it can fix.";
+const rules = (await getCollection("lintRules")).sort((a, b) => a.data.order - b.data.order);
+---
+
+<DocsLayout
+	title={title}
+	summary={summary}
+	draft={false}
+	headings={[]}
+	sidebar={getSidebar(await getDocs(), "lint-rules")}
+	canonical={path}
+	image={getOgImagePath(path, { index: true })}
+	schema={[getCollectionPageSchema(path, title, summary)]}
+>
+	<table>
+		<thead>
+			<tr>
+				<th scope="col">Rule</th>
+				<th scope="col">Checks</th>
+				<th scope="col">Severity</th>
+				<th scope="col">Fixable</th>
+			</tr>
+		</thead>
+		<tbody>
+			{rules.map((rule) => (
+				<tr>
+					<th scope="row">
+						<a href={getRulePath(rule.id)}>
+							<code>{rule.data.title}</code>
+						</a>
+					</th>
+					<td>{rule.data.summary}</td>
+					<td>{rule.data.severity}</td>
+					<td>{rule.data.fixable ? "yes" : "no"}</td>
+				</tr>
+			))}
+		</tbody>
+	</table>
+</DocsLayout>

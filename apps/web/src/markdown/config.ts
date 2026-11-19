@@ -19,8 +19,8 @@ export const markdownProcessor = unified({
 
 export const shikiConfig: ShikiConfig = {
 	themes: {
-		light: "github-light",
-		dark: "github-dark",
+		light: "github-light-high-contrast",
+		dark: "github-dark-high-contrast",
 	},
 	// Token colors are inline `light-dark()` values, so they follow the element's color-scheme.
 	defaultColor: "light-dark()",

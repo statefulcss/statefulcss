@@ -3,7 +3,7 @@ import type { MarkdownHeading } from "astro";
 
 import type { JsonLdSchema } from "@config/site";
 import Layout from "@layouts/Layout.astro";
-import { getPager, type SidebarSection } from "@utils/content";
+import { getPager, type SidebarItem, type SidebarSection } from "@utils/content";
 
 interface Props {
 	title: string;
@@ -14,10 +14,12 @@ interface Props {
 	canonical: string;
 	image: string;
 	schema: JsonLdSchema[];
+	/** For pages that aren't in the sidebar themselves, such as a lint rule's: where its previous and next links go. */
+	pager?: { previous?: Pick<SidebarItem, "title" | "href">; next?: Pick<SidebarItem, "title" | "href"> };
 }
 
-const { title, summary, draft, headings, sidebar, canonical, image, schema } = Astro.props;
-const { previous, next } = getPager(sidebar);
+const { title, summary, draft, headings, sidebar, canonical, image, schema, pager } = Astro.props;
+const { previous, next } = pager ?? getPager(sidebar);
 const contents = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
 ---
 
@@ -42,7 +44,10 @@ const contents = headings.filter((heading) => heading.depth === 2 || heading.dep
 						{section.items.map((item) => (
 							<li data-draft={item.draft || undefined}>
 								{item.href ? (
-									<a href={item.href} aria-current={item.current ? "page" : undefined}>
+									<a
+										href={item.href}
+										aria-current={item.current ? (item.href === canonical ? "page" : "true") : undefined}
+									>
 										{item.title}
 									</a>
 								) : (
@@ -61,6 +66,7 @@ const contents = headings.filter((heading) => heading.depth === 2 || heading.dep
 				<h1>{title}</h1>
 				{draft && <p data-part="draft">Draft</p>}
 				<p data-part="summary">{summary}</p>
+				<slot name="details" />
 			</header>
 
 			{contents.length > 0 && (

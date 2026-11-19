@@ -1,4 +1,7 @@
+import { getCollection } from "astro:content";
+
 import { siteConfig } from "@config/site";
+import { getRulePath } from "@loaders/lint-rules";
 import { getDocs, getDocsPath, isBuilt } from "@utils/content";
 
 import { getOgImagePath, type OgImageTemplateProps } from "./templates";
@@ -33,6 +36,13 @@ export async function getOgImageDefinitions(): Promise<OgImageDefinition[]> {
 	for (const entry of docs) {
 		if (entry === home) continue;
 		definitions.push(defineOgImage(getDocsPath(entry.id), { title: entry.data.title, variant: "content" }));
+	}
+
+	definitions.push(
+		defineOgImage("/docs/lint-rules/", { title: "Lint Rules", variant: "content" }, { index: true }),
+	);
+	for (const rule of await getCollection("lintRules")) {
+		definitions.push(defineOgImage(getRulePath(rule.id), { title: rule.data.title, variant: "content" }));
 	}
 
 	return definitions;

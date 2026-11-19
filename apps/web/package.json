@@ -43,7 +43,6 @@
 		"hast-util-to-string": "^3.0.1",
 		"hastscript": "^9.0.1",
 		"postcss-html": "catalog:",
-		"reading-time": "^1.5.0",
 		"rehype-autolink-headings": "^7.1.0",
 		"satori": "0.63.2",
 		"stylelint": "catalog:",

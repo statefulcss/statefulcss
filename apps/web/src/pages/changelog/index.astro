@@ -1,0 +1,45 @@
+---
+import { render } from "astro:content";
+
+import Layout from "@layouts/Layout.astro";
+import { getOgImagePath } from "@og/templates";
+import { getChangelog, getCollectionPageSchema } from "@utils/content";
+
+const title = "Changelog";
+const description = "Changes to Stateful CSS: the methodology, the lint rules and the packages.";
+const entries = await Promise.all(
+	(await getChangelog()).map(async (entry) => ({ entry, Content: (await render(entry)).Content })),
+);
+---
+
+<Layout
+	title={title}
+	description={description}
+	image={getOgImagePath("/changelog/", { index: true })}
+	schema={getCollectionPageSchema("/changelog/", title, description)}
+>
+	<h1>{title}</h1>
+	{entries.map(({ entry, Content }) => (
+		<article class="changelog-entry" id={entry.id}>
+			<header>
+				<h2>{entry.data.title}</h2>
+				<time datetime={entry.data.date.toISOString().slice(0, 10)}>
+					{entry.data.date.toLocaleDateString("en", {
+						day: "numeric",
+						month: "long",
+						year: "numeric",
+						timeZone: "UTC",
+					})}
+				</time>
+				{entry.data.tags.length > 0 && (
+					<ul data-part="tags">
+						{entry.data.tags.map((tag) => (
+							<li>{tag}</li>
+						))}
+					</ul>
+				)}
+			</header>
+			<Content />
+		</article>
+	))}
+</Layout>

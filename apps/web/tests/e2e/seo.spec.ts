@@ -14,7 +14,7 @@ test.describe("crawler files", () => {
 
 	test("the sitemap lists public pages only", async () => {
 		expect(routes).toEqual(
-			expect.arrayContaining(["/", "/docs/", "/blog/", "/legal-notice/", "/privacy-policy/"]),
+			expect.arrayContaining(["/docs/", "/changelog/", "/legal-notice/", "/privacy-policy/"]),
 		);
 		for (const route of routes) {
 			expect(route, "404 and dev-only pages stay out of the sitemap").not.toMatch(/404|og-preview/);
@@ -28,8 +28,15 @@ test.describe("crawler files", () => {
 		expect(await response.text()).toContain(`${SITE_URL}/sitemap-0.xml`);
 	});
 
+	test("the home page forwards to the docs for now", async ({ request }) => {
+		const response = await request.get("/", { maxRedirects: 0 });
+
+		expect(response.status()).toBe(302);
+		expect(response.headers()["location"]).toBe("/docs/");
+	});
+
 	test("the RSS feed is valid XML with absolute item links", async ({ page, request }) => {
-		const response = await request.get("/rss.xml");
+		const response = await request.get("/changelog/rss.xml");
 		expect(response.status()).toBe(200);
 		expect(response.headers()["content-type"]).toMatch(/xml/);
 
@@ -43,7 +50,7 @@ test.describe("crawler files", () => {
 		}, xml);
 
 		expect(parsed.error).toBeNull();
-		expect(parsed.links.length).toBeGreaterThan(0);
+		// The Changelog may have no entries yet; every entry it has links absolutely.
 		for (const link of parsed.links) expect(link).toMatch(new RegExp(`^${SITE_URL}/`));
 	});
 });

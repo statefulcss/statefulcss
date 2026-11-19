@@ -1,0 +1,55 @@
+---
+import { render } from "astro:content";
+
+import { siteConfig } from "@config/site";
+import DocsLayout from "@layouts/DocsLayout.astro";
+import { getOgImagePath } from "@og/templates";
+import {
+	getCollectionPageSchema,
+	getDocs,
+	getDocsEntrySchema,
+	getDocsPath,
+	getSidebar,
+	isBuilt,
+	type DocsEntry,
+} from "@utils/content";
+
+export async function getStaticPaths() {
+	const entries = await getDocs();
+	const paths: { params: { slug?: string }; props: Props }[] = entries.filter(isBuilt).map((entry) => ({
+		params: { slug: getDocsPath(entry.id).slice("/docs/".length, -1) || undefined },
+		props: { entry, entries },
+	}));
+
+	// Until the Introduction is built, /docs/ still lists the pages, so links to it resolve.
+	if (!paths.some((path) => path.params.slug === undefined)) {
+		paths.push({ params: { slug: undefined }, props: { entry: undefined, entries } });
+	}
+
+	return paths;
+}
+
+interface Props {
+	entry?: DocsEntry;
+	entries: DocsEntry[];
+}
+
+const { entry, entries } = Astro.props;
+const path = entry ? getDocsPath(entry.id) : "/docs/";
+const { Content, headings } = entry ? await render(entry) : { Content: undefined, headings: [] };
+const title = entry?.data.title ?? "Docs";
+const summary = entry?.data.summary ?? siteConfig.description;
+---
+
+<DocsLayout
+	title={title}
+	summary={summary}
+	draft={entry?.data.status === "draft"}
+	headings={headings}
+	sidebar={getSidebar(entries, entry?.id)}
+	canonical={path}
+	image={getOgImagePath(path, { index: path === "/docs/" })}
+	schema={entry ? getDocsEntrySchema(entry) : [getCollectionPageSchema(path, title, summary)]}
+>
+	{Content && <Content />}
+</DocsLayout>

@@ -6,7 +6,14 @@
 export interface SidebarGroup {
 	/** Omitted for the pages at the top, which belong to no section. */
 	label?: string;
-	pages: string[];
+	/** A docs page's file, or a page the site builds from elsewhere, with its title and path. */
+	pages: (string | SidebarLink)[];
+}
+
+export interface SidebarLink {
+	id: string;
+	title: string;
+	href: string;
 }
 
 export const sidebar: SidebarGroup[] = [
@@ -22,5 +29,8 @@ export const sidebar: SidebarGroup[] = [
 	{ label: "Tokens and Theming", pages: ["token-system", "theming"] },
 	{ label: "Guides", pages: ["project-setup", "scoping", "adopting"] },
 	{ label: "Tooling", pages: ["linting", "ai-assistance"] },
-	{ label: "Reference", pages: ["conformance", "glossary"] },
+	{
+		label: "Reference",
+		pages: ["conformance", { id: "lint-rules", title: "Lint Rules", href: "/docs/lint-rules/" }, "glossary"],
+	},
 ];

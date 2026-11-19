@@ -1,0 +1,49 @@
+---
+import { getCollection, render, type CollectionEntry } from "astro:content";
+
+import DocsLayout from "@layouts/DocsLayout.astro";
+import { getRulePath } from "@loaders/lint-rules";
+import { getOgImagePath } from "@og/templates";
+import { getDocs, getLintRuleSchema, getSidebar } from "@utils/content";
+
+export async function getStaticPaths() {
+	const rules = (await getCollection("lintRules")).sort((a, b) => a.data.order - b.data.order);
+
+	return rules.map((rule, index) => ({
+		params: { rule: rule.id },
+		props: { rule, previous: rules[index - 1], next: rules[index + 1] },
+	}));
+}
+
+interface Props {
+	rule: CollectionEntry<"lintRules">;
+	previous?: CollectionEntry<"lintRules">;
+	next?: CollectionEntry<"lintRules">;
+}
+
+const { rule, previous, next } = Astro.props;
+const { Content, headings } = await render(rule);
+const path = getRulePath(rule.id);
+const toLink = (entry?: CollectionEntry<"lintRules">) =>
+	entry && { title: entry.data.title, href: getRulePath(entry.id) };
+---
+
+<DocsLayout
+	title={rule.data.title}
+	summary={rule.data.summary}
+	draft={false}
+	headings={headings}
+	sidebar={getSidebar(await getDocs(), "lint-rules")}
+	canonical={path}
+	image={getOgImagePath(path)}
+	schema={getLintRuleSchema(rule)}
+	pager={{ previous: toLink(previous), next: toLink(next) }}
+>
+	<dl slot="details" data-part="details">
+		<dt>Severity</dt>
+		<dd>{rule.data.severityText}</dd>
+		<dt>Fixable</dt>
+		<dd>{rule.data.fixable ? "yes" : "no"}</dd>
+	</dl>
+	<Content />
+</DocsLayout>

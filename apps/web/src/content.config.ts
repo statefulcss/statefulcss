@@ -1,6 +1,9 @@
 import { defineCollection } from "astro:content";
 import { glob } from "astro/loaders";
 import { z } from "astro/zod";
+import { ruleNames } from "@statefulcss/stylelint-plugin";
+
+import { lintRulesLoader } from "./loaders/lint-rules";
 
 /** The docs pages. A file's path in the folder is its URL under /docs/. */
 const docs = defineCollection({
@@ -25,4 +28,20 @@ const changelog = defineCollection({
 	}),
 });
 
-export const collections = { changelog, docs };
+/** The lint rules' pages: each rule's README in the plugin, in the plugin's order. */
+const lintRules = defineCollection({
+	loader: lintRulesLoader({
+		folder: new URL("../../../packages/stylelint-plugin/src/rules/", import.meta.url),
+		rules: ruleNames.map((name) => name.replace(/^statefulcss\//, "")),
+	}),
+	schema: z.object({
+		title: z.string(),
+		summary: z.string(),
+		severity: z.enum(["error", "warning"]),
+		severityText: z.string(),
+		fixable: z.boolean(),
+		order: z.number().int(),
+	}),
+});
+
+export const collections = { changelog, docs, lintRules };

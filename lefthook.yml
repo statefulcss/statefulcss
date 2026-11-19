@@ -42,6 +42,11 @@ pre-commit:
             glob: "*.{js,ts,tsx}"
             run: pnpm exec eslint --no-warn-ignored --max-warnings 0 {staged_files}
 
+    - name: stylelint (apps/web)
+      root: "apps/web/"
+      glob: "*.{css,astro}"
+      run: pnpm exec stylelint --max-warnings 0 {staged_files}
+
 commit-msg:
   jobs:
     - name: commitlint

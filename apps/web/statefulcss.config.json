@@ -1,0 +1,5 @@
+{
+	"$schema": "../../packages/config/schema.json",
+	"layers": ["reset", "base", "themes", "components", "utilities"],
+	"themeFiles": ["src/styles/themes/**"]
+}

@@ -176,6 +176,9 @@ catalogs:
     eslint:
       specifier: ^10.14.0
       version: 10.15.0
+    postcss-html:
+      specifier: ^2.0.0
+      version: 2.0.0
     stylelint:
       specifier: ^18.0.0
       version: 18.0.0
@@ -257,6 +260,9 @@ importers:
       '@shikijs/transformers':
         specifier: ^4.6.0
         version: 4.6.0
+      '@statefulcss/stylelint-plugin':
+        specifier: workspace:*
+        version: link:../../packages/stylelint-plugin
       '@types/hast':
         specifier: ^3.0.5
         version: 3.0.5
@@ -275,6 +281,9 @@ importers:
       hastscript:
         specifier: ^9.0.1
         version: 9.0.1
+      postcss-html:
+        specifier: 'catalog:'
+        version: 2.0.0(postcss@8.5.32)
       reading-time:
         specifier: ^1.5.0
         version: 1.5.0
@@ -284,6 +293,9 @@ importers:
       satori:
         specifier: 0.63.2
         version: 0.63.2
+      stylelint:
+        specifier: 'catalog:'
+        version: 18.0.0
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -375,7 +387,7 @@ importers:
         specifier: ^8.5.32
         version: 8.5.32
       postcss-html:
-        specifier: ^2.0.0
+        specifier: 'catalog:'
         version: 2.0.0(postcss@8.5.32)
       postcss-scss:
         specifier: ^4.0.9
@@ -440,7 +452,7 @@ importers:
         specifier: ^8.5.32
         version: 8.5.32
       postcss-html:
-        specifier: ^2.0.0
+        specifier: 'catalog:'
         version: 2.0.0(postcss@8.5.32)
       postcss-scss:
         specifier: ^4.0.9

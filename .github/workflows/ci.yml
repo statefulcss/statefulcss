@@ -101,7 +101,7 @@ jobs:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |
           # Anything that can change the built site: the app itself, shared configs, and dependencies.
-          paths=(apps/web packages/eslint-config packages/tsconfig package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .nvmrc .github/actions/setup .github/workflows/ci.yml)
+          paths=(apps/web packages/config packages/core packages/stylelint-plugin packages/eslint-config packages/tsconfig package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .nvmrc .github/actions/setup .github/workflows/ci.yml)
           if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
             echo "Base commit unavailable; treating the website as changed."
             echo "web=true" >> "$GITHUB_OUTPUT"

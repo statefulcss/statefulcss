@@ -4,6 +4,7 @@
 			"mode": "auto"
 		}
 	],
+	"stylelint.validate": ["css", "astro"],
 	"editor.defaultFormatter": "esbenp.prettier-vscode",
 	"editor.formatOnSave": true,
 	"[json]": {

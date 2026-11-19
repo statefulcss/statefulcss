@@ -161,6 +161,11 @@ export const syntaxOverrides: NonNullable<stylelint.Config["overrides"]> = [
 			"at-rule-no-unknown": [true, { ignoreAtRules: [...sassAtRules, "value"] }],
 		},
 	},
+	{
+		// Astro and Svelte select across files with `:global()`.
+		files: ["**/*.astro", "**/*.svelte"],
+		rules: { "selector-pseudo-class-no-unknown": [true, { ignorePseudoClasses: ["global"] }] },
+	},
 	{ files: ["**/*.module.css"], rules: cssModulesNames([]) },
 	{ files: ["**/*.module.scss", "**/*.module.sass"], rules: cssModulesNames(sassAtRules) },
 ];

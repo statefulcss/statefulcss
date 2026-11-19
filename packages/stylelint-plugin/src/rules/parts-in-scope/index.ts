@@ -26,6 +26,10 @@ const messages = {
 		`Unexpected ${part} inside ":has()" on a rule that styles "${pseudo}". Write the state on the root, setting a part variable that "${pseudo}" reads.`,
 	limit: (limit: string, root: string, expected: string) =>
 		`Unexpected limit "${limit}" on the scope of "${root}". Limit it with "${expected}".`,
+	limitInAstro: (limit: string, root: string, expected: string) =>
+		`Unexpected limit "${limit}" on the scope of "${root}" in an Astro <style>. Astro adds the file's scope to the limit, so it would stop only at components written in this file. Limit it with "${expected}".`,
+	globalLimit: (limit: string, root: string, expected: string) =>
+		`Unexpected ":global()" in the limit "${limit}" on the scope of "${root}". Only an Astro <style> needs it. Limit it with "${expected}".`,
 	noLimit: (root: string, expected: string) =>
 		`Expected a limit on the scope of "${root}". Add "${expected}" after its root.`,
 	nested: (scope: string) => `Unexpected "@scope" inside a rule. Write "${scope}" after the root block.`,
@@ -283,8 +287,12 @@ function hostedBy(model: Model, blocks: readonly Block[]): string | undefined {
 
 /** Every `@scope`: where it's written, and its limit. Only a component's scope is checked. */
 function checkScopes(model: Model, settings: Settings, report: Report): void {
-	const expected = `to ([${settings.componentAttribute}])`;
+	const plain = `to ([${settings.componentAttribute}])`;
+	// Astro adds the file's scope to a scoped `<style>`'s limit; `:global()` keeps it as written.
+	const global = `to (:global([${settings.componentAttribute}]))`;
 	for (const scope of model.scopes) {
+		const scopesLimits = model.sheets[scope.sheet]?.scopesLimits === true;
+		const expected = scopesLimits ? global : plain;
 		const component = scope.component === undefined ? undefined : model.components[scope.component];
 		const at = paramsOf(scope);
 		if (scope.nested) {
@@ -295,9 +303,16 @@ function checkScopes(model: Model, settings: Settings, report: Report): void {
 		}
 		if (!component) continue;
 		const root = scope.root ?? rootOf(component, settings);
+		const limit = `to (${scope.limit})`;
+		const limitAt = limitOf(scope) ?? at;
 		if (scope.limit === undefined) report({ message: "noLimit", args: [root, expected], at });
-		else if (!scope.limitIsComponents)
-			report({ message: "limit", args: [`to (${scope.limit})`, root, expected], at: limitOf(scope) ?? at });
+		else if (scopesLimits ? scope.limitIsGlobalComponents : scope.limitIsComponents) {
+			// The limit ships as the component attribute.
+		} else if (scopesLimits && scope.limitIsComponents)
+			report({ message: "limitInAstro", args: [limit, root, expected], at: limitAt });
+		else if (scope.limitIsGlobalComponents)
+			report({ message: "globalLimit", args: [limit, root, expected], at: limitAt });
+		else report({ message: "limit", args: [limit, root, expected], at: limitAt });
 		if (scope.afterRootBlock === false) report({ message: "beforeRootBlock", args: [root], at });
 	}
 }

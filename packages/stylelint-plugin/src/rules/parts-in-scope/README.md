@@ -13,7 +13,9 @@ Severity: error. Fixable: no.
 - Two exceptions, both in the root block:
   - a placement path that steps from the root through parts, each with `>`, and ends on a slot itself: `& > [data-part="footer"] > [data-slot="action"]`. A plain element or a sibling on the way, or the slot's `::after`, takes it outside the exception. The path is reported once, where it first goes wrong;
   - a part named inside `:has()`, to reach a state or a variant that lives on it: `&:has(:where([data-part="input"]):disabled)`, also inside the guard's `:not()`. `:has()` reaches into the root, as a descendant or with `>`, never a sibling with `+` or `~`.
-- A component's scope has `to ([data-component])` as its limit: no other limit, and not none.
+- A component's scope has `to ([data-component])` as its limit: no other limit, and not none. The limit is checked as it will ship:
+  - in an Astro `<style>` (without `is:global` or `is:inline`), Astro adds the file's scope to every selector, the limit included, so `to ([data-component])` would stop only at components written in that file. There, the limit is written `to (:global([data-component]))`, which Astro ships as `to ([data-component])`;
+  - everywhere else (a `.css` file, an Astro `<style is:global>`, a Vue `<style>` or `<style scoped>`, Svelte, CSS Modules), the compiler leaves the limit as written, so a `:global()` in it is reported.
 - A component's scope is written after its root block, not before it and not inside it.
 - Inside a scope, `:scope` appears only as `:scope >`:
   - `& >` is written `:scope >`;
@@ -208,6 +210,30 @@ Fixed, by hand:
 	}
 }
 ```
+
+### A limit in an Astro `<style>`
+
+```astro
+<!-- Reported: Astro ships the limit as `[data-component]` with the file's scope added, so it stops only at components written in this file -->
+<style>
+	@scope (.card) to ([data-component]) {
+		[data-part="title"] {
+			font-weight: 600;
+		}
+	}
+</style>
+
+<!-- Fixed -->
+<style>
+	@scope (.card) to (:global([data-component])) {
+		[data-part="title"] {
+			font-weight: 600;
+		}
+	}
+</style>
+```
+
+In a scoped `<style>`, what comes from another file is selected through the framework's escape, so a reach across files is explicit: Markdown content and slotted children (`:global(p)`), a component placed in a slot (`& > :global([data-slot="action"])`), and a part the consumer writes inside a slot. In Vue, `:global()` makes the whole rule global, so the escape inside a component is `:deep()` or `:slotted()`. The rules skip what an escape selects.
 
 ### Not reported
 

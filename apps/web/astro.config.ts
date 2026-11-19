@@ -13,6 +13,10 @@ export default defineConfig({
 	},
 	site: getSiteUrl(),
 	trailingSlash: "always",
+	build: {
+		// Every inline <style> adds a hash to the CSP header, which Cloudflare caps at 2,000 characters.
+		inlineStylesheets: "never",
+	},
 	integrations: [
 		mdx(),
 		sitemap(),
@@ -31,6 +35,7 @@ export default defineConfig({
 			provider: fontProviders.local(),
 			name: "Switzer Variable",
 			cssVariable: "--font-switzer",
+			fallbacks: ["ui-sans-serif", "system-ui", "sans-serif"],
 			options: {
 				variants: [
 					{
@@ -50,6 +55,7 @@ export default defineConfig({
 			provider: fontProviders.local(),
 			name: "JetBrains Mono",
 			cssVariable: "--font-jetbrains-mono",
+			fallbacks: ["ui-monospace", "SFMono-Regular", "Consolas", "monospace"],
 			options: {
 				variants: [
 					{

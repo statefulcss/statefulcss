@@ -30,7 +30,6 @@ export const GET: APIRoute<Props> = async ({ props }) => {
 	return new Response(body, {
 		headers: {
 			"Content-Type": "image/png",
-			"Cache-Control": "public, max-age=31536000, immutable",
 		},
 	});
 };

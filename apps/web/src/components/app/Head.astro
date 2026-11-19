@@ -13,6 +13,7 @@ import {
 	webAnalyticsToken,
 	type JsonLdSchema,
 } from "@config/site";
+import { getOgImagePath } from "@og/templates";
 
 interface Props {
 	title?: string;
@@ -42,7 +43,8 @@ const {
 	publishedTime,
 	modifiedTime,
 	schema = [],
-	image,
+	// A page without its own image shares the home page's.
+	image = getOgImagePath("/", { index: true }),
 	imageAlt,
 	imageWidth = 1200,
 	imageHeight = 630,
@@ -54,7 +56,7 @@ const siteUrl = getSiteUrl();
 const canonicalUrl = toCanonicalUrl(canonical);
 const rssUrl = toAbsoluteUrl(siteConfig.rssPath).toString();
 const sitemapUrl = toAbsoluteUrl(siteConfig.sitemapPath).toString();
-const imageUrl = image ? toAbsoluteUrl(image).toString() : undefined;
+const imageUrl = toAbsoluteUrl(image).toString();
 const imageDescription = imageAlt ?? pageTitle;
 
 const baseSchema: JsonLdSchema[] = [
@@ -125,23 +127,15 @@ const serializeJsonLd = (item: JsonLdSchema) => JSON.stringify(item).replaceAll(
 <meta property="og:type" content={type} />
 <meta property="og:url" content={canonicalUrl} />
 <meta property="og:locale" content={siteConfig.locale} />
-{imageUrl && (
-	<>
-		<meta property="og:image" content={imageUrl} />
-		<meta property="og:image:alt" content={imageDescription} />
-		<meta property="og:image:width" content={String(imageWidth)} />
-		<meta property="og:image:height" content={String(imageHeight)} />
-	</>
-)}
-<meta name="twitter:card" content={imageUrl ? "summary_large_image" : "summary"} />
+<meta property="og:image" content={imageUrl} />
+<meta property="og:image:alt" content={imageDescription} />
+<meta property="og:image:width" content={String(imageWidth)} />
+<meta property="og:image:height" content={String(imageHeight)} />
+<meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content={pageTitle} />
 <meta name="twitter:description" content={description} />
-{imageUrl && (
-	<>
-		<meta name="twitter:image" content={imageUrl} />
-		<meta name="twitter:image:alt" content={imageDescription} />
-	</>
-)}
+<meta name="twitter:image" content={imageUrl} />
+<meta name="twitter:image:alt" content={imageDescription} />
 {jsonLd.map((item) => (
 	<script is:inline type="application/ld+json" set:html={serializeJsonLd(item)} />
 ))}
@@ -154,7 +148,7 @@ const serializeJsonLd = (item: JsonLdSchema) => JSON.stringify(item).replaceAll(
 {webAnalyticsToken && (
 	<script
 		is:inline
-		type="module"
+		defer
 		src="https://static.cloudflareinsights.com/beacon.min.js"
 		data-cf-beacon={JSON.stringify({ token: webAnalyticsToken })}
 	></script>

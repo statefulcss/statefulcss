@@ -177,8 +177,8 @@ catalogs:
       specifier: ^10.14.0
       version: 10.15.0
     postcss-html:
-      specifier: ^2.0.0
-      version: 2.0.0
+      specifier: ^2.0.1
+      version: 2.0.1
     stylelint:
       specifier: ^18.0.0
       version: 18.0.0
@@ -283,7 +283,7 @@ importers:
         version: 9.0.1
       postcss-html:
         specifier: 'catalog:'
-        version: 2.0.0(postcss@8.5.32)
+        version: 2.0.1(postcss@8.5.32)
       rehype-autolink-headings:
         specifier: ^7.1.0
         version: 7.1.0
@@ -385,7 +385,7 @@ importers:
         version: 8.5.32
       postcss-html:
         specifier: 'catalog:'
-        version: 2.0.0(postcss@8.5.32)
+        version: 2.0.1(postcss@8.5.32)
       postcss-scss:
         specifier: ^4.0.9
         version: 4.0.9(postcss@8.5.32)
@@ -450,7 +450,7 @@ importers:
         version: 8.5.32
       postcss-html:
         specifier: 'catalog:'
-        version: 2.0.0(postcss@8.5.32)
+        version: 2.0.1(postcss@8.5.32)
       postcss-scss:
         specifier: ^4.0.9
         version: 4.0.9(postcss@8.5.32)
@@ -3140,8 +3140,8 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
-  postcss-html@2.0.0:
-    resolution: {integrity: sha512-f2Rvw5FCollEfVj3wfN7JdQb7n2rNIthW+epw2EByio7M6P7RH0BTj8a/ODHrUXd0cmO7ychb6YniymV93182Q==}
+  postcss-html@2.0.1:
+    resolution: {integrity: sha512-FqutI3u6D7j28ZgviEFjGCbId174THaVxFAMe/yd6Y/+BSQidYYh2nRCxFk8btwEV64f3TvfNz7ureGnkzqtmA==}
     engines: {node: ^22.12 || >=24}
     peerDependencies:
       postcss: ^8.5.0
@@ -6972,7 +6972,7 @@ snapshots:
     dependencies:
       playwright-core: 1.65.1
 
-  postcss-html@2.0.0(postcss@8.5.32):
+  postcss-html@2.0.1(postcss@8.5.32):
     dependencies:
       htmlparser2: 9.1.0
       js-tokens: 9.0.1

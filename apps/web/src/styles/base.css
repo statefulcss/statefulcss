@@ -6,13 +6,14 @@ html {
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	tab-size: 4;
+	scrollbar-gutter: stable;
 	scroll-padding-block-start: var(--t-app-scroll-padding-block-start, 1.5rlh);
-	min-block-size: 100svh;
+	min-block-size: 100svb;
 }
 
 body {
-	background: var(--t-color-background-app, Canvas);
-	color: var(--t-color-foreground-app, CanvasText);
+	background: var(--t-color-background-base, Canvas);
+	color: var(--t-color-foreground-base, CanvasText);
 }
 
 /* Typography */
@@ -24,9 +25,16 @@ body {
 }
 
 :where(a) {
-	color: currentColor;
+	--s-text-decoration-color: var(--t-color-text-decoration);
+
+	color: currentcolor;
 	text-decoration-thickness: var(--t-text-underline-thickness, max(1px, 0.0625em));
-	text-underline-offset: var(--t-text-underline-offset-comfortable, 0.25em);
+	text-underline-offset: var(--t-text-underline-offset, 0.125em);
+	text-decoration-color: var(--s-text-decoration-color);
+
+	&:hover {
+		--s-text-decoration-color: var(--t-color-text-decoration-hover);
+	}
 }
 
 :where(p) {

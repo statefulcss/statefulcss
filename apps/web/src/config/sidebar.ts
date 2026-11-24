@@ -1,7 +1,7 @@
 /**
- * The docs sidebar: sections of pages, in reading order. Each page is the path of its file in
+ * The docs sidebar's pages, in reading order. Each page is the path of its file in
  * src/content/docs, without the extension. A page without a file isn't shown, so the sidebar can
- * list pages before they're written. The previous and next links follow this order.
+ * list pages before they're written. Previous and next links follow this order.
  */
 export interface SidebarGroup {
 	/** Omitted for the pages at the top, which belong to no section. */

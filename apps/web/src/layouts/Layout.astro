@@ -60,25 +60,34 @@ const {
 		/>
 	</head>
 	<body>
-		<div class="app-container">
-			<Header />
-			<main id="main-content" class="main-content">
+		<div data-component="app-container">
+			<Header data-slot="app-header" />
+			<div id="app-page" data-slot="app-page">
 				<slot />
-			</main>
-			<Footer />
+			</div>
+			<Footer data-slot="app-footer" />
 		</div>
 	</body>
 </html>
 
 <style>
-	.app-container {
-		display: flex;
-		flex-direction: column;
-		min-height: 100dvh;
-	}
+	@layer components {
+		[data-component="app-container"] {
+			display: flex;
+			flex-direction: column;
+			align-items: stretch;
+			min-height: 100svb;
+			padding-inline: var(--t-app-gutter);
 
-	.main-content {
-		flex: 1;
-		padding-block: var(--t-space-6);
+			& > :global([data-slot]) {
+				inline-size: 100%;
+				max-inline-size: var(--t-app-max-inline-size);
+				margin-inline: auto;
+			}
+
+			& > :global([data-slot="app-page"]) {
+				flex: 1;
+			}
+		}
 	}
 </style>

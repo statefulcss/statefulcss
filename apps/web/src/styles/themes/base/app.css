@@ -9,5 +9,5 @@
 
 	--t-app-scroll-padding-block-start: var(--t-space-6);
 
-	--t-app-logomark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 66 96'%3E%3Cpath d='M36 37.54c0-.86.73-1.54 1.59-1.5C53.42 36.87 66 49.96 66 66S53.42 95.13 37.59 95.96c-.86.04-1.59-.63-1.59-1.5zM30 58.46c0 .86-.73 1.54-1.59 1.5C12.58 59.13 0 46.04 0 30S12.58.87 28.41.04C29.27 0 30 .67 30 1.54z'/%3E%3Ccircle cx='51' cy='15' r='15'/%3E%3Ccircle cx='15' cy='81' r='15'/%3E%3C/svg%3E");
+	--t-app-logomark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='14' fill='none'%3E%3Cpath fill='%23262626' d='M3.636 14C1.628 14 0 12.432 0 10.498c0-1.935 1.628-3.503 3.636-3.503s3.637 1.568 3.637 3.503C7.273 12.432 5.645 14 3.636 14m5.476-.01a.36.36 0 0 1-.385-.35V.35c0-.202.176-.36.385-.35C12.95.193 16 3.251 16 6.995s-3.05 6.803-6.888 6.995' style='fill:%23262626;fill:color(display-p3 .149 .149 .149);fill-opacity:1'/%3E%3C/svg%3E");
 }

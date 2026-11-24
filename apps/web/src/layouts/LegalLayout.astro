@@ -1,4 +1,5 @@
 ---
+import Prose from "@components/content/Prose.astro";
 import Layout from "@layouts/Layout.astro";
 
 interface Props {
@@ -13,7 +14,9 @@ const { title, description } = Astro.props.frontmatter;
 
 <Layout title={title} description={description}>
 	<article class="legal">
-		<slot />
+		<Prose>
+			<slot />
+		</Prose>
 	</article>
 </Layout>
 

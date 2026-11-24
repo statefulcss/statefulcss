@@ -1,0 +1,36 @@
+---
+interface Props {
+	"data-slot"?: string;
+	title: string;
+	summary: string;
+	draft?: boolean;
+}
+
+const { "data-slot": dataSlot, title, summary, draft = false } = Astro.props;
+---
+
+<header data-component="docs-article-header" data-slot={dataSlot}>
+	<h1 data-part="title">{title}</h1>
+	{draft && <p data-part="draft">Draft</p>}
+	<p data-part="summary">{summary}</p>
+	<slot name="details" />
+</header>
+
+<style>
+	[data-component="docs-article-header"] {
+		display: flex;
+		flex-direction: column;
+		gap: var(--t-space-1-5);
+	}
+
+	@scope ([data-component="docs-article-header"]) to (:global([data-component])) {
+		[data-part="title"] {
+			font-size: var(--t-font-size-2xlarge);
+		}
+
+		[data-part="summary"] {
+			font-weight: var(--t-font-weight-450);
+			color: color-mix(in srgb, currentcolor, transparent 35%);
+		}
+	}
+</style>

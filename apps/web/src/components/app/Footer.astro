@@ -1,4 +1,12 @@
-<footer>
+---
+interface Props {
+	"data-slot"?: string;
+}
+
+const { "data-slot": dataSlot } = Astro.props;
+---
+
+<footer data-slot={dataSlot} data-component="app-footer">
 	<div class="copyright">
 		&copy; 2026 &ndash;{" "}
 		<a href="https://humaninterface.studio" target="_blank" rel="noopener noreferrer">
@@ -6,7 +14,7 @@
 		</a>
 	</div>
 	<nav aria-label="Legal links" class="legal-nav">
-		<ul>
+		<ul role="list">
 			<li>
 				<a href="/legal-notice/">Legal Notice</a>
 			</li>
@@ -18,15 +26,14 @@
 </footer>
 
 <style>
-	footer {
+	[data-component="app-footer"] {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--t-space-4) var(--t-space-12);
-		margin-block: var(--t-space-9);
-		font-size: var(--t-font-size-small);
-		font-weight: var(--t-font-weight-medium);
+		block-size: var(--t-app-footer-block-size);
+		font-size: var(--t-font-size-xsmall);
 		color: color-mix(in oklch, currentColor 65%, transparent);
 	}
 

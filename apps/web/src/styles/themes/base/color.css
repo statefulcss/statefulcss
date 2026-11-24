@@ -9,7 +9,14 @@
 [data-theme] {
 	color-scheme: light dark;
 
-	--t-color-background-root: light-dark(oklch(100% 0 0), oklch(0% 0 0));
-	--t-color-background-base: light-dark(oklch(100% 0 0), oklch(0% 0 0));
-	--t-color-foreground-base: light-dark(oklch(0% 0 0), oklch(100% 0 0));
+	--t-color-brand: #dff556;
+
+	--t-color-background-base: light-dark(oklch(99.5% 0 0), oklch(16% 0 0));
+	--t-color-foreground-base: light-dark(oklch(15% 0 0), oklch(90% 0 0));
+
+	--t-color-selection-background: color-mix(in srgb, var(--t-color-brand), transparent 15%);
+	--t-color-selection-foreground: light-dark(black, var(--t-color-background-base));
+
+	--t-color-text-decoration: color-mix(in srgb, currentcolor, transparent 35%);
+	--t-color-text-decoration-hover: light-dark(currentcolor, var(--t-color-brand));
 }

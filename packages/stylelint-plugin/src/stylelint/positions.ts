@@ -1,5 +1,5 @@
 // Core's places, turned into what Stylelint reports with: a node, and an index and end index inside that node's
-// source text. The node is one of the copy core read, which is the file as it was written.
+// source text. The node is one of the copy core read, which is the code Stylelint parsed for this run of the rules.
 import type { AtRule, Declaration, Node, Rule } from "postcss";
 
 import type { Place } from "../rules/rule.js";

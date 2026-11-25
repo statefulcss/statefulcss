@@ -67,7 +67,7 @@
 	"dependencies": {
 		"@statefulcss/config": "workspace:*",
 		"@statefulcss/core": "workspace:*",
-		"stylelint-config-recommended": "^19.0.0"
+		"stylelint-config-recommended": "^19.1.0"
 	},
 	"peerDependencies": {
 		"stylelint": "^18.0.0"
@@ -77,7 +77,7 @@
 		"@repo/tsconfig": "workspace:*",
 		"@types/node": "catalog:",
 		"eslint": "catalog:",
-		"postcss": "^8.5.32",
+		"postcss": "^8.5.33",
 		"postcss-html": "catalog:",
 		"postcss-scss": "^4.0.9",
 		"stylelint": "catalog:",

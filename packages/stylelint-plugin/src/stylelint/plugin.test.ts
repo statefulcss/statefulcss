@@ -530,43 +530,42 @@ describe("the glue", () => {
 		rules: Object.fromEntries(rules.map((rule) => [`statefulcss/${rule.name}`, true])),
 	});
 
-	it("reports a problem after a fixed one where the file wrote it", async () => {
+	// With `--fix`, Stylelint runs the rules again on the fixed code until a pass fixes nothing, and reports what the
+	// last pass found, where the fixed code has it.
+	it("reports a problem after a fixed one where the fixed code has it", async () => {
 		const source = sourceFor("css", {
 			code: '.card [data-part="icon"] [data-part="old"] { color: red; }',
 		});
 		const fixed = await lint(source, project(), configFor(rename), true);
 		expect(fixed.code).toBe('.card [data-part="glyph"] [data-part="old"] { color: red; }');
 		expect(fixed.warnings.map(({ text, column, endColumn }) => ({ text, column, endColumn }))).toEqual([
-			{ text: "Unexpected old part (statefulcss/test-rename)", column: 26, endColumn: 43 },
+			{ text: "Unexpected old part (statefulcss/test-rename)", column: 27, endColumn: 44 },
 		]);
 	});
 
-	it("leaves a fix that another fix has overtaken, and reports its problem", async () => {
-		// The second rule wants the same text changed, after the first has changed it.
+	it("leaves a fix that another fix has overtaken", async () => {
+		// The second rule wants the same text changed, after the first has changed it. The next pass finds nothing.
 		const again: RuleDefinition = { ...rename, name: "test-rename-again" };
 		const source = sourceFor("css", { code: '.card [data-part="icon"] { color: red; }' });
 		const fixed = await lint(source, project(), configFor(rename, again), true);
 		expect(fixed.code).toBe('.card [data-part="glyph"] { color: red; }');
-		expect(fixed.warnings.map((warning) => warning.text)).toEqual([
-			'Expected "glyph" (statefulcss/test-rename-again)',
-		]);
+		expect(fixed.warnings).toEqual([]);
 	});
 
-	it("reports where the file wrote it, whatever another rule's fix does to the selector meanwhile", async () => {
+	it("reports where the code it reads has it, whatever another rule's fix does to the selector meanwhile", async () => {
 		// Stylelint's own rule adds the quotes while the settings load.
 		const config: stylelint.Config = {
 			...configFor(names),
 			rules: { "statefulcss/test-names": true, "selector-attribute-quotes": "always" },
 		};
 		const source = sourceFor("css", { code: ".card[data-mode=x] [data-part=icon] { color: red; }" });
-		for (const fix of [false, true]) {
-			const { warnings } = await lint(source, project(), config, fix);
-			expect(
-				warnings
-					.filter((warning) => warning.rule === "statefulcss/test-names")
-					.map(({ column, endColumn }) => ({ column, endColumn })),
-			).toEqual([{ column: 20, endColumn: 36 }]);
-		}
+		const columnsOf = async (fix: boolean) =>
+			(await lint(source, project(), config, fix)).warnings
+				.filter((warning) => warning.rule === "statefulcss/test-names")
+				.map(({ column, endColumn }) => ({ column, endColumn }));
+		// `[data-part=icon]` as written, and `[data-part="icon"]` in the fixed code.
+		expect(await columnsOf(false)).toEqual([{ column: 20, endColumn: 36 }]);
+		expect(await columnsOf(true)).toEqual([{ column: 22, endColumn: 40 }]);
 	});
 
 	it("leaves a fix alone when another rule has rewritten its node, and reports the problem", async () => {

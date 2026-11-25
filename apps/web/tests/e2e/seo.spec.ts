@@ -28,13 +28,6 @@ test.describe("crawler files", () => {
 		expect(await response.text()).toContain(`${SITE_URL}/sitemap-0.xml`);
 	});
 
-	test("the home page forwards to the docs for now", async ({ request }) => {
-		const response = await request.get("/", { maxRedirects: 0 });
-
-		expect(response.status()).toBe(302);
-		expect(response.headers()["location"]).toBe("/docs/");
-	});
-
 	test("the RSS feed is valid XML with absolute item links", async ({ page, request }) => {
 		const response = await request.get("/changelog/rss.xml");
 		expect(response.status()).toBe(200);

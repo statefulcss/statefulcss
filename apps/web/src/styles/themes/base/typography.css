@@ -1,6 +1,6 @@
 [data-theme] {
 	--t-font-family-base: var(--font-switzer), ui-sans-serif, system-ui, sans-serif;
-	--t-font-family-monospace: ui-monospace, "SFMono-Regular", Consolas, monospace;
+	--t-font-family-monospace: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Consolas, monospace;
 	--t-font-family-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 
 	--t-font-size-3xsmall: 0.75rem;

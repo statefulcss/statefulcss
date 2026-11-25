@@ -27,7 +27,14 @@
 	 */
 	--t-color-code-background: light-dark(#fff, #181818);
 	--t-color-code-header-background: light-dark(#f7f7f7, #1f1f1f);
-	--t-color-code-border: color-mix(in srgb, currentcolor, transparent 95%);
+	--t-color-code-border-start: light-dark(
+		color-mix(in srgb, currentcolor, transparent 93%),
+		color-mix(in srgb, currentcolor, transparent 87%)
+	);
+	--t-color-code-border-end: light-dark(
+		color-mix(in srgb, currentcolor, transparent 92%),
+		color-mix(in srgb, currentcolor, transparent 86%)
+	);
 	--t-color-code-muted: color-mix(in srgb, currentcolor, transparent 35%);
 	--t-color-code-highlight-background: light-dark(rgb(223 245 86 / 30%), rgb(223 245 86 / 12%));
 	--t-color-code-highlight-accent: light-dark(#8a9a1b, var(--t-color-brand));

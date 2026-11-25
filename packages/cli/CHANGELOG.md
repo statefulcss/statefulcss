@@ -1,5 +1,11 @@
 # statefulcss
 
+## 0.2.1
+
+### Patch Changes
+
+- 85ea165: The CLI depends on `commander` `^15.1.0`.
+
 ## 0.2.0
 
 ### Minor Changes

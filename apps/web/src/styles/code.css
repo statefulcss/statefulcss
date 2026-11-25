@@ -1,0 +1,225 @@
+/*
+ * Code block: the figure the Shiki transformer in src/markdown/code-block.ts writes around each
+ * Markdown code block. Token colors are inline light-dark() values from Shiki's themes; the
+ * block's own colors are the --t-color-code-* tokens.
+ */
+
+/**
+ * Code block
+ * @component code-block
+ */
+[data-component="code-block"] {
+	/* Defaults: the part variables its variant changes */
+	--p-code-line-padding-inline-start: var(--c-code-block-padding-inline, var(--t-space-4));
+	--p-code-line-gutter: none;
+	--p-code-line-gutter-size: 1ch;
+	--p-code-line-number: "";
+
+	/* Bindings */
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto auto;
+	grid-template-areas:
+		"title language copy"
+		"code code code";
+	overflow: clip;
+	border: var(--t-border-width-thin) solid var(--t-color-code-border);
+	border-radius: var(--c-code-block-border-radius, var(--t-radius-medium));
+	background-color: var(--t-color-code-header-background);
+	font-size: var(--c-code-block-font-size, var(--t-font-size-2xsmall));
+	line-height: var(--t-font-line-height-base);
+
+	/* Variants */
+	&[data-line-numbers] {
+		--p-code-line-padding-inline-start: 0;
+		--p-code-line-gutter: counter(line);
+		--p-code-line-gutter-size: 2ch;
+		--p-code-line-number: counter(line) " ";
+	}
+
+	/* The language, read from data-language. It's decoration: the alternative text is empty. */
+	&[data-language]::before {
+		content: attr(data-language) / "";
+		grid-area: language;
+		align-self: center;
+		padding-inline: var(--t-space-2);
+		color: var(--t-color-code-muted);
+		font-family: var(--t-font-family-monospace);
+		font-size: var(--t-font-size-code);
+	}
+}
+
+@scope ([data-component="code-block"]) to ([data-component]) {
+	[data-part="title"] {
+		grid-area: title;
+		align-self: center;
+		padding-block: var(--t-space-2);
+		padding-inline: var(--c-code-block-padding-inline, var(--t-space-4));
+		font-family: var(--t-font-family-monospace);
+		font-size: var(--t-font-size-code);
+		font-weight: var(--t-font-weight-500);
+		overflow-wrap: anywhere;
+	}
+
+	/* Its font size comes from base.css: --t-font-size-code, like any code. */
+	[data-part="code"] {
+		grid-area: code;
+		padding-block: var(--t-space-3);
+		background-color: var(--c-code-block-background-color, var(--t-color-code-background));
+		tab-size: 2;
+		text-size-adjust: 100%;
+
+		/* An outline outside the block would be clipped by the figure. */
+		&:focus-visible {
+			outline: var(--t-border-width-base) solid currentcolor;
+			outline-offset: calc(var(--t-border-width-base) * -1);
+		}
+
+		/* Under a header, the same line as the block's border. */
+		:scope:is([data-language], :has(> [data-part="title"])) > & {
+			border-block-start: var(--t-border-width-thin) solid;
+			border-block-start-color: inherit;
+		}
+	}
+
+	[data-part="copy"] {
+		--s-background-color: transparent;
+		--s-color: var(--t-color-code-muted);
+
+		grid-area: copy;
+		align-self: center;
+		margin-block: var(--t-space-1);
+		margin-inline-end: var(--t-space-2);
+		padding-block: var(--t-space-1);
+		padding-inline: var(--t-space-2);
+		border: 0;
+		border-radius: var(--t-radius-small);
+		background-color: var(--s-background-color);
+		color: var(--s-color);
+		font-size: var(--t-font-size-3xsmall);
+		font-weight: var(--t-font-weight-500);
+		cursor: pointer;
+
+		&:hover {
+			--s-background-color: color-mix(in srgb, currentcolor, transparent 92%);
+			--s-color: currentcolor;
+		}
+
+		&[data-copied] {
+			--s-color: currentcolor;
+		}
+	}
+
+	/* Shiki's output, content under the code part: its lines and what the notation transformers mark. */
+	[data-part="code"] {
+		code {
+			display: block;
+			inline-size: max-content;
+			min-inline-size: 100%;
+			counter-reset: line;
+		}
+
+		.line {
+			display: block;
+			min-block-size: 1lh;
+			padding-inline: var(--p-code-line-padding-inline-start)
+				var(--c-code-block-padding-inline, var(--t-space-4));
+			counter-increment: line;
+		}
+
+		/*
+		 * A line's tint is a background image, so the gutter can inherit it over its own background.
+		 * The accent is an inset shadow at the line's start, inherited by the gutter the same way.
+		 */
+		.highlighted {
+			background-image: linear-gradient(var(--t-color-code-highlight-background) 0 0);
+			box-shadow: inset var(--t-border-width-base) 0 var(--t-color-code-highlight-accent);
+		}
+
+		.highlighted.error {
+			background-image: linear-gradient(var(--t-color-code-remove-background) 0 0);
+			box-shadow: inset var(--t-border-width-base) 0 var(--t-color-code-remove-accent);
+		}
+
+		.highlighted.warning {
+			background-image: linear-gradient(var(--t-color-code-warning-background) 0 0);
+			box-shadow: inset var(--t-border-width-base) 0 var(--t-color-code-warning-accent);
+		}
+
+		.diff.add {
+			background-image: linear-gradient(var(--t-color-code-add-background) 0 0);
+			box-shadow: inset var(--t-border-width-base) 0 var(--t-color-code-add-accent);
+		}
+
+		.diff.remove {
+			background-image: linear-gradient(var(--t-color-code-remove-background) 0 0);
+			box-shadow: inset var(--t-border-width-base) 0 var(--t-color-code-remove-accent);
+		}
+
+		.highlighted-word {
+			padding-inline: 0.125em;
+			margin-inline: -0.125em;
+			border-radius: var(--t-radius-small);
+			background-color: var(--t-color-code-word-background);
+		}
+
+		/*
+		 * Lines outside the focus fade until the block is hovered or holds focus. Touch screens have
+		 * no hover, so they show every line.
+		 */
+		@media (hover: hover) {
+			&.has-focused .line:not(.focused) {
+				opacity: var(--t-opacity-faint);
+				transition: opacity var(--t-transition-default);
+
+				:scope:is(:hover, :focus-within) & {
+					opacity: 1;
+				}
+			}
+		}
+
+		/*
+		 * The gutter: line numbers and diff signs, in a sticky column at the start of each line. Code
+		 * that scrolls under it is blurred. Generated content isn't copied with the code.
+		 */
+		&.has-diff .line {
+			padding-inline-start: 0;
+		}
+
+		.line::before {
+			content: var(--p-code-line-gutter);
+			position: sticky;
+			inset-inline-start: 0;
+			display: inline-block;
+			box-sizing: content-box;
+			min-inline-size: var(--p-code-line-gutter-size);
+			padding-inline: var(--c-code-block-padding-inline, var(--t-space-4)) var(--t-space-3);
+			background-color: color-mix(
+				in srgb,
+				var(--c-code-block-background-color, var(--t-color-code-background)) 70%,
+				transparent
+			);
+			background-image: inherit;
+			box-shadow: inherit;
+			color: var(--t-color-code-muted);
+			font-variant-numeric: tabular-nums;
+			text-align: end;
+			white-space: pre;
+			user-select: none;
+			backdrop-filter: blur(1.5px);
+		}
+
+		&.has-diff .line::before {
+			content: var(--p-code-line-number) " ";
+		}
+
+		&.has-diff .diff.add::before {
+			content: var(--p-code-line-number) "+";
+			color: var(--t-color-code-add-accent);
+		}
+
+		&.has-diff .diff.remove::before {
+			content: var(--p-code-line-number) "−";
+			color: var(--t-color-code-remove-accent);
+		}
+	}
+}

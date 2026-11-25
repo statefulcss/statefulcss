@@ -3,8 +3,11 @@ import {
 	transformerMetaHighlight,
 	transformerMetaWordHighlight,
 	transformerNotationDiff,
+	transformerNotationErrorLevel,
+	transformerNotationFocus,
 	transformerNotationHighlight,
 	transformerNotationWordHighlight,
+	transformerRemoveLineBreak,
 } from "@shikijs/transformers";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 
@@ -29,7 +32,11 @@ export const shikiConfig: ShikiConfig = {
 		transformerNotationDiff(),
 		transformerNotationHighlight(),
 		transformerNotationWordHighlight(),
+		transformerNotationFocus(),
+		transformerNotationErrorLevel(),
 		transformerMetaHighlight(),
 		transformerMetaWordHighlight(),
+		// Lines are blocks, so a highlight spans the whole width; the newlines between them would double the gaps.
+		transformerRemoveLineBreak(),
 	],
 };

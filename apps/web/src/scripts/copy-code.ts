@@ -4,7 +4,8 @@
 // buttons are shown again after every navigation. Without the Clipboard API (an insecure
 // origin), they stay hidden.
 
-const BUTTON = '.code-block > [data-part="copy"]';
+const BLOCK = '[data-component="code-block"]';
+const BUTTON = `${BLOCK} > [data-part="copy"]`;
 const COPIED_FOR = 2000;
 
 /** The code as written: every line except the ones a diff marks as removed. */
@@ -21,7 +22,7 @@ function showButtons() {
 
 async function copy(event: MouseEvent) {
 	const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>(BUTTON) : null;
-	const block = button?.closest(".code-block");
+	const block = button?.closest(BLOCK);
 	if (!button || !block) return;
 
 	try {

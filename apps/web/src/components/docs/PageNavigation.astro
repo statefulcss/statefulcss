@@ -1,0 +1,52 @@
+---
+import type { SidebarItem } from "@utils/content";
+
+interface Props {
+	"data-slot"?: string;
+	previous?: Pick<SidebarItem, "title" | "href">;
+	next?: Pick<SidebarItem, "title" | "href">;
+}
+
+const { previous, next, "data-slot": dataSlot } = Astro.props;
+---
+
+<nav data-component="docs-page-navigation" data-slot={dataSlot} aria-label="Previous and next pages">
+	{previous?.href && (
+		<a href={previous.href} rel="prev" data-part="link">
+			{previous.title}
+		</a>
+	)}
+	{next?.href && (
+		<a href={next.href} rel="next" data-part="link">
+			{next.title}
+		</a>
+	)}
+</nav>
+
+<style>
+	@layer components {
+		[data-component="docs-page-navigation"] {
+			display: flex;
+			gap: var(--t-space-1-5);
+		}
+
+		@scope ([data-component="docs-page-navigation"]) to (:global([data-component])) {
+			[data-part="link"] {
+				--s-justify-content: flex-start;
+
+				inline-size: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: var(--s-justify-content);
+				padding-block: var(--t-space-3);
+				text-decoration: none;
+				font-size: var(--t-font-size-xsmall);
+				font-weight: var(--t-font-weight-550);
+
+				&[rel="next"] {
+					--s-justify-content: flex-end;
+				}
+			}
+		}
+	}
+</style>

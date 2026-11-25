@@ -4,18 +4,20 @@ import Layout from "@layouts/Layout.astro";
 ---
 
 <Layout>
-	<section data-component="home-hero" aria-labelledby="hero-title">
-		<div data-part="intro">
-			<h1 id="hero-title" data-part="headline">
-				Styling is state management.
-			</h1>
-			<p data-part="description">
-				Write component CSS as a state system: declare state in markup, resolve it through variables, and keep
-				every change traceable.
-			</p>
-		</div>
-		<Button href="/docs/">Quick Start</Button>
-	</section>
+	<main id="main-content">
+		<section data-component="home-hero" aria-labelledby="hero-title">
+			<div data-part="intro">
+				<h1 id="hero-title" data-part="headline">
+					Styling is state management.
+				</h1>
+				<p data-part="description">
+					Write component CSS as a state system: declare state in markup, resolve it through variables, and
+					keep every change traceable.
+				</p>
+			</div>
+			<Button href="/docs/">Quick Start</Button>
+		</section>
+	</main>
 </Layout>
 
 <style>

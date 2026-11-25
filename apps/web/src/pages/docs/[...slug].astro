@@ -1,6 +1,7 @@
 ---
 import { render } from "astro:content";
 
+import Article from "@components/docs/Article.astro";
 import { siteConfig } from "@config/site";
 import DocsLayout from "@layouts/DocsLayout.astro";
 import { getOgImagePath } from "@og/templates";
@@ -9,6 +10,7 @@ import {
 	getDocs,
 	getDocsEntrySchema,
 	getDocsPath,
+	getPageNavigation,
 	getSidebar,
 	isBuilt,
 	type DocsEntry,
@@ -39,17 +41,25 @@ const path = entry ? getDocsPath(entry.id) : "/docs/";
 const { Content, headings } = entry ? await render(entry) : { Content: undefined, headings: [] };
 const title = entry?.data.title ?? "Docs";
 const summary = entry?.data.summary ?? siteConfig.description;
+const sidebar = getSidebar(entries, entry?.id);
+const pageNavigation = getPageNavigation(sidebar);
 ---
 
 <DocsLayout
 	title={title}
 	summary={summary}
-	draft={entry?.data.status === "draft"}
-	headings={headings}
-	sidebar={getSidebar(entries, entry?.id)}
+	sidebar={sidebar}
 	canonical={path}
 	image={getOgImagePath(path, { index: path === "/docs/" })}
 	schema={entry ? getDocsEntrySchema(entry) : [getCollectionPageSchema(path, title, summary)]}
 >
-	{Content && <Content />}
+	<Article
+		title={title}
+		summary={summary}
+		draft={entry?.data.status === "draft"}
+		headings={headings}
+		pageNavigation={pageNavigation}
+	>
+		{Content && <Content />}
+	</Article>
 </DocsLayout>

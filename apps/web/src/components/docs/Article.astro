@@ -1,0 +1,82 @@
+---
+import Prose from "@components/content/Prose.astro";
+import PageNavigation from "@components/docs/PageNavigation.astro";
+import TableOfContents from "@components/docs/TableOfContents.astro";
+import { type SidebarItem } from "@utils/content";
+import type { MarkdownHeading } from "astro";
+import ArticleHeader from "./ArticleHeader.astro";
+
+interface Props {
+	"data-slot"?: string;
+	title: string;
+	summary: string;
+	draft?: boolean;
+	headings: MarkdownHeading[];
+	pageNavigation?: {
+		previous?: Pick<SidebarItem, "title" | "href">;
+		next?: Pick<SidebarItem, "title" | "href">;
+	};
+}
+
+const { "data-slot": dataSlot, title, summary, draft = false, headings, pageNavigation = {} } = Astro.props;
+const contents = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
+const { previous, next } = pageNavigation;
+---
+
+<article data-component="docs-article" data-slot={dataSlot} aria-labelledby="docs-article-title">
+	<ArticleHeader data-slot="header" title={title} summary={summary} draft={draft}>
+		<slot name="details" slot="details" />
+	</ArticleHeader>
+
+	{contents.length > 0 && <TableOfContents data-slot="table-of-contents" contents={contents} />}
+
+	<Prose data-slot="content">
+		<slot />
+	</Prose>
+
+	{(previous || next) && <PageNavigation data-slot="page-navigation" previous={previous} next={next} />}
+</article>
+
+<style>
+	@layer components {
+		[data-component="docs-article"] {
+			--_slot-max-inline-size: var(--t-app-page-max-inline-size);
+			--_margin-inline: auto;
+			display: grid;
+			grid-template-columns: minmax(20rem, 1fr) var(--t-app-sidebar-inline-size);
+			grid-template-areas:
+				"header					 table-of-contents"
+				"content				 table-of-contents"
+				"page-navigation .";
+			column-gap: var(--t-space-9);
+			row-gap: var(--t-space-12);
+
+			& > :global([data-slot="header"]) {
+				grid-area: header;
+				align-self: start;
+				inline-size: 100%;
+				max-inline-size: var(--_slot-max-inline-size);
+				margin-inline: var(--_margin-inline);
+			}
+			& > :global([data-slot="content"]) {
+				grid-area: content;
+				align-self: start;
+				inline-size: 100%;
+				max-inline-size: var(--_slot-max-inline-size);
+				margin-inline: var(--_margin-inline);
+			}
+			& > :global([data-slot="table-of-contents"]) {
+				grid-area: table-of-contents;
+				align-self: start;
+				max-inline-size: fit-content;
+				justify-self: end;
+			}
+			& > :global([data-slot="page-navigation"]) {
+				grid-area: page-navigation;
+				inline-size: 100%;
+				max-inline-size: var(--_slot-max-inline-size);
+				margin-inline: var(--_margin-inline);
+			}
+		}
+	}
+</style>

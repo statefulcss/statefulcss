@@ -1,50 +1,58 @@
 ---
 import { getCollection } from "astro:content";
 
+import Article from "@components/docs/Article.astro";
 import DocsLayout from "@layouts/DocsLayout.astro";
 import { getRulePath } from "@loaders/lint-rules";
 import { getOgImagePath } from "@og/templates";
-import { getCollectionPageSchema, getDocs, getSidebar } from "@utils/content";
+import { getCollectionPageSchema, getDocs, getPageNavigation, getSidebar } from "@utils/content";
 
 const path = "/docs/lint-rules/";
 const title = "Lint Rules";
 const summary =
 	"Every rule in the Stateful CSS Stylelint plugin: what it checks, how severe it is, and whether it can fix.";
 const rules = (await getCollection("lintRules")).sort((a, b) => a.data.order - b.data.order);
+const sidebar = getSidebar(await getDocs(), "lint-rules");
 ---
 
 <DocsLayout
 	title={title}
 	summary={summary}
-	draft={false}
-	headings={[]}
-	sidebar={getSidebar(await getDocs(), "lint-rules")}
+	sidebar={sidebar}
 	canonical={path}
 	image={getOgImagePath(path, { index: true })}
 	schema={[getCollectionPageSchema(path, title, summary)]}
 >
-	<table>
-		<thead>
-			<tr>
-				<th scope="col">Rule</th>
-				<th scope="col">Checks</th>
-				<th scope="col">Severity</th>
-				<th scope="col">Fixable</th>
-			</tr>
-		</thead>
-		<tbody>
-			{rules.map((rule) => (
+	<Article
+		data-slot="article"
+		title={title}
+		summary={summary}
+		headings={[]}
+		pageNavigation={getPageNavigation(sidebar)}
+	>
+		<table>
+			<thead>
 				<tr>
-					<th scope="row">
-						<a href={getRulePath(rule.id)}>
-							<code>{rule.data.title}</code>
-						</a>
-					</th>
-					<td>{rule.data.summary}</td>
-					<td>{rule.data.severity}</td>
-					<td>{rule.data.fixable ? "yes" : "no"}</td>
+					<th scope="col">Rule</th>
+					<th scope="col">Checks</th>
+					<th scope="col">Severity</th>
+					<th scope="col">Fixable</th>
 				</tr>
-			))}
-		</tbody>
-	</table>
+			</thead>
+			<tbody>
+				{rules.map((rule) => (
+					<tr>
+						<th scope="row">
+							<a href={getRulePath(rule.id)}>
+								<code>{rule.data.title}</code>
+							</a>
+						</th>
+						<td>{rule.data.summary}</td>
+						<td>{rule.data.severity}</td>
+						<td>{rule.data.fixable ? "yes" : "no"}</td>
+					</tr>
+				))}
+			</tbody>
+		</table>
+	</Article>
 </DocsLayout>

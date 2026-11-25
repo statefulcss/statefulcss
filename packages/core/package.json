@@ -52,7 +52,7 @@
 	},
 	"dependencies": {
 		"@statefulcss/config": "workspace:*",
-		"postcss-selector-parser": "^7.1.7",
+		"postcss-selector-parser": "^7.2.1",
 		"postcss-value-parser": "^4.2.0"
 	},
 	"devDependencies": {
@@ -60,7 +60,7 @@
 		"@repo/tsconfig": "workspace:*",
 		"@types/node": "catalog:",
 		"eslint": "catalog:",
-		"postcss": "^8.5.32",
+		"postcss": "^8.5.33",
 		"postcss-html": "catalog:",
 		"postcss-scss": "^4.0.9",
 		"typescript": "catalog:",

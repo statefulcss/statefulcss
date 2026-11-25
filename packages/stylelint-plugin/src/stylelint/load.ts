@@ -28,8 +28,10 @@ const cache = new WeakMap<object, Promise<Loaded>>();
 
 // Core reads a copy of the tree, taken when the first Stateful CSS rule is called and before anything is awaited.
 // While the settings load, Stylelint's other rules run and may fix the tree, and Stylelint places every report in
-// the file as it was written: the copy still is that file, so its offsets are the ones Stylelint wants. A copied
-// node keeps its place in the source. This maps it to the node of the tree Stylelint writes out.
+// the code it parsed for this run of the rules: the copy still is that code, so its offsets are the ones Stylelint
+// wants. With `--fix`, Stylelint parses the fixed code again and runs the rules once more, with a new result, until
+// a run fixes nothing; each run loads its own copy. A copied node keeps its place in the source. This maps it to the
+// node of the tree Stylelint writes out.
 const counterparts = new WeakMap<Node, Node>();
 
 /** The node of Stylelint's own tree that a node of the model was copied from. A fix edits this one. */

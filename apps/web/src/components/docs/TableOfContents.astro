@@ -27,7 +27,9 @@ const { contents, "data-slot": dataSlot } = Astro.props;
 <style>
 	@layer components {
 		[data-component="docs-toc"] {
-			display: flex;
+			--s-display: none;
+
+			display: var(--s-display);
 			flex-direction: column;
 			gap: var(--t-space-3);
 
@@ -38,6 +40,10 @@ const { contents, "data-slot": dataSlot } = Astro.props;
 			overflow-y: auto;
 			overscroll-behavior: contain;
 			padding-inline-end: var(--t-space-9);
+
+			@container docs (inline-size >= 72rem) {
+				--s-display: flex;
+			}
 		}
 
 		@scope ([data-component="docs-toc"]) to (:global([data-component])) {

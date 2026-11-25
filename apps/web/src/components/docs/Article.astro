@@ -42,14 +42,20 @@ const { previous, next } = pageNavigation;
 		[data-component="docs-article"] {
 			--_slot-max-inline-size: var(--t-app-page-max-inline-size);
 			--_margin-inline: auto;
+			--s-grid-template-columns: minmax(0, 1fr);
+
 			display: grid;
-			grid-template-columns: minmax(0, 1fr) var(--t-app-sidebar-inline-size);
+			grid-template-columns: var(--s-grid-template-columns);
 			grid-template-areas:
 				"header					 table-of-contents"
 				"content				 table-of-contents"
 				"page-navigation .";
 			column-gap: var(--t-space-9);
 			row-gap: var(--t-space-12);
+
+			@container docs (inline-size >= 72rem) {
+				--s-grid-template-columns: minmax(0, 1fr) var(--t-app-sidebar-inline-size);
+			}
 
 			& > :global([data-slot="header"]) {
 				grid-area: header;

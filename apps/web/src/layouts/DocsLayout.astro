@@ -41,9 +41,15 @@ const { title, summary, sidebar, canonical, image, schema } = Astro.props;
 		}
 
 		[data-component="docs"] {
+			--s-grid-template-columns: minmax(0, 1fr);
+
 			display: grid;
-			grid-template-columns: var(--t-app-sidebar-inline-size) minmax(0, 1fr);
+			grid-template-columns: var(--s-grid-template-columns);
 			gap: var(--t-space-9);
+
+			@container docs (inline-size >= 72rem) {
+				--s-grid-template-columns: var(--t-app-sidebar-inline-size) minmax(0, 1fr);
+			}
 
 			& > :global([data-slot="sidebar"]) {
 				align-self: start;

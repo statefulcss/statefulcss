@@ -1,0 +1,198 @@
+---
+import type { SidebarSection } from "@utils/content";
+
+interface Props {
+	"data-slot"?: string;
+	canonical: string;
+	sidebar: SidebarSection[];
+}
+
+const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
+---
+
+<script>
+	let sidebarScroll = 0;
+
+	document.addEventListener("astro:before-swap", (event) => {
+		const wrapper = document.querySelector('[data-component="docs-sidebar"] [data-part="wrapper"]');
+		sidebarScroll = wrapper?.scrollTop ?? 0;
+		const current = document.querySelector('[data-component="docs-sidebar"]');
+		const next = event.newDocument.querySelector('[data-component="docs-sidebar"]');
+		if (!current || !next) return;
+
+		const states = new Map(
+			[...next.querySelectorAll("a[href]")].map((a) => [
+				a.getAttribute("href"),
+				a.getAttribute("aria-current"),
+			]),
+		);
+		for (const link of current.querySelectorAll("a[href]")) {
+			const value = states.get(link.getAttribute("href"));
+			if (value) link.setAttribute("aria-current", value);
+			else link.removeAttribute("aria-current");
+		}
+	});
+
+	document.addEventListener("astro:after-swap", () => {
+		const wrapper = document.querySelector('[data-component="docs-sidebar"] [data-part="wrapper"]');
+		if (wrapper) wrapper.scrollTop = sidebarScroll;
+	});
+</script>
+
+<nav
+	data-component="docs-sidebar"
+	data-slot={dataSlot}
+	aria-label="Documentation"
+	transition:persist="docs-sidebar"
+>
+	<div data-part="wrapper">
+		{sidebar.map((section, index) => (
+			<div data-part="section">
+				{section.label && (
+					<span data-part="label" id={`docs-section-${index}`}>
+						{section.label}
+					</span>
+				)}
+				<ul
+					role="list"
+					data-part="list"
+					aria-labelledby={section.label ? `docs-section-${index}` : undefined}
+				>
+					{section.items.map((item) => (
+						<li data-part="list-item" data-draft={item.draft || undefined}>
+							{item.href ? (
+								<a
+									href={item.href}
+									aria-current={item.current ? (item.href === canonical ? "page" : "true") : undefined}
+									data-part="link"
+								>
+									{item.title}
+								</a>
+							) : (
+								<span>{item.title}</span>
+							)}
+							{item.draft && <span data-part="draft">Draft</span>}
+						</li>
+					))}
+				</ul>
+			</div>
+		))}
+	</div>
+</nav>
+
+<style>
+	@layer components {
+		[data-component="docs-sidebar"] {
+			position: sticky;
+			inset-block-start: var(--t-app-header-block-size);
+			align-self: start;
+			display: flex;
+			flex-direction: column;
+			block-size: calc(100dvb - var(--t-app-header-block-size) - var(--t-app-footer-block-size));
+			max-inline-size: fit-content;
+			overflow: clip;
+		}
+
+		@scope ([data-component="docs-sidebar"]) to (:global([data-component])) {
+			[data-part="wrapper"] {
+				flex: 1;
+				min-block-size: 0;
+				display: flex;
+				flex-direction: column;
+				gap: var(--t-space-6);
+				overflow-y: auto;
+				overscroll-behavior: contain;
+				scrollbar-width: none;
+				padding-block: var(--t-space-9);
+
+				mask-image: linear-gradient(
+					to bottom,
+					transparent,
+					black var(--t-space-9),
+					black calc(100% - var(--t-space-9)),
+					transparent
+				);
+			}
+			[data-part="section"] {
+				display: flex;
+				flex-direction: column;
+				gap: var(--t-space-1-5);
+			}
+
+			[data-part="label"] {
+				font-size: var(--t-font-size-2xsmall);
+				font-weight: var(--t-font-weight-500);
+				padding-inline: calc(var(--t-space-5) + var(--t-space-0-5));
+				color: color-mix(in srgb, currentcolor, transparent 40%);
+			}
+
+			[data-part="list"] {
+				display: flex;
+				flex-direction: column;
+				gap: var(--t-space-1);
+			}
+
+			[data-part="list-item"] {
+				display: flex;
+				align-items: center;
+				gap: var(--t-space-1-5);
+				font-size: var(--t-font-size-xsmall);
+			}
+
+			[data-part="link"] {
+				--s-background-color: transparent;
+				--s-color: currentcolor;
+				--s-font-weight: unset;
+				--s-margin-inline: calc(var(--t-space-2) + var(--t-space-0-5));
+
+				display: flex;
+				align-items: center;
+				gap: var(--t-space-1-5);
+				font-weight: var(--s-font-weight);
+				text-decoration: none;
+				padding-block: var(--t-space-0-5);
+				padding-inline: var(--t-space-3);
+				margin-inline: var(--s-margin-inline);
+				border-radius: var(--t-radius-full);
+				color: var(--s-color);
+				background-color: var(--s-background-color);
+				transition: var(--t-transition-default);
+				transition-property: background-color, color;
+
+				&::before {
+					--s-background-color: transparent;
+					--s-display: none;
+
+					content: "";
+					display: var(--s-display);
+					aspect-ratio: 1 / 1;
+					block-size: var(--t-space-1-5);
+					border-radius: var(--t-radius-full);
+					background-color: var(--s-background-color);
+					margin-inline-start: calc(-1 * var(--t-space-0-5));
+					transition: var(--t-transition-default);
+					transition-property: background-color;
+				}
+
+				&[aria-current="page"] {
+					--s-background-color: var(--t-color-brand);
+					--s-color: light-dark(currentcolor, var(--t-color-background-base));
+					--s-font-weight: var(--t-font-weight-500);
+					--s-margin-inline: 0;
+
+					&::before {
+						--s-background-color: currentcolor;
+						--s-display: block;
+					}
+				}
+
+				&:hover:not([aria-current="page"]) {
+					--s-background-color: light-dark(
+						color-mix(in srgb, currentcolor, transparent 94%),
+						color-mix(in srgb, currentcolor, transparent 88%)
+					);
+				}
+			}
+		}
+	}
+</style>

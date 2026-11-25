@@ -13,11 +13,13 @@ const { title, description } = Astro.props.frontmatter;
 ---
 
 <Layout title={title} description={description}>
-	<article class="legal">
-		<Prose>
-			<slot />
-		</Prose>
-	</article>
+	<main id="main-content">
+		<article class="legal">
+			<Prose>
+				<slot />
+			</Prose>
+		</article>
+	</main>
 </Layout>
 
 <style>

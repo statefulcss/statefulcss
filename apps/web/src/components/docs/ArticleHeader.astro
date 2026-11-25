@@ -10,7 +10,9 @@ const { "data-slot": dataSlot, title, summary, draft = false } = Astro.props;
 ---
 
 <header data-component="docs-article-header" data-slot={dataSlot}>
-	<h1 data-part="title">{title}</h1>
+	<h1 id="docs-article-title" data-part="title">
+		{title}
+	</h1>
 	{draft && <p data-part="draft">Draft</p>}
 	<p data-part="summary">{summary}</p>
 	<slot name="details" />

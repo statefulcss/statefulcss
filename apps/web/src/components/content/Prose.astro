@@ -14,82 +14,8 @@ const { "data-slot": dataSlot } = Astro.props;
 		[data-component="content-prose"] {
 			font-size: var(--t-font-size-small);
 
-			& :global(p) {
-				line-height: var(--t-font-line-height-relaxed);
-
-				&:not(:last-of-type) {
-					margin-block-end: 0.625lh;
-				}
-			}
-
-			& :is(h1, h2, h3, h4, h5, h6) {
-				vertical-align: baseline;
-
-				&:is(h2) {
-					font-size: var(--t-font-size-medium);
-				}
-				&:is(h3) {
-					font-size: var(--t-font-size-base);
-				}
-				&:is(h4, h5, h6) {
-					font-size: var(--t-font-size-small);
-				}
-			}
-
-			& :global(a:not([data-part="heading-anchor"])) {
-				--s-color: currentcolor;
-
-				color: var(--s-color);
-				font-weight: var(--t-font-weight-500);
-				transition: var(--t-transition-default);
-				transition-property: color, text-decoration-color;
-
-				&:hover {
-					--s-color: light-dark(currentcolor, var(--t-color-brand));
-				}
-			}
-
-			& :global(ol),
-			& :global(ul) {
-				margin-block-end: 1lh;
-				padding-inline: 1.375lh;
-				line-height: var(--t-font-line-height-relaxed);
-			}
-
-			& :global(li) {
-				font-size: inherit;
-
-				&::marker {
-					font-weight: var(--t-font-weight-500);
-					letter-spacing: var(--t-font-letter-spacing-tight);
-				}
-			}
-
-			& :global(blockquote) {
-				padding-block: 0.125lh;
-				padding-inline-start: 0.625lh;
-				margin-block-end: 0.625lh;
-				border-inline-start: var(--t-border-width-base) solid;
-				border-color: color-mix(in srgb, currentcolor, transparent 80%);
-			}
-
-			& :global(hr) {
-				border-color: color-mix(in srgb, currentcolor, transparent 88%);
-				margin-block: 1.625lh;
-			}
-
-			& :global(code) {
-				font-size: var(--t-font-size-xsmall);
-				font-weight: var(--t-font-weight-450);
-				letter-spacing: var(--t-font-letter-spacing-tight);
-				padding-block: var(--t-space-0-5);
-				padding-inline: var(--t-space-1);
-				margin-inline: var(--t-space-0-5);
-				border-radius: var(--t-radius-small);
-				background-color: light-dark(
-					color-mix(in srgb, currentcolor, transparent 95%),
-					color-mix(in srgb, currentcolor, transparent 87%)
-				);
+			& > :global([data-component="code-block"]) {
+				margin-block: 1lh;
 			}
 		}
 
@@ -117,10 +43,6 @@ const { "data-slot": dataSlot } = Astro.props;
 				transition: var(--t-transition-default);
 				transition-property: color;
 
-				/* :global([data-part="heading"])::selection & {
-					--s-color: transparent;
-				} */
-
 				:global([data-part="heading"]):hover & {
 					--s-color: color-mix(in srgb, currentcolor, transparent 50%);
 
@@ -128,6 +50,84 @@ const { "data-slot": dataSlot } = Astro.props;
 						color: currentcolor;
 					}
 				}
+			}
+
+			:global(p) {
+				line-height: var(--t-font-line-height-relaxed);
+
+				&:not(:last-of-type) {
+					margin-block-end: 0.625lh;
+				}
+			}
+
+			:global(:is(h1, h2, h3, h4, h5, h6)) {
+				vertical-align: baseline;
+
+				&:is(h2) {
+					font-size: var(--t-font-size-medium);
+				}
+				&:is(h3) {
+					font-size: var(--t-font-size-base);
+				}
+				&:is(h4, h5, h6) {
+					font-size: var(--t-font-size-small);
+				}
+			}
+
+			:global(a:not([data-part="heading-anchor"])) {
+				--s-color: currentcolor;
+
+				color: var(--s-color);
+				font-weight: var(--t-font-weight-500);
+				transition: var(--t-transition-default);
+				transition-property: color, text-decoration-color;
+
+				&:hover {
+					--s-color: light-dark(currentcolor, var(--t-color-brand));
+				}
+			}
+
+			:global(ol),
+			:global(ul) {
+				margin-block-end: 1lh;
+				padding-inline: 1.375lh;
+				line-height: var(--t-font-line-height-relaxed);
+			}
+
+			:global(li) {
+				font-size: inherit;
+
+				&::marker {
+					font-weight: var(--t-font-weight-500);
+					letter-spacing: var(--t-font-letter-spacing-tight);
+				}
+			}
+
+			:global(blockquote) {
+				padding-block: 0.125lh;
+				padding-inline-start: 0.625lh;
+				margin-block-end: 0.625lh;
+				border-inline-start: var(--t-border-width-base) solid;
+				border-color: color-mix(in srgb, currentcolor, transparent 80%);
+			}
+
+			:global(hr) {
+				border-color: color-mix(in srgb, currentcolor, transparent 88%);
+				margin-block: 1.625lh;
+			}
+
+			:global(code) {
+				font-size: var(--t-font-size-xsmall);
+				font-weight: var(--t-font-weight-450);
+				letter-spacing: var(--t-font-letter-spacing-tight);
+				padding-block: var(--t-space-0-5);
+				padding-inline: var(--t-space-1);
+				margin-inline: var(--t-space-0-5);
+				border-radius: var(--t-radius-small);
+				background-color: light-dark(
+					color-mix(in srgb, currentcolor, transparent 95%),
+					color-mix(in srgb, currentcolor, transparent 87%)
+				);
 			}
 		}
 	}

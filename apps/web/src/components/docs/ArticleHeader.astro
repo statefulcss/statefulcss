@@ -19,20 +19,22 @@ const { "data-slot": dataSlot, title, summary, draft = false } = Astro.props;
 </header>
 
 <style>
-	[data-component="docs-article-header"] {
-		display: flex;
-		flex-direction: column;
-		gap: var(--t-space-1-5);
-	}
-
-	@scope ([data-component="docs-article-header"]) to (:global([data-component])) {
-		[data-part="title"] {
-			font-size: var(--t-font-size-2xlarge);
+	@layer components {
+		[data-component="docs-article-header"] {
+			display: flex;
+			flex-direction: column;
+			gap: var(--t-space-1-5);
 		}
 
-		[data-part="summary"] {
-			font-weight: var(--t-font-weight-450);
-			color: color-mix(in srgb, currentcolor, transparent 35%);
+		@scope ([data-component="docs-article-header"]) to (:global([data-component])) {
+			[data-part="title"] {
+				font-size: var(--t-font-size-2xlarge);
+			}
+
+			[data-part="summary"] {
+				font-weight: var(--t-font-weight-450);
+				color: color-mix(in srgb, currentcolor, transparent 35%);
+			}
 		}
 	}
 </style>

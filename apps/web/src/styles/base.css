@@ -6,7 +6,6 @@ html {
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	tab-size: 4;
-	scrollbar-gutter: stable;
 	scroll-padding-block-start: var(--t-app-scroll-padding-block-start, 1.5rlh);
 	min-block-size: 100svb;
 }

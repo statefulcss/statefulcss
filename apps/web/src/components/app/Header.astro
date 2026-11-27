@@ -22,6 +22,12 @@ const { "data-slot": dataSlot } = Astro.props;
 			</li>
 		</ul>
 	</nav>
+	<div data-part="scrim" aria-hidden="true">
+		<span></span>
+		<span></span>
+		<span></span>
+		<span></span>
+	</div>
 </header>
 
 <style>
@@ -36,6 +42,7 @@ const { "data-slot": dataSlot } = Astro.props;
 			gap: var(--t-space-4);
 			block-size: var(--t-app-header-block-size);
 			padding-block: var(--t-space-6);
+			background-color: var(--t-color-background-base);
 		}
 
 		@scope ([data-component="app-header"]) to (:global([data-component])) {
@@ -83,6 +90,66 @@ const { "data-slot": dataSlot } = Astro.props;
 							text-wrap: nowrap;
 						}
 					}
+				}
+			}
+
+			[data-part="scrim"] {
+				position: absolute;
+				inset-inline: 0;
+				inset-block-start: 100%;
+				block-size: var(--t-space-12);
+				pointer-events: none;
+
+				& > span {
+					--s-display: block;
+					--s-backdrop-filter: blur(1px);
+					--s-mask-image: linear-gradient(transparent 40%, oklch(0 0 0) 60% 80%, transparent);
+
+					position: absolute;
+					inset: 0;
+					display: var(--s-display);
+					backdrop-filter: var(--s-backdrop-filter);
+					mask-image: var(--s-mask-image);
+
+					&:nth-child(1) {
+						--s-backdrop-filter: blur(6px);
+						--s-mask-image: linear-gradient(oklch(0 0 0) 0 20%, transparent 40%);
+					}
+
+					&:nth-child(2) {
+						--s-backdrop-filter: blur(3px);
+						--s-mask-image: linear-gradient(transparent, oklch(0 0 0) 20% 40%, transparent 60%);
+					}
+
+					&:nth-child(3) {
+						--s-backdrop-filter: blur(1px);
+						--s-mask-image: linear-gradient(transparent 20%, oklch(0 0 0) 40% 60%, transparent 80%);
+					}
+
+					@media (prefers-reduced-transparency: reduce) {
+						--s-display: none;
+					}
+				}
+
+				/* After the spans, so it paints over the blur and hides its hard top edge. */
+				&::after {
+					content: "";
+					position: absolute;
+					inset: 0;
+					background-color: var(--t-color-background-base);
+					mask-image: linear-gradient(
+						oklch(0 0 0),
+						oklch(0 0 0 / 97%) 10%,
+						oklch(0 0 0 / 90%) 20%,
+						oklch(0 0 0 / 78%) 30%,
+						oklch(0 0 0 / 65%) 40%,
+						oklch(0 0 0 / 50%) 50%,
+						oklch(0 0 0 / 35%) 60%,
+						oklch(0 0 0 / 22%) 70%,
+						oklch(0 0 0 / 10%) 80%,
+						oklch(0 0 0 / 3%) 90%,
+						transparent
+					);
 				}
 			}
 		}

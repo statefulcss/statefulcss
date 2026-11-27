@@ -19,6 +19,9 @@ export default defineConfig({
 		// Every inline <style> adds a hash to the CSP header, which Cloudflare caps at 2,000 characters.
 		inlineStylesheets: "never",
 	},
+	server: {
+		host: true,
+	},
 	vite: {
 		build: {
 			// Scripts are files, never inline. After an inline module script, <ClientRouter /> adds a

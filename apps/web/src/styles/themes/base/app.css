@@ -1,8 +1,9 @@
 [data-theme] {
-	--t-app-max-size: 108rem;
+	--t-app-min-block-size: 100svb;
+	--t-app-max-inline-size: 108rem;
 	--t-app-gutter: var(--t-space-6);
-	--t-app-size: calc(100% - var(--t-app-max-size));
-	--t-app-page-gutter: max(calc(0.5 * var(--t-app-size)), var(--t-app-gutter));
+	--t-app-page-gutter: max(calc((100% - var(--t-app-max-inline-size)) / 2), var(--t-app-gutter));
+	--t-app-page-block-size: calc(var(--t-app-min-block-size) - var(--t-app-header-block-size));
 
 	@media (width >= 30rem) {
 		--t-app-gutter: var(--t-space-9);

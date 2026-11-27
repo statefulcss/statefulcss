@@ -27,7 +27,7 @@ const { title, summary, sidebar, canonical, image, schema } = Astro.props;
 	<div data-component="docs-container">
 		<div data-component="docs">
 			<Sidebar data-slot="sidebar" canonical={canonical} sidebar={sidebar} />
-			<main id="main-content" data-slot="content">
+			<main id="main-content" data-part="content">
 				<slot />
 			</main>
 		</div>
@@ -38,21 +38,44 @@ const { title, summary, sidebar, canonical, image, schema } = Astro.props;
 	@layer components {
 		[data-component="docs-container"] {
 			container: docs / inline-size;
+			display: grid;
 		}
 
 		[data-component="docs"] {
 			--s-grid-template-columns: minmax(0, 1fr);
+			--p-content-grid-column: 1 / -1;
 
 			display: grid;
 			grid-template-columns: var(--s-grid-template-columns);
-			gap: var(--t-space-9);
+			column-gap: var(--t-space-9);
+
+			@container docs (inline-size >= 54rem) {
+				--q-docs-sidebar: visible;
+				--s-grid-template-columns: var(--t-app-sidebar-size) minmax(0, 1fr);
+				--p-content-grid-column: 2 / -1;
+			}
 
 			@container docs (inline-size >= 72rem) {
-				--s-grid-template-columns: var(--t-app-sidebar-inline-size) minmax(0, 1fr);
+				--q-docs-outline: visible;
+				--s-grid-template-columns: var(--t-app-sidebar-size) minmax(0, 1fr) var(--t-app-sidebar-size);
 			}
 
 			& > :global([data-slot="sidebar"]) {
+				grid-column: 1;
 				align-self: start;
+			}
+
+			& > [data-part="content"] > :global([data-slot="article"]) {
+				grid-column: 1 / -1;
+			}
+		}
+
+		@scope ([data-component="docs"]) to (:global([data-component])) {
+			[data-part="content"] {
+				grid-column: var(--p-content-grid-column);
+				display: grid;
+				grid-template-columns: subgrid;
+				padding-block-end: var(--t-space-24);
 			}
 		}
 	}

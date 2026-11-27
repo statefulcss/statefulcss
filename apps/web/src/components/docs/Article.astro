@@ -1,7 +1,7 @@
 ---
 import Prose from "@components/content/Prose.astro";
+import Outline from "@components/docs/Outline.astro";
 import PageNavigation from "@components/docs/PageNavigation.astro";
-import TableOfContents from "@components/docs/TableOfContents.astro";
 import { type SidebarItem } from "@utils/content";
 import type { MarkdownHeading } from "astro";
 import ArticleHeader from "./ArticleHeader.astro";
@@ -28,60 +28,58 @@ const { previous, next } = pageNavigation;
 		<slot name="details" slot="details" />
 	</ArticleHeader>
 
-	{contents.length > 0 && <TableOfContents data-slot="table-of-contents" contents={contents} />}
+	{contents.length > 0 && <Outline data-slot="outline" contents={contents} />}
 
 	<Prose data-slot="content">
 		<slot />
 	</Prose>
 
-	{(previous || next) && <PageNavigation data-slot="page-navigation" previous={previous} next={next} />}
+	{(previous || next) && <PageNavigation data-slot="navigation" previous={previous} next={next} />}
 </article>
 
 <style>
 	@layer components {
+		/**
+			 * Docs Article
+			 * @component docs-article
+			 * @queries --q-docs-outline
+			 */
 		[data-component="docs-article"] {
-			--_slot-max-inline-size: var(--t-app-page-max-inline-size);
-			--_margin-inline: auto;
-			--s-grid-template-columns: minmax(0, 1fr);
+			--s-grid-template-areas: "header" "content" "navigation";
 
 			display: grid;
-			grid-template-columns: var(--s-grid-template-columns);
-			grid-template-areas:
-				"header					 table-of-contents"
-				"content				 table-of-contents"
-				"page-navigation .";
-			column-gap: var(--t-space-9);
+			grid-template-columns: subgrid;
+			grid-template-rows: auto auto 1fr;
+			grid-template-areas: var(--s-grid-template-areas);
 			row-gap: var(--t-space-12);
+			padding-block-start: var(--t-space-9);
+			margin-block-end: var(--t-space-12);
 
-			@container docs (inline-size >= 72rem) {
-				--s-grid-template-columns: minmax(0, 1fr) var(--t-app-sidebar-inline-size);
+			@container style(--q-docs-outline: visible) {
+				--s-grid-template-areas: "header outline" "content outline" "navigation outline";
+			}
+
+			& > :global([data-slot="header"]),
+			& > :global([data-slot="content"]),
+			& > :global([data-slot="navigation"]) {
+				inline-size: 100%;
+				max-inline-size: var(--t-app-content-max-size);
+				margin-inline: auto;
 			}
 
 			& > :global([data-slot="header"]) {
 				grid-area: header;
+			}
+			& > :global([data-slot="outline"]) {
+				grid-area: outline;
 				align-self: start;
-				inline-size: 100%;
-				max-inline-size: var(--_slot-max-inline-size);
-				margin-inline: var(--_margin-inline);
+				justify-self: end;
 			}
 			& > :global([data-slot="content"]) {
 				grid-area: content;
-				align-self: start;
-				inline-size: 100%;
-				max-inline-size: var(--_slot-max-inline-size);
-				margin-inline: var(--_margin-inline);
 			}
-			& > :global([data-slot="table-of-contents"]) {
-				grid-area: table-of-contents;
-				align-self: start;
-				max-inline-size: fit-content;
-				justify-self: end;
-			}
-			& > :global([data-slot="page-navigation"]) {
-				grid-area: page-navigation;
-				inline-size: 100%;
-				max-inline-size: var(--_slot-max-inline-size);
-				margin-inline: var(--_margin-inline);
+			& > :global([data-slot="navigation"]) {
+				grid-area: navigation;
 			}
 		}
 	}

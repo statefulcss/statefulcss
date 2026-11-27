@@ -28,6 +28,7 @@ const { previous, next, "data-slot": dataSlot } = Astro.props;
 		[data-component="docs-page-navigation"] {
 			display: flex;
 			gap: var(--t-space-1-5);
+			align-items: start;
 		}
 
 		@scope ([data-component="docs-page-navigation"]) to (:global([data-component])) {

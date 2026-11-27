@@ -71,7 +71,6 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 							) : (
 								<span>{item.title}</span>
 							)}
-							{item.draft && <span data-part="draft">Draft</span>}
 						</li>
 					))}
 				</ul>
@@ -82,19 +81,23 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 
 <style>
 	@layer components {
+		/**
+					* Docs Sidebar
+					* @component docs-sidebar
+					* @queries --q-docs-sidebar
+					*/
 		[data-component="docs-sidebar"] {
 			--s-display: none;
 
-			position: sticky;
-			inset-block-start: var(--t-app-header-block-size);
 			align-self: start;
+			position: sticky;
+			z-index: 10;
+			inset-block-start: var(--t-app-header-block-size);
 			display: var(--s-display);
 			flex-direction: column;
-			block-size: calc(100dvb - var(--t-app-header-block-size) - var(--t-app-footer-block-size));
-			max-inline-size: fit-content;
-			overflow: clip;
+			block-size: calc(100svb - var(--t-app-header-block-size) - var(--t-app-footer-block-size));
 
-			@container docs (inline-size >= 72rem) {
+			@container style(--q-docs-sidebar: visible) {
 				--s-display: flex;
 			}
 		}
@@ -109,7 +112,10 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 				overflow-y: auto;
 				overscroll-behavior: contain;
 				scrollbar-width: none;
-				padding-block: var(--t-space-9);
+				padding-block: var(--t-space-12);
+				padding-inline: var(--t-focus-ring-extent);
+				margin-inline: calc(-1 * var(--t-focus-ring-extent));
+				scroll-padding-block: var(--t-space-12);
 
 				mask-image: linear-gradient(
 					to bottom,

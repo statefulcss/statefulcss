@@ -1,0 +1,92 @@
+---
+interface Props {
+	"data-slot"?: string;
+	contents: {
+		depth: number;
+		slug: string;
+		text: string;
+	}[];
+}
+
+const { contents, "data-slot": dataSlot } = Astro.props;
+---
+
+<nav data-component="docs-outline" data-slot={dataSlot} aria-labelledby="docs-outline-title">
+	<span id="docs-outline-title" data-part="title">
+		On this page
+	</span>
+	<ul role="list" data-part="list">
+		{contents.map((heading) => (
+			<li data-depth={heading.depth}>
+				<a href={`#${heading.slug}`} data-part="link">
+					{heading.text}
+				</a>
+			</li>
+		))}
+	</ul>
+</nav>
+
+<style>
+	@layer components {
+		/**
+		* Docs Outline
+		* @component docs-outline
+		* @queries --q-docs-outline
+		*/
+		[data-component="docs-outline"] {
+			--s-display: none;
+
+			display: var(--s-display);
+			flex-direction: column;
+			gap: var(--t-space-3);
+
+			position: sticky;
+			inset-block-start: calc(var(--t-app-header-block-size) + var(--t-space-12));
+			max-block-size: calc(100dvb - var(--t-app-header-block-size) - var(--t-space-12));
+			overflow-y: auto;
+			overscroll-behavior: contain;
+			padding-block-end: var(--t-space-9);
+
+			@container style(--q-docs-outline: visible) {
+				--s-display: flex;
+			}
+		}
+
+		@scope ([data-component="docs-outline"]) to (:global([data-component])) {
+			[data-part="title"] {
+				font-size: var(--t-font-size-2xsmall);
+				color: color-mix(in srgb, currentcolor, transparent 40%);
+			}
+			[data-part="list"] {
+				display: flex;
+				flex-direction: column;
+				gap: var(--t-space-3);
+				list-style: none;
+				padding-block: 0;
+				margin: 0;
+				line-height: var(--t-font-line-height-tight);
+			}
+			[data-part="link"] {
+				--s-padding-inline-start: 0;
+				--s-color: color-mix(in srgb, currentcolor, transparent 20%);
+
+				font-size: var(--t-font-size-xsmall);
+				text-decoration: none;
+				color: var(--s-color);
+				transition: var(--t-transition-default);
+				transition-property: color;
+				display: flex;
+				padding-inline-end: var(--t-space-6);
+				padding-inline-start: var(--s-padding-inline-start);
+
+				[data-depth="3"] & {
+					--s-padding-inline-start: var(--t-space-4);
+				}
+
+				&:hover {
+					--s-color: currentcolor;
+				}
+			}
+		}
+	}
+</style>

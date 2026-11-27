@@ -59,6 +59,7 @@ const pageNavigation = getPageNavigation(sidebar);
 		draft={entry?.data.status === "draft"}
 		headings={headings}
 		pageNavigation={pageNavigation}
+		data-slot="article"
 	>
 		{Content && <Content />}
 	</Article>

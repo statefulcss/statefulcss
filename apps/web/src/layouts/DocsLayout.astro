@@ -1,4 +1,5 @@
 ---
+import PageColumns from "@components/app/PageColumns.astro";
 import Sidebar from "@components/docs/Sidebar.astro";
 import type { JsonLdSchema } from "@config/site";
 import Layout from "@layouts/Layout.astro";
@@ -24,59 +25,8 @@ const { title, summary, sidebar, canonical, image, schema } = Astro.props;
 	image={image}
 	schema={schema}
 >
-	<div data-component="docs-container">
-		<div data-component="docs">
-			<Sidebar data-slot="sidebar" canonical={canonical} sidebar={sidebar} />
-			<main id="main-content" data-part="content">
-				<slot />
-			</main>
-		</div>
-	</div>
+	<PageColumns>
+		<Sidebar slot="sidebar" data-slot="sidebar" canonical={canonical} sidebar={sidebar} />
+		<slot />
+	</PageColumns>
 </Layout>
-
-<style>
-	@layer components {
-		[data-component="docs-container"] {
-			container: docs / inline-size;
-			display: grid;
-		}
-
-		[data-component="docs"] {
-			--s-grid-template-columns: minmax(0, 1fr);
-			--p-content-grid-column: 1 / -1;
-
-			display: grid;
-			grid-template-columns: var(--s-grid-template-columns);
-			column-gap: var(--t-space-9);
-
-			@container docs (inline-size >= 54rem) {
-				--q-docs-sidebar: visible;
-				--s-grid-template-columns: var(--t-app-sidebar-size) minmax(0, 1fr);
-				--p-content-grid-column: 2 / -1;
-			}
-
-			@container docs (inline-size >= 72rem) {
-				--q-docs-outline: visible;
-				--s-grid-template-columns: var(--t-app-sidebar-size) minmax(0, 1fr) var(--t-app-sidebar-size);
-			}
-
-			& > :global([data-slot="sidebar"]) {
-				grid-column: 1;
-				align-self: start;
-			}
-
-			& > [data-part="content"] > :global([data-slot="article"]) {
-				grid-column: 1 / -1;
-			}
-		}
-
-		@scope ([data-component="docs"]) to (:global([data-component])) {
-			[data-part="content"] {
-				grid-column: var(--p-content-grid-column);
-				display: grid;
-				grid-template-columns: subgrid;
-				padding-block-end: var(--t-space-24);
-			}
-		}
-	}
-</style>

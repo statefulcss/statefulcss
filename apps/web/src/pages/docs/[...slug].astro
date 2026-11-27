@@ -1,7 +1,9 @@
 ---
 import { render } from "astro:content";
 
-import Article from "@components/docs/Article.astro";
+import Article from "@components/content/Article.astro";
+import ArticleHeader from "@components/content/ArticleHeader.astro";
+import PageNavigation from "@components/docs/PageNavigation.astro";
 import { siteConfig } from "@config/site";
 import DocsLayout from "@layouts/DocsLayout.astro";
 import { getOgImagePath } from "@og/templates";
@@ -53,14 +55,22 @@ const pageNavigation = getPageNavigation(sidebar);
 	image={getOgImagePath(path, { index: path === "/docs/" })}
 	schema={entry ? getDocsEntrySchema(entry) : [getCollectionPageSchema(path, title, summary)]}
 >
-	<Article
-		title={title}
-		summary={summary}
-		draft={entry?.data.status === "draft"}
-		headings={headings}
-		pageNavigation={pageNavigation}
-		data-slot="article"
-	>
+	<Article data-slot="article" headings={headings} labelledby="article-title">
+		<ArticleHeader
+			slot="header"
+			data-slot="header"
+			title={title}
+			summary={summary}
+			draft={entry?.data.status === "draft"}
+		/>
 		{Content && <Content />}
+		{(pageNavigation.previous || pageNavigation.next) && (
+			<PageNavigation
+				slot="navigation"
+				data-slot="navigation"
+				previous={pageNavigation.previous}
+				next={pageNavigation.next}
+			/>
+		)}
 	</Article>
 </DocsLayout>

@@ -1,7 +1,9 @@
 ---
 import { getCollection } from "astro:content";
 
-import Article from "@components/docs/Article.astro";
+import Article from "@components/content/Article.astro";
+import ArticleHeader from "@components/content/ArticleHeader.astro";
+import PageNavigation from "@components/docs/PageNavigation.astro";
 import DocsLayout from "@layouts/DocsLayout.astro";
 import { getRulePath } from "@loaders/lint-rules";
 import { getOgImagePath } from "@og/templates";
@@ -13,6 +15,7 @@ const summary =
 	"Every rule in the Stateful CSS Stylelint plugin: what it checks, how severe it is, and whether it can fix.";
 const rules = (await getCollection("lintRules")).sort((a, b) => a.data.order - b.data.order);
 const sidebar = getSidebar(await getDocs(), "lint-rules");
+const pageNavigation = getPageNavigation(sidebar);
 ---
 
 <DocsLayout
@@ -23,13 +26,16 @@ const sidebar = getSidebar(await getDocs(), "lint-rules");
 	image={getOgImagePath(path, { index: true })}
 	schema={[getCollectionPageSchema(path, title, summary)]}
 >
-	<Article
-		data-slot="article"
-		title={title}
-		summary={summary}
-		headings={[]}
-		pageNavigation={getPageNavigation(sidebar)}
-	>
+	<Article data-slot="article" labelledby="article-title">
+		<ArticleHeader slot="header" data-slot="header" title={title} summary={summary} />
+		{(pageNavigation.previous || pageNavigation.next) && (
+			<PageNavigation
+				slot="navigation"
+				data-slot="navigation"
+				previous={pageNavigation.previous}
+				next={pageNavigation.next}
+			/>
+		)}
 		<table>
 			<thead>
 				<tr>

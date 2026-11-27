@@ -11,8 +11,8 @@ interface Props {
 const { contents, "data-slot": dataSlot } = Astro.props;
 ---
 
-<nav data-component="docs-outline" data-slot={dataSlot} aria-labelledby="docs-outline-title">
-	<span id="docs-outline-title" data-part="title">
+<nav data-component="outline" data-slot={dataSlot} aria-labelledby="outline-title">
+	<span id="outline-title" data-part="title">
 		On this page
 	</span>
 	<ul role="list" data-part="list">
@@ -29,11 +29,11 @@ const { contents, "data-slot": dataSlot } = Astro.props;
 <style>
 	@layer components {
 		/**
-		* Docs Outline
-		* @component docs-outline
-		* @queries --q-docs-outline
+		* Outline
+		* @component outline
+		* @queries --q-page-columns-outline
 		*/
-		[data-component="docs-outline"] {
+		[data-component="outline"] {
 			--s-display: none;
 
 			display: var(--s-display);
@@ -47,12 +47,12 @@ const { contents, "data-slot": dataSlot } = Astro.props;
 			overscroll-behavior: contain;
 			padding-block-end: var(--t-space-9);
 
-			@container style(--q-docs-outline: visible) {
+			@container style(--q-page-columns-outline: visible) {
 				--s-display: flex;
 			}
 		}
 
-		@scope ([data-component="docs-outline"]) to (:global([data-component])) {
+		@scope ([data-component="outline"]) to (:global([data-component])) {
 			[data-part="title"] {
 				font-size: var(--t-font-size-2xsmall);
 				color: color-mix(in srgb, currentcolor, transparent 40%);

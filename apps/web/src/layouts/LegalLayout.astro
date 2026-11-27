@@ -1,30 +1,26 @@
 ---
-import Prose from "@components/content/Prose.astro";
+import PageColumns from "@components/app/PageColumns.astro";
+import Article from "@components/content/Article.astro";
+import ArticleHeader from "@components/content/ArticleHeader.astro";
 import Layout from "@layouts/Layout.astro";
+import type { MarkdownHeading } from "astro";
 
 interface Props {
 	frontmatter: {
 		title: string;
 		description: string;
 	};
+	headings: MarkdownHeading[];
 }
 
-const { title, description } = Astro.props.frontmatter;
+const { frontmatter, headings } = Astro.props;
 ---
 
-<Layout title={title} description={description}>
-	<main id="main-content">
-		<article class="legal">
-			<Prose>
-				<slot />
-			</Prose>
-		</article>
-	</main>
+<Layout title={frontmatter.title} description={frontmatter.description}>
+	<PageColumns>
+		<Article data-slot="article" headings={headings} labelledby="article-title">
+			<ArticleHeader slot="header" data-slot="header" title={frontmatter.title} />
+			<slot />
+		</Article>
+	</PageColumns>
 </Layout>
-
-<style>
-	.legal {
-		max-inline-size: 80ch;
-		text-wrap: pretty;
-	}
-</style>

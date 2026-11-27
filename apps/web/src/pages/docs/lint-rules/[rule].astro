@@ -1,7 +1,9 @@
 ---
 import { getCollection, render, type CollectionEntry } from "astro:content";
 
-import Article from "@components/docs/Article.astro";
+import Article from "@components/content/Article.astro";
+import ArticleHeader from "@components/content/ArticleHeader.astro";
+import PageNavigation from "@components/docs/PageNavigation.astro";
 import DocsLayout from "@layouts/DocsLayout.astro";
 import { getRulePath } from "@loaders/lint-rules";
 import { getOgImagePath } from "@og/templates";
@@ -37,20 +39,23 @@ const toLink = (entry?: CollectionEntry<"lintRules">) =>
 	image={getOgImagePath(path)}
 	schema={getLintRuleSchema(rule)}
 >
-	<Article
-		data-slot="article"
-		title={rule.data.title}
-		summary={rule.data.summary}
-		headings={headings}
-		pageNavigation={{ previous: toLink(previous), next: toLink(next) }}
-	>
-		<dl slot="details" data-part="details">
-			<dt>Severity</dt>
-			<dd>{rule.data.severityText}</dd>
-			<dt>Fixable</dt>
-			<dd>{rule.data.fixable ? "yes" : "no"}</dd>
-		</dl>
-
+	<Article data-slot="article" headings={headings} labelledby="article-title">
+		<ArticleHeader slot="header" data-slot="header" title={rule.data.title} summary={rule.data.summary}>
+			<dl slot="details" data-part="details">
+				<dt>Severity</dt>
+				<dd>{rule.data.severityText}</dd>
+				<dt>Fixable</dt>
+				<dd>{rule.data.fixable ? "yes" : "no"}</dd>
+			</dl>
+		</ArticleHeader>
 		<Content />
+		{(previous || next) && (
+			<PageNavigation
+				slot="navigation"
+				data-slot="navigation"
+				previous={toLink(previous)}
+				next={toLink(next)}
+			/>
+		)}
 	</Article>
 </DocsLayout>

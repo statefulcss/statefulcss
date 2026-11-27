@@ -116,7 +116,7 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 		/**
 		* Docs Sidebar
 		* @component docs-sidebar
-		* @queries --q-docs-sidebar
+		* @queries --q-page-columns-sidebar
 		*/
 		[data-component="docs-sidebar"] {
 			--s-display: none;
@@ -129,7 +129,7 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 			flex-direction: column;
 			block-size: calc(100svb - var(--t-app-header-block-size) - var(--t-app-footer-block-size));
 
-			@container style(--q-docs-sidebar: visible) {
+			@container style(--q-page-columns-sidebar: visible) {
 				--s-display: flex;
 			}
 		}

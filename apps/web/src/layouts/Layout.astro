@@ -77,12 +77,9 @@ const {
 			flex-direction: column;
 			align-items: stretch;
 			min-height: 100svb;
-			padding-inline: var(--t-app-gutter);
 
 			& > :global([data-slot]) {
-				inline-size: 100%;
-				max-inline-size: var(--t-app-max-inline-size);
-				margin-inline: auto;
+				padding-inline: var(--t-app-page-gutter);
 			}
 
 			& > :global([data-slot="app-page"]) {

@@ -41,7 +41,7 @@ const { "data-slot": dataSlot } = Astro.props;
 			justify-content: space-between;
 			gap: var(--t-space-4);
 			block-size: var(--t-app-header-block-size);
-			padding-block: var(--t-space-6);
+			padding-inline: var(--t-app-gutter);
 			background-color: var(--t-color-background-base);
 		}
 
@@ -55,6 +55,7 @@ const { "data-slot": dataSlot } = Astro.props;
 				gap: var(--t-space-2);
 				font-size: var(--t-font-size-large);
 				font-weight: var(--t-font-weight-600);
+				min-inline-size: max-content;
 				color: var(--s-color);
 
 				&::before {

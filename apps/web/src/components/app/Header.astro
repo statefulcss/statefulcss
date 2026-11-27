@@ -1,12 +1,13 @@
 ---
 interface Props {
 	"data-slot"?: string;
+	"data-sticky"?: boolean;
 }
 
-const { "data-slot": dataSlot } = Astro.props;
+const { "data-slot": dataSlot, "data-sticky": dataSticky } = Astro.props;
 ---
 
-<header data-slot={dataSlot} data-component="app-header">
+<header data-slot={dataSlot} data-component="app-header" data-sticky={dataSticky || undefined}>
 	<a href="/" data-part="brand">
 		Stateful CSS
 	</a>
@@ -33,7 +34,10 @@ const { "data-slot": dataSlot } = Astro.props;
 <style>
 	@layer components {
 		[data-component="app-header"] {
-			position: sticky;
+			--s-position: relative;
+			--p-scrim-display: none;
+
+			position: var(--s-position);
 			inset-block-start: 0;
 			z-index: 100;
 			display: flex;
@@ -43,6 +47,11 @@ const { "data-slot": dataSlot } = Astro.props;
 			block-size: var(--t-app-header-block-size);
 			padding-inline: var(--t-app-gutter);
 			background-color: var(--t-color-background-base);
+
+			&[data-sticky] {
+				--s-position: sticky;
+				--p-scrim-display: block;
+			}
 		}
 
 		@scope ([data-component="app-header"]) to (:global([data-component])) {
@@ -95,6 +104,7 @@ const { "data-slot": dataSlot } = Astro.props;
 			}
 
 			[data-part="scrim"] {
+				display: var(--p-scrim-display);
 				position: absolute;
 				inset-inline: 0;
 				inset-block-start: 100%;

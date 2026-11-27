@@ -1,11 +1,17 @@
 [data-theme] {
-	--t-app-max-inline-size: 108rem;
-	--t-app-gutter: var(--t-space-9);
+	--t-app-max-size: 108rem;
+	--t-app-gutter: var(--t-space-6);
+	--t-app-size: calc(100% - var(--t-app-max-size));
+	--t-app-page-gutter: max(calc(0.5 * var(--t-app-size)), var(--t-app-gutter));
 
-	--t-app-header-block-size: 6rem;
+	@media (width >= 30rem) {
+		--t-app-gutter: var(--t-space-9);
+	}
+
+	--t-app-header-block-size: 5rem;
 	--t-app-footer-block-size: 4rem;
-	--t-app-page-max-inline-size: 40rem;
-	--t-app-sidebar-inline-size: 18rem;
+	--t-app-content-max-size: 40rem;
+	--t-app-sidebar-size: 18rem;
 
 	--t-app-scroll-padding-block-start: var(--t-space-6);
 

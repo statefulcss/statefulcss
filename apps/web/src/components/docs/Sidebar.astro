@@ -11,40 +11,72 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 ---
 
 <script>
-	let sidebarScroll = 0;
+	import { swapFunctions } from "astro:transitions/client";
 
+	const SIDEBAR = '[data-component="docs-sidebar"]';
+	const MAIN = "#main-content";
+
+	// Scrolls the list when the current link sits under a fade: scroll to top, bottom or center.
+	function revealCurrent(wrapper: HTMLElement) {
+		const link = wrapper.querySelector<HTMLElement>('a[aria-current="page"]');
+		if (!link || wrapper.clientHeight === 0) return;
+
+		const style = getComputedStyle(wrapper);
+		const fadeStart = parseFloat(style.scrollPaddingBlockStart) || 0;
+		const fadeEnd = parseFloat(style.scrollPaddingBlockEnd) || 0;
+		const view = wrapper.getBoundingClientRect();
+		const box = link.getBoundingClientRect();
+		if (box.top >= view.top + fadeStart && box.bottom <= view.bottom - fadeEnd) return;
+
+		const offset = box.top - view.top + wrapper.scrollTop;
+		const max = wrapper.scrollHeight - wrapper.clientHeight;
+		const centered = offset + box.height / 2 - wrapper.clientHeight / 2;
+		const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+		wrapper.scrollTo({ top: Math.min(Math.max(centered, 0), max), behavior: reduce ? "auto" : "smooth" });
+	}
+
+	// Swap main-content on route changes, keep the sidebar in place so scroll position and hover state survive
 	document.addEventListener("astro:before-swap", (event) => {
-		const wrapper = document.querySelector('[data-component="docs-sidebar"] [data-part="wrapper"]');
-		sidebarScroll = wrapper?.scrollTop ?? 0;
-		const current = document.querySelector('[data-component="docs-sidebar"]');
-		const next = event.newDocument.querySelector('[data-component="docs-sidebar"]');
-		if (!current || !next) return;
+		const sidebar = document.querySelector(SIDEBAR);
+		const main = document.querySelector(MAIN);
+		const nextSidebar = event.newDocument.querySelector(SIDEBAR);
+		const nextMain = event.newDocument.querySelector(MAIN);
+		if (!sidebar || !main || !nextSidebar || !nextMain) return;
 
-		const states = new Map(
-			[...next.querySelectorAll("a[href]")].map((a) => [
-				a.getAttribute("href"),
-				a.getAttribute("aria-current"),
-			]),
-		);
-		for (const link of current.querySelectorAll("a[href]")) {
-			const value = states.get(link.getAttribute("href"));
-			if (value) link.setAttribute("aria-current", value);
-			else link.removeAttribute("aria-current");
-		}
+		event.swap = () => {
+			swapFunctions.deselectScripts(event.newDocument);
+			swapFunctions.swapRootAttributes(event.newDocument);
+			swapFunctions.swapHeadElements(event.newDocument);
+			const restoreFocus = swapFunctions.saveFocus();
+			main.replaceWith(nextMain);
+			restoreFocus();
+
+			const states = new Map(
+				[...nextSidebar.querySelectorAll("a[href]")].map((a) => [
+					a.getAttribute("href"),
+					a.getAttribute("aria-current"),
+				]),
+			);
+			for (const link of sidebar.querySelectorAll("a[href]")) {
+				const value = states.get(link.getAttribute("href"));
+				if (value) link.setAttribute("aria-current", value);
+				else link.removeAttribute("aria-current");
+			}
+
+			const wrapper = sidebar.querySelector<HTMLElement>('[data-part="wrapper"]');
+			if (wrapper) requestAnimationFrame(() => revealCurrent(wrapper));
+		};
 	});
 
-	document.addEventListener("astro:after-swap", () => {
-		const wrapper = document.querySelector('[data-component="docs-sidebar"] [data-part="wrapper"]');
-		if (wrapper) wrapper.scrollTop = sidebarScroll;
-	});
+	// A direct visit: show the current link without animating.
+	const wrapper = document.querySelector<HTMLElement>(`${SIDEBAR} [data-part="wrapper"]`);
+	if (wrapper) {
+		const link = wrapper.querySelector<HTMLElement>('a[aria-current="page"]');
+		if (link) wrapper.scrollTop = link.offsetTop - wrapper.clientHeight / 2;
+	}
 </script>
 
-<nav
-	data-component="docs-sidebar"
-	data-slot={dataSlot}
-	aria-label="Documentation"
-	transition:persist="docs-sidebar"
->
+<nav data-component="docs-sidebar" data-slot={dataSlot} aria-label="Documentation">
 	<div data-part="wrapper">
 		{sidebar.map((section, index) => (
 			<div data-part="section">
@@ -82,10 +114,10 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 <style>
 	@layer components {
 		/**
-					* Docs Sidebar
-					* @component docs-sidebar
-					* @queries --q-docs-sidebar
-					*/
+		* Docs Sidebar
+		* @component docs-sidebar
+		* @queries --q-docs-sidebar
+		*/
 		[data-component="docs-sidebar"] {
 			--s-display: none;
 
@@ -120,8 +152,8 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 				mask-image: linear-gradient(
 					to bottom,
 					transparent,
-					black var(--t-space-9),
-					black calc(100% - var(--t-space-9)),
+					oklch(0 0 0) var(--t-space-9),
+					oklch(0 0 0) calc(100% - var(--t-space-9)),
 					transparent
 				);
 			}
@@ -134,7 +166,7 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 			[data-part="label"] {
 				font-size: var(--t-font-size-2xsmall);
 				font-weight: var(--t-font-weight-500);
-				padding-inline: calc(var(--t-space-5) + var(--t-space-0-5));
+				padding-inline-start: calc(var(--t-space-5) + var(--t-space-0-5));
 				color: color-mix(in srgb, currentcolor, transparent 40%);
 			}
 
@@ -145,15 +177,22 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 			}
 
 			[data-part="list-item"] {
+				--s-margin-inline: calc(var(--t-space-5) + var(--t-space-0-5));
+
 				display: flex;
 				align-items: center;
 				gap: var(--t-space-1-5);
 				font-size: var(--t-font-size-xsmall);
+				margin-inline: var(--s-margin-inline);
+
+				&:has([href]) {
+					--s-margin-inline: 0;
+				}
 			}
 
 			[data-part="link"] {
 				--s-background-color: transparent;
-				--s-color: currentcolor;
+				--s-color: color-mix(in srgb, currentcolor, transparent 10%);
 				--s-font-weight: unset;
 				--s-margin-inline: calc(var(--t-space-2) + var(--t-space-0-5));
 
@@ -169,7 +208,7 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 				color: var(--s-color);
 				background-color: var(--s-background-color);
 				transition: var(--t-transition-default);
-				transition-property: background-color, color;
+				transition-property: background-color, color, font-weight;
 
 				&::before {
 					--s-background-color: transparent;
@@ -186,6 +225,16 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 					transition-property: background-color;
 				}
 
+				@media (hover: hover) {
+					&:hover {
+						--s-color: currentcolor;
+						--s-background-color: light-dark(
+							color-mix(in srgb, currentcolor, transparent 94%),
+							color-mix(in srgb, currentcolor, transparent 88%)
+						);
+					}
+				}
+
 				&[aria-current="page"] {
 					--s-background-color: var(--t-color-brand);
 					--s-color: light-dark(currentcolor, var(--t-color-background-base));
@@ -196,13 +245,6 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 						--s-background-color: currentcolor;
 						--s-display: block;
 					}
-				}
-
-				&:hover:not([aria-current="page"]) {
-					--s-background-color: light-dark(
-						color-mix(in srgb, currentcolor, transparent 94%),
-						color-mix(in srgb, currentcolor, transparent 88%)
-					);
 				}
 			}
 		}

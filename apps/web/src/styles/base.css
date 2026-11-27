@@ -1,4 +1,6 @@
 html {
+	--s-scroll-padding-block-start: var(--t-app-scroll-padding-block-start, 1.5rlh);
+
 	font-family: var(--t-font-family-base, ui-sans-serif, system-ui, sans-serif);
 	font-size: var(--t-font-size-base, 1rem);
 	line-height: var(--t-font-line-height-base, 1.5);
@@ -6,8 +8,14 @@ html {
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	tab-size: 4;
-	scroll-padding-block-start: var(--t-app-scroll-padding-block-start, 1.5rlh);
 	min-block-size: 100svb;
+	scroll-padding-block-start: var(--s-scroll-padding-block-start);
+
+	&:has([data-component="app-header"][data-sticky]) {
+		--s-scroll-padding-block-start: calc(
+			var(--t-app-header-block-size, 0px) + var(--t-app-scroll-padding-block-start, 1.5rlh)
+		);
+	}
 }
 
 body {

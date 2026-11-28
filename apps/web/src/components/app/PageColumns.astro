@@ -62,6 +62,7 @@ const hasSidebar = Astro.slots.has("sidebar");
 			& > :global([data-slot="sidebar"]) {
 				grid-column: 1;
 				align-self: start;
+				margin-block-start: calc(-1 * var(--t-app-header-scrim-block-size));
 			}
 
 			& > [data-part="main"] > :global([data-slot="article"]) {
@@ -74,7 +75,6 @@ const hasSidebar = Astro.slots.has("sidebar");
 				grid-column: var(--p-main-grid-column);
 				display: grid;
 				grid-template-columns: subgrid;
-				padding-block-end: var(--t-space-24);
 			}
 		}
 	}

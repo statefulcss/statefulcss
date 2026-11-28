@@ -28,10 +28,10 @@ const contents = headings.filter((heading) => heading.depth === 2 || heading.dep
 <style>
 	@layer components {
 		/**
-		 * Article
-		 * @component article
-		 * @queries --q-page-columns-outline
-		 */
+		* Article
+		* @component article
+		* @queries --q-page-columns-outline
+		*/
 		[data-component="article"] {
 			--s-grid-template-areas: "header" "content" "navigation";
 
@@ -39,8 +39,6 @@ const contents = headings.filter((heading) => heading.depth === 2 || heading.dep
 			grid-template-columns: subgrid;
 			grid-template-rows: auto auto 1fr;
 			grid-template-areas: var(--s-grid-template-areas);
-			padding-block-start: var(--t-space-9);
-			margin-block-end: var(--t-space-12);
 
 			@container style(--q-page-columns-outline: visible) {
 				--s-grid-template-areas: "header outline" "content outline" "navigation outline";
@@ -54,22 +52,20 @@ const contents = headings.filter((heading) => heading.depth === 2 || heading.dep
 				margin-inline: auto;
 			}
 
-			& > :global([data-slot="content"]),
-			& > :global([data-slot="navigation"]) {
-				margin-block-start: var(--t-space-12);
-			}
-
 			& > :global([data-slot="header"]) {
 				grid-area: header;
 			}
+
 			& > :global([data-slot="outline"]) {
 				grid-area: outline;
 				align-self: start;
-				/* justify-self: end; */
+				margin-block-start: calc(-1 * var(--t-app-header-scrim-block-size));
 			}
+
 			& > :global([data-slot="content"]) {
 				grid-area: content;
 			}
+
 			& > :global([data-slot="navigation"]) {
 				grid-area: navigation;
 			}

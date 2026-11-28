@@ -25,15 +25,14 @@ const { "data-slot": dataSlot } = Astro.props;
 <style>
 	[data-component="app-footer"] {
 		--s-block-size: auto;
-		--s-padding-block: var(--t-space-6);
+		--s-padding-block: var(--t-space-9);
 		--s-grid-template: "studio-logo" "legal-nav" / 1fr;
 		--p-legal-nav-justify-self: start;
 
 		display: grid;
 		grid-template: var(--s-grid-template);
 		align-items: center;
-		column-gap: var(--t-space-6);
-		row-gap: var(--t-space-4);
+		gap: var(--t-space-6);
 		block-size: var(--s-block-size);
 		padding-block: var(--s-padding-block);
 		font-size: var(--t-font-size-xsmall);

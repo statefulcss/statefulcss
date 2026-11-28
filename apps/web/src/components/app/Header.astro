@@ -14,7 +14,7 @@ const { "data-slot": dataSlot, "data-sticky": dataSticky } = Astro.props;
 	<nav aria-label="Primary" data-part="primary-nav">
 		<ul role="list">
 			<li>
-				<a href="/docs/">Documentation</a>
+				<a href="/docs/">Docs</a>
 			</li>
 			<li>
 				<a href="https://github.com/statefulcss/statefulcss" rel="noopener noreferrer" data-item="github">
@@ -89,7 +89,7 @@ const { "data-slot": dataSlot, "data-sticky": dataSticky } = Astro.props;
 				& > ul {
 					display: flex;
 					align-items: center;
-					gap: var(--t-space-4);
+					gap: var(--t-space-6);
 					justify-content: flex-end;
 					font-size: var(--t-font-size-small);
 					font-weight: var(--t-font-weight-450);
@@ -108,7 +108,7 @@ const { "data-slot": dataSlot, "data-sticky": dataSticky } = Astro.props;
 				position: absolute;
 				inset-inline: 0;
 				inset-block-start: 100%;
-				block-size: var(--t-space-12);
+				block-size: var(--t-app-header-scrim-block-size);
 				pointer-events: none;
 
 				& > span {

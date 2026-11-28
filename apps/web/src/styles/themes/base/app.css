@@ -10,7 +10,7 @@
 		--t-app-gutter: var(--t-space-9);
 	}
 
-	--t-app-header-block-size: 5rem;
+	--t-app-header-block-size: 4.5rem;
 	--t-app-header-scrim-block-size: var(--t-space-12);
 	--t-app-footer-block-size: 4.5rem;
 	--t-app-content-max-size: 40rem;

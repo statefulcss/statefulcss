@@ -107,10 +107,10 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 <style>
 	@layer components {
 		/**
-			* Docs Sidebar
-			* @component docs-sidebar
-			* @queries --q-page-columns-sidebar
-			*/
+				* Docs Sidebar
+				* @component docs-sidebar
+				* @queries --q-page-columns-sidebar
+				*/
 		[data-component="docs-sidebar"] {
 			--s-display: none;
 
@@ -121,7 +121,10 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 			display: var(--s-display);
 			flex-direction: column;
 			gap: var(--t-space-6);
-			max-block-size: calc(100svb - var(--t-app-header-block-size));
+			max-block-size: calc(
+				100svb - var(--t-app-header-block-size) - var(--t-app-page-row-gap) - var(--t-app-footer-block-size) +
+					var(--t-app-scroll-fade-block-size)
+			);
 			overflow-y: auto;
 			overscroll-behavior: contain;
 			scrollbar-width: none;

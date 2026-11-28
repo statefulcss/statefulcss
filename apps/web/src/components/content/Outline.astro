@@ -11,6 +11,18 @@ interface Props {
 const { contents, "data-slot": dataSlot } = Astro.props;
 ---
 
+<script>
+	import { revealInFade } from "../../scripts/reveal-in-fade";
+
+	// One listener on the document keeps working after <ClientRouter /> swaps in a new outline.
+	document.addEventListener("click", (event) => {
+		if (!(event.target instanceof Element)) return;
+		const link = event.target.closest('[data-component="outline"] a');
+		const outline = link?.closest('[data-component="outline"]');
+		if (link && outline) revealInFade(outline, link);
+	});
+</script>
+
 <nav data-component="outline" data-slot={dataSlot} aria-labelledby="outline-title">
 	<span id="outline-title" data-part="title">
 		On this page
@@ -46,6 +58,7 @@ const { contents, "data-slot": dataSlot } = Astro.props;
 			overflow-y: auto;
 			overscroll-behavior: contain;
 			padding-block: var(--t-app-header-scrim-block-size) var(--t-app-scroll-fade-block-size);
+			scroll-padding-block: var(--t-app-header-scrim-block-size) var(--t-app-scroll-fade-block-size);
 			scrollbar-width: none;
 			mask-image: linear-gradient(
 				to bottom,

@@ -12,28 +12,10 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 
 <script>
 	import { swapFunctions } from "astro:transitions/client";
+	import { revealInFade } from "../../scripts/reveal-in-fade";
 
 	const SIDEBAR = '[data-component="docs-sidebar"]';
 	const MAIN = "#main-content";
-
-	// Scrolls the list when the current link sits under a fade: scroll to top, bottom or center.
-	function revealCurrent(sidebar: Element) {
-		const link = sidebar.querySelector<HTMLElement>('a[aria-current="page"]');
-		if (!link || sidebar.clientHeight === 0) return;
-
-		const style = getComputedStyle(sidebar);
-		const fadeStart = parseFloat(style.scrollPaddingBlockStart) || 0;
-		const fadeEnd = parseFloat(style.scrollPaddingBlockEnd) || 0;
-		const view = sidebar.getBoundingClientRect();
-		const box = link.getBoundingClientRect();
-		if (box.top >= view.top + fadeStart && box.bottom <= view.bottom - fadeEnd) return;
-
-		const offset = box.top - view.top + sidebar.scrollTop;
-		const max = sidebar.scrollHeight - sidebar.clientHeight;
-		const centered = offset + box.height / 2 - sidebar.clientHeight / 2;
-		const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-		sidebar.scrollTo({ top: Math.min(Math.max(centered, 0), max), behavior: reduce ? "auto" : "smooth" });
-	}
 
 	// Swap main-content on route changes, keep the sidebar in place so scroll position and hover state survive
 	document.addEventListener("astro:before-swap", (event) => {
@@ -63,16 +45,15 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 				else link.removeAttribute("aria-current");
 			}
 
-			requestAnimationFrame(() => revealCurrent(sidebar));
+			const current = sidebar.querySelector('a[aria-current="page"]');
+			if (current) requestAnimationFrame(() => revealInFade(sidebar, current));
 		};
 	});
 
 	// A direct visit: show the current link without animating.
-	const sidebar = document.querySelector<HTMLElement>(SIDEBAR);
-	if (sidebar) {
-		const link = sidebar.querySelector<HTMLElement>('a[aria-current="page"]');
-		if (link) sidebar.scrollTop = link.offsetTop - sidebar.clientHeight / 2;
-	}
+	const sidebar = document.querySelector(SIDEBAR);
+	const current = sidebar?.querySelector('a[aria-current="page"]');
+	if (sidebar && current) revealInFade(sidebar, current, "instant");
 </script>
 
 <nav data-component="docs-sidebar" data-slot={dataSlot} aria-label="Documentation">

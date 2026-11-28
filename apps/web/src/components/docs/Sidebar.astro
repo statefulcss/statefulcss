@@ -45,14 +45,14 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 				else link.removeAttribute("aria-current");
 			}
 
-			const current = sidebar.querySelector('a[aria-current="page"]');
+			const current = sidebar.querySelector("a[aria-current]");
 			if (current) requestAnimationFrame(() => revealInFade(sidebar, current));
 		};
 	});
 
 	// A direct visit: show the current link without animating.
 	const sidebar = document.querySelector(SIDEBAR);
-	const current = sidebar?.querySelector('a[aria-current="page"]');
+	const current = sidebar?.querySelector("a[aria-current]");
 	if (sidebar && current) revealInFade(sidebar, current, "instant");
 </script>
 
@@ -205,7 +205,7 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 					}
 				}
 
-				&[aria-current="page"] {
+				&[aria-current] {
 					--s-background-color: var(--t-color-brand);
 					--s-color: light-dark(currentcolor, var(--t-color-background-base));
 					--s-font-weight: var(--t-font-weight-500);

@@ -39,7 +39,7 @@ describe("code blocks", () => {
 	it("wraps the code in a code block with its title and a hidden copy button", async () => {
 		const html = await render('```css title="src/styles/button.css"\n.button {}\n```');
 
-		expect(html).toMatch(/^<figure class="code-block" data-component="" data-language="css">/);
+		expect(html).toMatch(/^<figure data-component="code-block" data-language="css">/);
 		expect(html).toContain('<figcaption data-part="title">src/styles/button.css</figcaption>');
 		expect(html).toContain('data-part="code"');
 		expect(html).toMatch(/<button type="button" data-part="copy" hidden>Copy<\/button><\/figure>$/);
@@ -49,6 +49,27 @@ describe("code blocks", () => {
 		const html = await render("```css\n.button {}\n```");
 
 		expect(html).not.toContain("figcaption");
+	});
+
+	it("leaves the language out for plain text", async () => {
+		const html = await render("```text\nplain\n```");
+
+		expect(html).toMatch(/^<figure data-component="code-block">/);
+	});
+
+	it("turns on line numbers from the info string", async () => {
+		const html = await render('```css title="a.css" lineNumbers {1}\n.a {}\n```');
+
+		expect(html).toMatch(/^<figure data-component="code-block" data-language="css" data-line-numbers="">/);
+		expect(html).toContain('<figcaption data-part="title">a.css</figcaption>');
+		expect(html).toContain('class="line highlighted"');
+		expect(html).not.toMatch(/<pre[^>]*\s(title|linenumbers)=/i);
+	});
+
+	it("leaves no newlines between lines", async () => {
+		const html = await render("```css\n.a {}\n\n.b {}\n```");
+
+		expect(html).toContain('</span><span class="line"></span><span class="line">');
 	});
 
 	it("writes token colors as light-dark() and no background", async () => {
@@ -69,5 +90,16 @@ describe("code blocks", () => {
 
 		expect(html).toContain('class="line highlighted"');
 		expect(html).toContain('class="line diff add"');
+	});
+
+	it("marks focused lines and error levels", async () => {
+		const html = await render(
+			"```js\na(); // [!code focus]\nb(); // [!code error]\nc(); // [!code warning]\n```",
+		);
+
+		expect(html).toContain("has-focused");
+		expect(html).toContain('class="line focused"');
+		expect(html).toContain('class="line highlighted error"');
+		expect(html).toContain('class="line highlighted warning"');
 	});
 });

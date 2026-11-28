@@ -10,6 +10,9 @@ test.describe("accessibility", () => {
 			await page.goto(route);
 			const results = await new AxeBuilder({ page })
 				.withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+				// A code block fades the lines outside its focus on purpose. They return to full contrast
+				// when the block is hovered or holds focus, and touch screens never fade them.
+				.exclude('[data-component="code-block"] .has-focused .line:not(.focused)')
 				.analyze();
 
 			const blocking = results.violations.filter(

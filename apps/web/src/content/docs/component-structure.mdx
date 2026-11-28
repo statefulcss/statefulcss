@@ -1,0 +1,205 @@
+---
+title: Component Structure
+summary: Sample content for checking code blocks. Each component is written in four regions, defaults, bindings, variants and states.
+status: published
+---
+
+A component declares each property once. When something needs to change it, the property reads a state variable, and the variants and states change that variable instead.
+
+## The four regions
+
+A component's root block reads top to bottom in four regions: defaults, bindings, variants and states.
+
+```css title="src/components/button.css" lineNumbers
+/**
+ * Button
+ * @component button
+ */
+[data-component="button"] {
+	/* Defaults */
+	--s-background-color: var(--c-button-background-color, var(--t-color-surface));
+	--s-color: var(--c-button-color, var(--t-color-text));
+	--s-cursor: pointer;
+
+	/* Bindings */
+	display: inline-flex;
+	align-items: center;
+	gap: var(--t-space-2);
+	padding-block: var(--t-space-2);
+	padding-inline: var(--c-button-padding-inline, var(--t-space-4));
+	border-radius: var(--c-button-border-radius, var(--t-radius-medium));
+	background-color: var(--s-background-color);
+	color: var(--s-color);
+	cursor: var(--s-cursor);
+
+	/* Variants */
+	&[data-intent="danger"] {
+		--s-background-color: var(--t-color-danger);
+		--s-color: var(--t-color-on-danger);
+	}
+
+	/* States */
+	&:hover {
+		--s-background-color: var(--t-color-surface-hover);
+	}
+
+	&:disabled {
+		--s-cursor: not-allowed;
+	}
+}
+```
+
+The bindings never change. Only the variables they read do.
+
+## Highlighting what matters
+
+A property that nothing changes reads its component variable directly, with the component's own default as the fallback.
+
+```css {2,3} /--c-card-padding/
+[data-component="card"] {
+	padding: var(--c-card-padding, var(--t-space-4));
+	border-radius: var(--c-card-border-radius, var(--t-radius-large));
+	background-color: var(--t-color-surface);
+}
+```
+
+When a state changes the property, it binds to a state variable, and the component variable becomes that state variable's default.
+
+```css
+[data-component="tab"] {
+	--s-padding-inline: var(--c-tab-padding-inline, var(--t-space-3)); /* [!code focus] */
+
+	padding-inline: var(--s-padding-inline); /* [!code focus] */
+
+	&[aria-selected="true"] {
+		--s-padding-inline: var(--t-space-4);
+	}
+}
+```
+
+## Fixing a competing state
+
+Two states that set the same property compete, and the one written last wins even when it shouldn't.
+
+```css title="Before and after"
+[data-component="button"] {
+	&:hover {
+		background-color: var(--t-color-surface-hover); /* [!code --] */
+		--s-background-color: var(--t-color-surface-hover); /* [!code ++] */
+	}
+
+	&:disabled {
+		background-color: var(--t-color-surface); /* [!code --] */
+		--s-background-color: var(--t-color-surface); /* [!code ++] */
+	}
+}
+```
+
+The linter reports a state that writes a property instead of a state variable.
+
+```css title="Reported"
+[data-component="button"] {
+	--s-color: var(--t-color-text);
+
+	color: var(--s-color);
+
+	&:hover {
+		color: var(--t-color-text-hover); /* [!code error] */
+	}
+
+	&:focus-visible {
+		--s-colour: var(--t-color-text-hover); /* [!code warning] */
+	}
+}
+```
+
+## Parts
+
+Parts are styled in one flat scope after the root block. The scope stops at the next component, so a nested component keeps its own styles.
+
+```css lineNumbers {15-17}
+[data-component="card"] {
+	--p-title-color: var(--c-card-title-color, currentcolor);
+
+	&[data-intent="muted"] {
+		--p-title-color: var(--t-color-text-muted);
+	}
+}
+
+@scope ([data-component="card"]) to ([data-component]) {
+	[data-part="title"] {
+		font-size: var(--t-font-size-large);
+		color: var(--p-title-color);
+	}
+
+	p {
+		margin-block-end: var(--t-space-2);
+	}
+}
+```
+
+The markup names the component and its parts.
+
+```html title="card.html"
+<article data-component="card" data-intent="muted">
+	<h2 data-part="title">Plans</h2>
+	<!-- [!code highlight] -->
+	<p>Pick the plan that fits your team.</p>
+	<a data-component="button" data-slot="action" href="/pricing/">See pricing</a>
+</article>
+```
+
+## Long lines
+
+A long line scrolls inside the block instead of widening the page.
+
+```css lineNumbers
+[data-component="dialog"] {
+	--s-box-shadow: var(
+		--c-dialog-box-shadow,
+		0 1px 2px rgb(0 0 0 / 6%),
+		0 8px 24px rgb(0 0 0 / 12%),
+		0 24px 64px rgb(0 0 0 / 16%)
+	);
+	box-shadow: var(--s-box-shadow);
+}
+```
+
+## Install
+
+```bash
+pnpm add --save-dev stylelint @statefulcss/stylelint-plugin
+```
+
+```js title="stylelint.config.js"
+export default {
+	extends: ["@statefulcss/stylelint-plugin/recommended"],
+};
+```
+
+```ts title="src/scripts/theme.ts" lineNumbers {4}
+const root = document.documentElement;
+
+export function setScheme(scheme: "light" | "dark" | "auto") {
+	root.dataset.scheme = scheme === "auto" ? undefined : scheme;
+}
+```
+
+## Plain text
+
+```text
+src/
+  components/
+    button.css
+    card.css
+  styles/
+    index.css
+```
+
+A block with no language:
+
+```
+statefulcss/bind-once: Unexpected "color" bound twice on "[data-component='button']".
+```
+
+Inline code like `--s-color` and `[data-component="button"]` sits in the text.

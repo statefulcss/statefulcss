@@ -9,7 +9,43 @@
 [data-theme] {
 	color-scheme: light dark;
 
-	--t-color-background-root: light-dark(oklch(100% 0 0), oklch(0% 0 0));
-	--t-color-background-base: light-dark(oklch(100% 0 0), oklch(0% 0 0));
-	--t-color-foreground-base: light-dark(oklch(0% 0 0), oklch(100% 0 0));
+	--t-color-brand: oklch(0.925 0.18 116);
+	--t-color-brand-studio: oklch(70.09% 0.20117 44.755);
+
+	--t-color-ring-focus: var(--t-color-brand);
+
+	--t-color-background-base: light-dark(oklch(0.99 0 0), oklch(0.16 0 0));
+	--t-color-foreground-base: light-dark(oklch(0.15 0 0), oklch(0.93 0 0));
+
+	--t-color-selection-background: color-mix(in srgb, var(--t-color-brand), transparent 15%);
+	--t-color-selection-foreground: light-dark(black, var(--t-color-background-base));
+
+	--t-color-text-decoration: color-mix(in srgb, currentcolor, transparent 35%);
+	--t-color-text-decoration-hover: light-dark(currentcolor, var(--t-color-brand));
+
+	/*
+	 * Code blocks. Token colors come from Shiki's high-contrast GitHub themes, whose comments are
+	 * the lowest contrast (#66707b light, #bdc4cc dark). Line backgrounds are translucent and keep
+	 * those comments at 4.5:1 or more over the code background.
+	 */
+	--t-color-code-background: light-dark(#fff, #181818);
+	--t-color-code-header-background: light-dark(#f7f7f7, #1f1f1f);
+	--t-color-code-border-start: light-dark(
+		color-mix(in srgb, currentcolor, transparent 93%),
+		color-mix(in srgb, currentcolor, transparent 87%)
+	);
+	--t-color-code-border-end: light-dark(
+		color-mix(in srgb, currentcolor, transparent 92%),
+		color-mix(in srgb, currentcolor, transparent 86%)
+	);
+	--t-color-code-muted: color-mix(in srgb, currentcolor, transparent 35%);
+	--t-color-code-highlight-background: light-dark(rgb(223 245 86 / 30%), rgb(223 245 86 / 12%));
+	--t-color-code-highlight-accent: light-dark(#8a9a1b, var(--t-color-brand));
+	--t-color-code-word-background: light-dark(rgb(223 245 86 / 40%), rgb(223 245 86 / 20%));
+	--t-color-code-add-background: light-dark(rgb(26 127 55 / 7%), rgb(63 185 80 / 15%));
+	--t-color-code-add-accent: light-dark(#1a7f37, #3fb950);
+	--t-color-code-remove-background: light-dark(rgb(207 34 46 / 6%), rgb(248 81 73 / 15%));
+	--t-color-code-remove-accent: light-dark(#cf222e, #f85149);
+	--t-color-code-warning-background: light-dark(rgb(191 135 0 / 9%), rgb(210 153 34 / 15%));
+	--t-color-code-warning-accent: light-dark(#9a6700, #d29922);
 }

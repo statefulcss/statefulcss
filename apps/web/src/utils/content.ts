@@ -74,8 +74,11 @@ export function getSidebar(entries: DocsEntry[], currentId?: string): SidebarSec
 		.filter((section) => section.items.length > 0);
 }
 
-/** The linked pages before and after the current one, in sidebar order. */
-export function getPager(sections: SidebarSection[]): { previous?: SidebarItem; next?: SidebarItem } {
+/** The previous and next pages, in sidebar order. */
+export function getPageNavigation(sections: SidebarSection[]): {
+	previous?: SidebarItem;
+	next?: SidebarItem;
+} {
 	const linked = sections.flatMap((section) => section.items).filter((item) => item.href || item.current);
 	const index = linked.findIndex((item) => item.current);
 	if (index === -1) return {};

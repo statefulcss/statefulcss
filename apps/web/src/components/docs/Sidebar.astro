@@ -1,0 +1,222 @@
+---
+import type { SidebarSection } from "@utils/content";
+
+interface Props {
+	"data-slot"?: string;
+	canonical: string;
+	sidebar: SidebarSection[];
+}
+
+const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
+---
+
+<script>
+	import { swapFunctions } from "astro:transitions/client";
+	import { revealInFade } from "../../scripts/reveal-in-fade";
+
+	const SIDEBAR = '[data-component="docs-sidebar"]';
+	const MAIN = "#main-content";
+
+	// Swap main-content on route changes, keep the sidebar in place so scroll position and hover state survive
+	document.addEventListener("astro:before-swap", (event) => {
+		const sidebar = document.querySelector(SIDEBAR);
+		const main = document.querySelector(MAIN);
+		const nextSidebar = event.newDocument.querySelector(SIDEBAR);
+		const nextMain = event.newDocument.querySelector(MAIN);
+		if (!sidebar || !main || !nextSidebar || !nextMain) return;
+
+		event.swap = () => {
+			swapFunctions.deselectScripts(event.newDocument);
+			swapFunctions.swapRootAttributes(event.newDocument);
+			swapFunctions.swapHeadElements(event.newDocument);
+			const restoreFocus = swapFunctions.saveFocus();
+			main.replaceWith(nextMain);
+			restoreFocus();
+
+			const states = new Map(
+				[...nextSidebar.querySelectorAll("a[href]")].map((a) => [
+					a.getAttribute("href"),
+					a.getAttribute("aria-current"),
+				]),
+			);
+			for (const link of sidebar.querySelectorAll("a[href]")) {
+				const value = states.get(link.getAttribute("href"));
+				if (value) link.setAttribute("aria-current", value);
+				else link.removeAttribute("aria-current");
+			}
+
+			const current = sidebar.querySelector("a[aria-current]");
+			if (current) requestAnimationFrame(() => revealInFade(sidebar, current));
+		};
+	});
+
+	// A direct visit: show the current link without animating.
+	const sidebar = document.querySelector(SIDEBAR);
+	const current = sidebar?.querySelector("a[aria-current]");
+	if (sidebar && current) revealInFade(sidebar, current, "instant");
+</script>
+
+<nav data-component="docs-sidebar" data-slot={dataSlot} aria-label="Documentation">
+	{sidebar.map((section, index) => (
+		<div data-part="section">
+			{section.label && (
+				<span data-part="label" id={`docs-section-${index}`}>
+					{section.label}
+				</span>
+			)}
+			<ul role="list" data-part="list" aria-labelledby={section.label ? `docs-section-${index}` : undefined}>
+				{section.items.map((item) => (
+					<li data-part="list-item" data-draft={item.draft || undefined}>
+						{item.href ? (
+							<a
+								href={item.href}
+								aria-current={item.current ? (item.href === canonical ? "page" : "true") : undefined}
+								data-part="link"
+							>
+								{item.title}
+							</a>
+						) : (
+							<span>{item.title}</span>
+						)}
+					</li>
+				))}
+			</ul>
+		</div>
+	))}
+</nav>
+
+<style>
+	@layer components {
+		/**
+				* Docs Sidebar
+				* @component docs-sidebar
+				* @queries --q-page-columns-sidebar
+				*/
+		[data-component="docs-sidebar"] {
+			--s-display: none;
+
+			align-self: start;
+			position: sticky;
+			z-index: 10;
+			inset-block-start: var(--t-app-header-block-size);
+			display: var(--s-display);
+			flex-direction: column;
+			gap: var(--t-space-6);
+			max-block-size: calc(
+				100svb - var(--t-app-header-block-size) - var(--t-app-page-row-gap) - var(--t-app-footer-block-size) +
+					var(--t-app-scroll-fade-block-size)
+			);
+			overflow-y: auto;
+			overscroll-behavior: contain;
+			scrollbar-width: none;
+			padding-block: var(--t-app-header-scrim-block-size) var(--t-app-scroll-fade-block-size);
+			padding-inline: var(--t-focus-ring-extent);
+			margin-inline: calc(-1 * var(--t-focus-ring-extent));
+			scroll-padding-block: var(--t-app-header-scrim-block-size) var(--t-app-scroll-fade-block-size);
+			mask-image: linear-gradient(
+				to bottom,
+				transparent,
+				oklch(0 0 0) var(--t-app-scroll-fade-block-size),
+				oklch(0 0 0) calc(100% - var(--t-app-scroll-fade-block-size)),
+				transparent
+			);
+
+			@container style(--q-page-columns-sidebar: visible) {
+				--s-display: flex;
+			}
+		}
+
+		@scope ([data-component="docs-sidebar"]) to (:global([data-component])) {
+			[data-part="section"] {
+				display: flex;
+				flex-direction: column;
+				gap: var(--t-space-1-5);
+			}
+
+			[data-part="label"] {
+				font-size: var(--t-font-size-2xsmall);
+				font-weight: var(--t-font-weight-500);
+				padding-inline-start: calc(var(--t-space-5) + var(--t-space-0-5));
+				color: color-mix(in srgb, currentcolor, transparent 40%);
+			}
+
+			[data-part="list"] {
+				display: flex;
+				flex-direction: column;
+				gap: var(--t-space-1);
+			}
+
+			[data-part="list-item"] {
+				--s-margin-inline: calc(var(--t-space-5) + var(--t-space-0-5));
+
+				display: flex;
+				align-items: center;
+				gap: var(--t-space-1-5);
+				font-size: var(--t-font-size-xsmall);
+				margin-inline: var(--s-margin-inline);
+
+				&:has([href]) {
+					--s-margin-inline: 0;
+				}
+			}
+
+			[data-part="link"] {
+				--s-background-color: transparent;
+				--s-color: color-mix(in srgb, currentcolor, transparent 10%);
+				--s-font-weight: unset;
+				--s-margin-inline: calc(var(--t-space-2) + var(--t-space-0-5));
+
+				display: flex;
+				align-items: center;
+				gap: var(--t-space-1-5);
+				font-weight: var(--s-font-weight);
+				text-decoration: none;
+				padding-block: var(--t-space-0-5);
+				padding-inline: var(--t-space-3);
+				margin-inline: var(--s-margin-inline);
+				border-radius: var(--t-radius-full);
+				color: var(--s-color);
+				background-color: var(--s-background-color);
+				transition: var(--t-transition-default);
+				transition-property: background-color, color, font-weight;
+
+				&::before {
+					--s-background-color: transparent;
+					--s-display: none;
+
+					content: "";
+					display: var(--s-display);
+					aspect-ratio: 1 / 1;
+					block-size: var(--t-space-1-5);
+					border-radius: var(--t-radius-full);
+					background-color: var(--s-background-color);
+					margin-inline-start: calc(-1 * var(--t-space-0-5));
+					transition: var(--t-transition-default);
+					transition-property: background-color;
+				}
+
+				@media (hover: hover) {
+					&:hover {
+						--s-color: currentcolor;
+						--s-background-color: light-dark(
+							color-mix(in srgb, currentcolor, transparent 94%),
+							color-mix(in srgb, currentcolor, transparent 88%)
+						);
+					}
+				}
+
+				&[aria-current] {
+					--s-background-color: var(--t-color-brand);
+					--s-color: light-dark(currentcolor, var(--t-color-background-base));
+					--s-font-weight: var(--t-font-weight-500);
+					--s-margin-inline: 0;
+
+					&::before {
+						--s-background-color: currentcolor;
+						--s-display: block;
+					}
+				}
+			}
+		}
+	}
+</style>

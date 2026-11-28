@@ -40,7 +40,7 @@ const {
 ---
 
 <!doctype html>
-<html lang="en" data-scheme="light" data-theme="base">
+<html lang="en" data-scheme="light" data-theme="base" transition:animate="none">
 	<head>
 		<Head
 			title={title}
@@ -60,25 +60,34 @@ const {
 		/>
 	</head>
 	<body>
-		<div class="app-container">
-			<Header />
-			<main id="main-content" class="main-content">
+		<div data-component="app-container">
+			<Header data-slot="app-header" data-sticky />
+			<div id="app-page" data-slot="app-page">
 				<slot />
-			</main>
-			<Footer />
+			</div>
+			<Footer data-slot="app-footer" />
 		</div>
 	</body>
 </html>
 
 <style>
-	.app-container {
-		display: flex;
-		flex-direction: column;
-		min-height: 100dvh;
-	}
+	@layer components {
+		[data-component="app-container"] {
+			display: flex;
+			flex-direction: column;
+			align-items: stretch;
+			min-height: 100svb;
+			row-gap: var(--t-app-page-row-gap);
 
-	.main-content {
-		flex: 1;
-		padding-block: var(--t-space-6);
+			& > :global([data-slot]) {
+				padding-inline: var(--t-app-page-gutter);
+			}
+
+			& > :global([data-slot="app-page"]) {
+				flex: 1;
+				display: grid;
+				/* min-block-size: var(--t-app-page-block-size); */
+			}
+		}
 	}
 </style>

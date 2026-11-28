@@ -1,26 +1,20 @@
 ---
-import type { MarkdownHeading } from "astro";
-
+import PageColumns from "@components/app/PageColumns.astro";
+import Sidebar from "@components/docs/Sidebar.astro";
 import type { JsonLdSchema } from "@config/site";
 import Layout from "@layouts/Layout.astro";
-import { getPager, type SidebarItem, type SidebarSection } from "@utils/content";
+import { type SidebarSection } from "@utils/content";
 
 interface Props {
 	title: string;
 	summary: string;
-	draft: boolean;
-	headings: MarkdownHeading[];
+	image: string;
 	sidebar: SidebarSection[];
 	canonical: string;
-	image: string;
 	schema: JsonLdSchema[];
-	/** For pages that aren't in the sidebar themselves, such as a lint rule's: where its previous and next links go. */
-	pager?: { previous?: Pick<SidebarItem, "title" | "href">; next?: Pick<SidebarItem, "title" | "href"> };
 }
 
-const { title, summary, draft, headings, sidebar, canonical, image, schema, pager } = Astro.props;
-const { previous, next } = pager ?? getPager(sidebar);
-const contents = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
+const { title, summary, sidebar, canonical, image, schema } = Astro.props;
 ---
 
 <Layout
@@ -31,74 +25,8 @@ const contents = headings.filter((heading) => heading.depth === 2 || heading.dep
 	image={image}
 	schema={schema}
 >
-	<div class="docs">
-		<nav class="docs-sidebar" aria-label="Docs">
-			{sidebar.map((section, index) => (
-				<div data-part="section">
-					{section.label && (
-						<span data-part="label" id={`docs-section-${index}`}>
-							{section.label}
-						</span>
-					)}
-					<ul aria-labelledby={section.label ? `docs-section-${index}` : undefined}>
-						{section.items.map((item) => (
-							<li data-draft={item.draft || undefined}>
-								{item.href ? (
-									<a
-										href={item.href}
-										aria-current={item.current ? (item.href === canonical ? "page" : "true") : undefined}
-									>
-										{item.title}
-									</a>
-								) : (
-									<span>{item.title}</span>
-								)}
-								{item.draft && <span data-part="draft">Draft</span>}
-							</li>
-						))}
-					</ul>
-				</div>
-			))}
-		</nav>
-
-		<article class="docs-page" data-draft={draft || undefined}>
-			<header>
-				<h1>{title}</h1>
-				{draft && <p data-part="draft">Draft</p>}
-				<p data-part="summary">{summary}</p>
-				<slot name="details" />
-			</header>
-
-			{contents.length > 0 && (
-				<nav class="docs-contents" aria-label="On this page">
-					<ul>
-						{contents.map((heading) => (
-							<li data-depth={heading.depth}>
-								<a href={`#${heading.slug}`}>{heading.text}</a>
-							</li>
-						))}
-					</ul>
-				</nav>
-			)}
-
-			<div data-part="content">
-				<slot />
-			</div>
-
-			{(previous || next) && (
-				<nav class="docs-pager" aria-label="Previous and next pages">
-					{previous?.href && (
-						<a href={previous.href} rel="prev" data-part="previous">
-							<span>Previous</span> {previous.title}
-						</a>
-					)}
-					{next?.href && (
-						<a href={next.href} rel="next" data-part="next">
-							<span>Next</span> {next.title}
-						</a>
-					)}
-				</nav>
-			)}
-		</article>
-	</div>
+	<PageColumns>
+		<Sidebar slot="sidebar" data-slot="sidebar" canonical={canonical} sidebar={sidebar} />
+		<slot />
+	</PageColumns>
 </Layout>

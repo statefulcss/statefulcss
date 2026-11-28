@@ -1,22 +1,168 @@
-<header>
-	<a href="/" class="brand">
+---
+interface Props {
+	"data-slot"?: string;
+	"data-sticky"?: boolean;
+}
+
+const { "data-slot": dataSlot, "data-sticky": dataSticky } = Astro.props;
+---
+
+<header data-slot={dataSlot} data-component="app-header" data-sticky={dataSticky || undefined}>
+	<a href="/" data-part="brand">
 		Stateful CSS
 	</a>
-	<nav aria-label="Primary" class="primary-nav">
-		<ul>
+	<nav aria-label="Primary" data-part="primary-nav">
+		<ul role="list">
 			<li>
-				<a href="/docs/">Documentation</a>
+				<a href="/docs/">Docs</a>
 			</li>
 			<li>
-				<a
-					href="https://github.com/statefulcss/statefulcss"
-					target="_blank"
-					rel="noopener noreferrer"
-					data-item="github"
-				>
+				<a href="https://github.com/statefulcss/statefulcss" rel="noopener noreferrer" data-item="github">
 					GitHub
 				</a>
 			</li>
 		</ul>
 	</nav>
+	<div data-part="scrim" aria-hidden="true">
+		<span></span>
+		<span></span>
+		<span></span>
+		<span></span>
+	</div>
 </header>
+
+<style>
+	@layer components {
+		[data-component="app-header"] {
+			--s-position: relative;
+			--p-scrim-display: none;
+
+			position: var(--s-position);
+			inset-block-start: 0;
+			z-index: 100;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: var(--t-space-4);
+			block-size: var(--t-app-header-block-size);
+			padding-inline: var(--t-app-gutter);
+			background-color: var(--t-color-background-base);
+
+			&[data-sticky] {
+				--s-position: sticky;
+				--p-scrim-display: block;
+			}
+		}
+
+		@scope ([data-component="app-header"]) to (:global([data-component])) {
+			[data-part="brand"] {
+				--s-color: var(--t-color-foreground-base);
+
+				text-decoration: none;
+				display: flex;
+				align-items: center;
+				gap: var(--t-space-2);
+				font-size: var(--t-font-size-large);
+				font-weight: var(--t-font-weight-600);
+				min-inline-size: max-content;
+				color: var(--s-color);
+
+				&::before {
+					content: "";
+					display: block;
+					mask-image: var(--t-app-logomark);
+					mask-size: contain;
+					mask-position: left center;
+					mask-repeat: no-repeat;
+					background-color: currentcolor;
+					block-size: 1cap;
+					margin-block-end: -0.1em;
+					aspect-ratio: 8 / 7;
+				}
+
+				&:hover {
+					--s-color: light-dark(currentcolor, var(--t-color-brand));
+				}
+			}
+
+			[data-part="primary-nav"] {
+				& > ul {
+					display: flex;
+					align-items: center;
+					gap: var(--t-space-6);
+					justify-content: flex-end;
+					font-size: var(--t-font-size-small);
+					font-weight: var(--t-font-weight-450);
+
+					& > li {
+						& > a {
+							text-decoration: none;
+							text-wrap: nowrap;
+						}
+					}
+				}
+			}
+
+			[data-part="scrim"] {
+				display: var(--p-scrim-display);
+				position: absolute;
+				inset-inline: 0;
+				inset-block-start: 100%;
+				block-size: var(--t-app-header-scrim-block-size);
+				pointer-events: none;
+
+				& > span {
+					--s-display: block;
+					--s-backdrop-filter: blur(1px);
+					--s-mask-image: linear-gradient(transparent 40%, oklch(0 0 0) 60% 80%, transparent);
+
+					position: absolute;
+					inset: 0;
+					display: var(--s-display);
+					backdrop-filter: var(--s-backdrop-filter);
+					mask-image: var(--s-mask-image);
+
+					&:nth-child(1) {
+						--s-backdrop-filter: blur(6px);
+						--s-mask-image: linear-gradient(oklch(0 0 0) 0 20%, transparent 40%);
+					}
+
+					&:nth-child(2) {
+						--s-backdrop-filter: blur(3px);
+						--s-mask-image: linear-gradient(transparent, oklch(0 0 0) 20% 40%, transparent 60%);
+					}
+
+					&:nth-child(3) {
+						--s-backdrop-filter: blur(1px);
+						--s-mask-image: linear-gradient(transparent 20%, oklch(0 0 0) 40% 60%, transparent 80%);
+					}
+
+					@media (prefers-reduced-transparency: reduce) {
+						--s-display: none;
+					}
+				}
+
+				/* After the spans, so it paints over the blur and hides its hard top edge. */
+				&::after {
+					content: "";
+					position: absolute;
+					inset: 0;
+					background-color: var(--t-color-background-base);
+					mask-image: linear-gradient(
+						oklch(0 0 0),
+						oklch(0 0 0 / 97%) 10%,
+						oklch(0 0 0 / 90%) 20%,
+						oklch(0 0 0 / 78%) 30%,
+						oklch(0 0 0 / 65%) 40%,
+						oklch(0 0 0 / 50%) 50%,
+						oklch(0 0 0 / 35%) 60%,
+						oklch(0 0 0 / 22%) 70%,
+						oklch(0 0 0 / 10%) 80%,
+						oklch(0 0 0 / 3%) 90%,
+						transparent
+					);
+				}
+			}
+		}
+	}
+</style>

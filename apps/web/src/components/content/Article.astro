@@ -1,0 +1,76 @@
+---
+import Outline from "@components/content/Outline.astro";
+import Prose from "@components/content/Prose.astro";
+import type { MarkdownHeading } from "astro";
+
+interface Props {
+	"data-slot"?: string;
+	headings?: MarkdownHeading[];
+	labelledby?: string;
+}
+
+const { "data-slot": dataSlot, headings = [], labelledby } = Astro.props;
+const contents = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
+---
+
+<article data-component="article" data-slot={dataSlot} aria-labelledby={labelledby}>
+	<slot name="header" />
+
+	{contents.length > 0 && <Outline data-slot="outline" contents={contents} />}
+
+	<Prose data-slot="content">
+		<slot />
+	</Prose>
+
+	<slot name="navigation" />
+</article>
+
+<style>
+	@layer components {
+		/**
+			* Article
+			* @component article
+			* @queries --q-page-columns-outline
+			*/
+		[data-component="article"] {
+			--s-grid-template-areas: "header" "content" "navigation";
+
+			display: grid;
+			grid-template-columns: subgrid;
+			grid-template-rows: auto auto 1fr;
+			grid-template-areas: var(--s-grid-template-areas);
+			row-gap: var(--t-space-12);
+
+			@container style(--q-page-columns-outline: visible) {
+				--s-grid-template-areas: "header outline" "content outline" "navigation outline";
+			}
+
+			& > :global([data-slot="header"]),
+			& > :global([data-slot="content"]),
+			& > :global([data-slot="navigation"]) {
+				inline-size: 100%;
+				max-inline-size: var(--t-app-content-max-size);
+				margin-inline: auto;
+			}
+
+			& > :global([data-slot="header"]) {
+				grid-area: header;
+			}
+
+			& > :global([data-slot="outline"]) {
+				grid-area: outline;
+				align-self: start;
+				margin-block-start: calc(-1 * var(--t-app-header-scrim-block-size));
+				margin-block-end: calc(-1 * var(--t-app-scroll-fade-block-size));
+			}
+
+			& > :global([data-slot="content"]) {
+				grid-area: content;
+			}
+
+			& > :global([data-slot="navigation"]) {
+				grid-area: navigation;
+			}
+		}
+	}
+</style>

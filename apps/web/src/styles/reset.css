@@ -1,70 +1,55 @@
-/* Reset the box model and browser-authored outer spacing. */
-
+/* Sizes include padding and border. Browsers already do this for buttons and selects, not text inputs. */
 *,
-*::before,
-*::after,
-::backdrop,
-::file-selector-button {
+::before,
+::after {
 	box-sizing: border-box;
+}
+
+/* Remove browser margins. Dialogs and popovers keep `margin: auto`, which centers them. */
+:where(:not(dialog, [popover])),
+::before,
+::after {
 	margin: 0;
 }
 
-/* Stabilize mobile text sizing and code indentation defaults. */
-
+/* iOS Safari enlarges text in landscape, and only reads the prefixed property. */
 html {
+	-webkit-text-size-adjust: 100%;
 	text-size-adjust: 100%;
-	tab-size: 4;
 }
 
-/* Keep short pages at least as tall as the dynamic viewport. */
-
-body {
-	min-block-size: 100dvh;
-}
-
-/* Make replaced and embedded elements easier to place in layout. */
-
+/* Media is a block, so it leaves no gap below it for letters like "g". */
 :where(img, svg, video, canvas, audio, iframe, embed, object) {
 	display: block;
+}
+
+/* Media set back to inline lines up with the text's middle instead of its baseline. */
+:where(img, svg, video, canvas, audio, iframe, embed, object) {
 	vertical-align: middle;
 }
 
-/* Prevent common visual media from overflowing their container. */
-
-:where(img, picture, video, canvas, svg, iframe) {
+/* Media never grows wider than its container. */
+:where(img, video, canvas, svg, iframe) {
 	max-inline-size: 100%;
 }
 
-/* Preserve intrinsic aspect ratio when images and videos are constrained. */
-
+/* Images and videos keep their aspect ratio when the rule above shrinks them. */
 :where(img, video) {
 	block-size: auto;
-	height: auto;
 }
 
-/* Remove the default frame around embedded documents. */
-
+/* Remove the inset border browsers draw around an iframe. */
 :where(iframe) {
 	border: 0;
 }
 
-/* Use the table model most UI table styles expect. */
-
+/* Cells share one border. Its color follows the text, where Safari defaults to gray. */
 :where(table) {
 	border-collapse: collapse;
-	border-color: inherit;
-	border-spacing: 0;
-	text-indent: 0;
+	border-color: currentcolor;
 }
 
-/* Avoid centered table headings unless a component asks for them. */
-
-:where(th) {
-	text-align: inherit;
-}
-
-/* Make form controls inherit surrounding typography before component styling. */
-
+/* Form controls use the page's text, not the system's. `font` doesn't reset feature or variation settings. */
 :where(button, input, optgroup, select, textarea),
 ::file-selector-button {
 	color: inherit;
@@ -74,89 +59,41 @@ body {
 	letter-spacing: inherit;
 }
 
-/* Preserve native button behavior after font/control normalization. */
-
-:where(button, input:is([type="button"], [type="reset"], [type="submit"])),
-::file-selector-button {
-	-webkit-appearance: button;
-	appearance: button;
-}
-
-/* Keep button and select labels from inheriting unexpected text transforms. */
-
-:where(button, select) {
-	text-transform: none;
-}
-
-/* Remove awkward default fieldset sizing and spacing. */
-
+/* Remove the fieldset's frame, and let it shrink in a grid or flex row, below its content's width. */
 :where(fieldset) {
 	border: 0;
-	margin: 0;
 	padding: 0;
 	min-inline-size: 0;
 }
 
-/* Remove default legend padding while preserving normal text behavior. */
-
+/* Remove the legend's side padding, to line up with the fieldset's content. */
 :where(legend) {
-	color: inherit;
 	padding: 0;
-	white-space: normal;
 }
 
-/* Prevent horizontal textarea resizing from breaking layouts. */
-
-:where(textarea) {
-	resize: vertical;
-}
-
-/* Avoid unexpected wrapping behavior in native select controls. */
-
-:where(select) {
-	word-wrap: normal;
-}
-
-/* Keep file input buttons aligned with surrounding form controls. */
-
-::file-selector-button {
-	font: inherit;
-	margin-inline-end: 0.25rem;
-}
-
-::-webkit-file-upload-button {
-	-webkit-appearance: button;
-	appearance: button;
-	font: inherit;
-}
-
-/* Normalize WebKit search input decoration. */
-
+/* Safari draws search fields round. This makes them plain text fields, as in other browsers. */
 :where(input[type="search"]) {
-	-webkit-appearance: textfield;
 	appearance: textfield;
-	outline-offset: -2px;
 }
 
+/* Remove the space Safari keeps for the search field's magnifier. */
 ::-webkit-search-decoration {
 	-webkit-appearance: none;
 }
 
-/* Keep WebKit spin buttons from creating odd height/cursor behavior. */
-
+/* A number input's arrow buttons keep their own height in Chrome and Safari. */
 ::-webkit-inner-spin-button,
 ::-webkit-outer-spin-button {
-	block-size: auto;
 	height: auto;
 }
 
-/* Normalize empty date/time inputs and internal WebKit field padding. */
-
+/* An empty date input in Safari is as tall as a filled one, and its text lines up like the input's. */
 ::-webkit-date-and-time-value {
 	min-block-size: 1lh;
 	text-align: inherit;
 }
 
+/* Date and time inputs are as tall as a text input. Chrome and Safari pad the fields inside them. */
 ::-webkit-datetime-edit {
 	display: inline-flex;
 }
@@ -177,47 +114,12 @@ body {
 	padding-block: 0;
 }
 
+/* Center the arrow Chrome shows on an input with a datalist. */
 ::-webkit-calendar-picker-indicator {
 	line-height: 1;
 }
 
-/* Remove Firefox's extra invalid-control shadow. */
-
-:-moz-ui-invalid {
-	box-shadow: none;
-}
-
-/* Keep placeholder text from becoming semi-transparent in Firefox. */
-
-::placeholder {
-	opacity: 1;
-}
-
-/* Signal pointer interaction for button-like controls. */
-
-:where(button, [role="button"]) {
-	touch-action: manipulation;
-}
-
-/* Signal disabled interaction without forcing an opacity/color decision. */
-
-:where(:disabled, [aria-disabled="true"]) {
-	cursor: not-allowed;
-}
-
-/* Align progress with surrounding text and keep summaries interactive. */
-
-:where(progress) {
-	vertical-align: baseline;
-}
-
-:where(summary) {
-	cursor: pointer;
-	display: list-item;
-}
-
-/* Keep hidden authoritative while preserving hidden="until-found". */
-
-:where([hidden]:not([hidden="until-found"])) {
-	display: none !important;
+/* Hidden elements stay hidden over the display rules above. `until-found` stays for find-in-page. */
+:where([hidden]:not([hidden="until-found" i])) {
+	display: none;
 }

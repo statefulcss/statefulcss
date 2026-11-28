@@ -1,0 +1,52 @@
+---
+import Button from "@components/ui/Button.astro";
+import Layout from "@layouts/Layout.astro";
+---
+
+<Layout>
+	<main id="main-content">
+		<section data-component="home-hero" aria-labelledby="hero-title">
+			<div data-part="intro">
+				<h1 id="hero-title" data-part="headline">
+					Styling is state management.
+				</h1>
+				<p data-part="description">
+					Write component CSS as a state system: declare state in markup, resolve it through variables, and
+					keep every change traceable.
+				</p>
+			</div>
+			<Button href="/docs/">Quick Start</Button>
+		</section>
+	</main>
+</Layout>
+
+<style>
+	[data-component="home-hero"] {
+		display: flex;
+		flex-direction: column;
+		gap: var(--t-space-9);
+		max-inline-size: 52rem;
+		margin-block: var(--t-space-36);
+		margin-inline: auto;
+	}
+
+	@scope ([data-component="home-hero"]) to (:global([data-component])) {
+		[data-part="intro"] {
+			display: flex;
+			flex-direction: column;
+			gap: var(--t-space-3);
+		}
+
+		[data-part="headline"] {
+			font-size: var(--t-font-size-5xlarge);
+			font-weight: var(--t-font-weight-700);
+			line-height: var(--t-font-line-height-tighter);
+			letter-spacing: var(--t-font-letter-spacing-tight);
+		}
+
+		[data-part="description"] {
+			font-size: var(--t-font-size-large);
+			letter-spacing: var(--t-font-letter-spacing-tight);
+		}
+	}
+</style>

@@ -1,0 +1,113 @@
+---
+interface Props {
+	"data-slot"?: string;
+	contents: {
+		depth: number;
+		slug: string;
+		text: string;
+	}[];
+}
+
+const { contents, "data-slot": dataSlot } = Astro.props;
+---
+
+<script>
+	import { revealInFade } from "../../scripts/reveal-in-fade";
+
+	// One listener on the document keeps working after <ClientRouter /> swaps in a new outline.
+	document.addEventListener("click", (event) => {
+		if (!(event.target instanceof Element)) return;
+		const link = event.target.closest('[data-component="outline"] a');
+		const outline = link?.closest('[data-component="outline"]');
+		if (link && outline) revealInFade(outline, link);
+	});
+</script>
+
+<nav data-component="outline" data-slot={dataSlot} aria-labelledby="outline-title">
+	<span id="outline-title" data-part="title">
+		On this page
+	</span>
+	<ul role="list" data-part="list">
+		{contents.map((heading) => (
+			<li data-depth={heading.depth}>
+				<a href={`#${heading.slug}`} data-part="link">
+					{heading.text}
+				</a>
+			</li>
+		))}
+	</ul>
+</nav>
+
+<style>
+	@layer components {
+		/**
+		* Outline
+		* @component outline
+		* @queries --q-page-columns-outline
+		*/
+		[data-component="outline"] {
+			--s-display: none;
+
+			display: var(--s-display);
+			flex-direction: column;
+			gap: var(--t-space-3);
+
+			position: sticky;
+			inset-block-start: var(--t-app-header-block-size);
+			max-block-size: calc(100svb - var(--t-app-header-block-size));
+			overflow-y: auto;
+			overscroll-behavior: contain;
+			padding-block: var(--t-app-header-scrim-block-size) var(--t-app-scroll-fade-block-size);
+			scroll-padding-block: var(--t-app-header-scrim-block-size) var(--t-app-scroll-fade-block-size);
+			scrollbar-width: none;
+			mask-image: linear-gradient(
+				to bottom,
+				transparent,
+				oklch(0 0 0) var(--t-app-scroll-fade-block-size),
+				oklch(0 0 0) calc(100% - var(--t-app-scroll-fade-block-size)),
+				transparent
+			);
+
+			@container style(--q-page-columns-outline: visible) {
+				--s-display: flex;
+			}
+		}
+
+		@scope ([data-component="outline"]) to (:global([data-component])) {
+			[data-part="title"] {
+				font-size: var(--t-font-size-2xsmall);
+				color: color-mix(in srgb, currentcolor, transparent 40%);
+			}
+			[data-part="list"] {
+				display: flex;
+				flex-direction: column;
+				gap: var(--t-space-3);
+				list-style: none;
+				padding-block: 0;
+				margin: 0;
+				line-height: var(--t-font-line-height-tight);
+			}
+			[data-part="link"] {
+				--s-padding-inline-start: 0;
+				--s-color: color-mix(in srgb, currentcolor, transparent 20%);
+
+				font-size: var(--t-font-size-xsmall);
+				text-decoration: none;
+				color: var(--s-color);
+				transition: var(--t-transition-default);
+				transition-property: color;
+				display: flex;
+				padding-inline-end: var(--t-space-6);
+				padding-inline-start: var(--s-padding-inline-start);
+
+				[data-depth="3"] & {
+					--s-padding-inline-start: var(--t-space-4);
+				}
+
+				&:hover {
+					--s-color: currentcolor;
+				}
+			}
+		}
+	}
+</style>

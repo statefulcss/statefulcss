@@ -1,0 +1,82 @@
+---
+interface Props {
+	"data-slot"?: string;
+}
+
+const { "data-slot": dataSlot } = Astro.props;
+const hasSidebar = Astro.slots.has("sidebar");
+---
+
+<div data-component="page-columns-container" data-slot={dataSlot}>
+	<div data-component="page-columns" data-sidebar={hasSidebar || undefined}>
+		<slot name="sidebar" />
+		<main id="main-content" data-part="main">
+			<slot />
+		</main>
+	</div>
+</div>
+
+<style>
+	@layer components {
+		[data-component="page-columns-container"] {
+			container: page-columns / inline-size;
+			display: grid;
+		}
+
+		/**
+			 * Page Columns
+			 * @component page-columns
+			 */
+		[data-component="page-columns"] {
+			--_medium-grid-template-columns: minmax(0, 1fr) var(--t-app-sidebar-size);
+			--_medium-main-grid-column: 1 / -1;
+			--_medium-sidebar: hidden;
+			--_medium-outline: visible;
+			--s-grid-template-columns: minmax(0, 1fr);
+			--p-main-grid-column: 1 / -1;
+
+			display: grid;
+			grid-template-columns: var(--s-grid-template-columns);
+			column-gap: var(--t-space-9);
+
+			&[data-sidebar] {
+				--_medium-grid-template-columns: var(--t-app-sidebar-size) minmax(0, 1fr);
+				--_medium-main-grid-column: 2 / -1;
+				--_medium-sidebar: visible;
+				--_medium-outline: hidden;
+			}
+
+			@container page-columns (inline-size >= 54rem) {
+				--q-page-columns-sidebar: var(--_medium-sidebar);
+				--q-page-columns-outline: var(--_medium-outline);
+				--s-grid-template-columns: var(--_medium-grid-template-columns);
+				--p-main-grid-column: var(--_medium-main-grid-column);
+			}
+
+			@container page-columns (inline-size >= 72rem) {
+				--q-page-columns-outline: visible;
+				--s-grid-template-columns: var(--t-app-sidebar-size) minmax(0, 1fr) var(--t-app-sidebar-size);
+				--p-main-grid-column: 2 / -1;
+			}
+
+			& > :global([data-slot="sidebar"]) {
+				grid-column: 1;
+				align-self: start;
+				margin-block-start: calc(-1 * var(--t-app-header-scrim-block-size));
+				margin-block-end: calc(-1 * var(--t-app-scroll-fade-block-size));
+			}
+
+			& > [data-part="main"] > :global([data-slot="article"]) {
+				grid-column: 1 / -1;
+			}
+		}
+
+		@scope ([data-component="page-columns"]) to (:global([data-component])) {
+			[data-part="main"] {
+				grid-column: var(--p-main-grid-column);
+				display: grid;
+				grid-template-columns: subgrid;
+			}
+		}
+	}
+</style>

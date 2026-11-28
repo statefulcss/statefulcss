@@ -1,0 +1,57 @@
+---
+import type { HTMLAttributes } from "astro/types";
+
+interface ButtonProps extends HTMLAttributes<"button"> {
+	href?: undefined;
+}
+
+interface LinkProps extends HTMLAttributes<"a"> {
+	href: string | URL;
+}
+
+type Props = ButtonProps | LinkProps;
+
+const props = Astro.props;
+
+function buttonAttributes({ type, ...attrs }: ButtonProps) {
+	return { ...attrs, type: type ?? "button" };
+}
+
+function linkAttributes(attrs: LinkProps) {
+	return { ...attrs };
+}
+---
+
+{props.href != null ? (
+	<a {...linkAttributes(props)} data-component="ui-button">
+		<slot />
+	</a>
+) : (
+	<button {...buttonAttributes(props)} data-component="ui-button">
+		<slot />
+	</button>
+)}
+
+<style>
+	[data-component="ui-button"] {
+		--s-background-color: transparent;
+		--s-cursor: auto;
+
+		all: unset;
+		display: inline-flex;
+		max-inline-size: fit-content;
+		background-color: var(--s-background-color);
+		border-radius: var(--t-radius-full);
+		padding-block: var(--t-space-3);
+		padding-inline: var(--t-space-4);
+		font-size: var(--t-font-size-base);
+		font-weight: var(--t-font-weight-450);
+		color: light-dark(currentColor, var(--t-color-background-base));
+		cursor: var(--s-cursor);
+
+		&[href] {
+			--s-cursor: pointer;
+			--s-background-color: var(--t-color-brand);
+		}
+	}
+</style>

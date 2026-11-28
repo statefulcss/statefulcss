@@ -20,6 +20,7 @@
 
 	--t-opacity-disabled: 0.5;
 	--t-opacity-muted: 0.72;
+	--t-opacity-faint: 0.4;
 	--t-opacity-hidden: 0;
 	--t-opacity-visible: 1;
 }

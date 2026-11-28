@@ -24,9 +24,9 @@ const hasSidebar = Astro.slots.has("sidebar");
 		}
 
 		/**
-		 * Page Columns
-		 * @component page-columns
-		 */
+			 * Page Columns
+			 * @component page-columns
+			 */
 		[data-component="page-columns"] {
 			--_medium-grid-template-columns: minmax(0, 1fr) var(--t-app-sidebar-size);
 			--_medium-main-grid-column: 1 / -1;
@@ -63,6 +63,7 @@ const hasSidebar = Astro.slots.has("sidebar");
 				grid-column: 1;
 				align-self: start;
 				margin-block-start: calc(-1 * var(--t-app-header-scrim-block-size));
+				margin-block-end: calc(-1 * var(--t-app-scroll-fade-block-size));
 			}
 
 			& > [data-part="main"] > :global([data-slot="article"]) {

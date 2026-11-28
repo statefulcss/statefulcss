@@ -28,10 +28,10 @@ const contents = headings.filter((heading) => heading.depth === 2 || heading.dep
 <style>
 	@layer components {
 		/**
-		* Article
-		* @component article
-		* @queries --q-page-columns-outline
-		*/
+			* Article
+			* @component article
+			* @queries --q-page-columns-outline
+			*/
 		[data-component="article"] {
 			--s-grid-template-areas: "header" "content" "navigation";
 
@@ -60,6 +60,7 @@ const contents = headings.filter((heading) => heading.depth === 2 || heading.dep
 				grid-area: outline;
 				align-self: start;
 				margin-block-start: calc(-1 * var(--t-app-header-scrim-block-size));
+				margin-block-end: calc(-1 * var(--t-app-scroll-fade-block-size));
 			}
 
 			& > :global([data-slot="content"]) {

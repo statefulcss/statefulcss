@@ -17,22 +17,22 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 	const MAIN = "#main-content";
 
 	// Scrolls the list when the current link sits under a fade: scroll to top, bottom or center.
-	function revealCurrent(wrapper: HTMLElement) {
-		const link = wrapper.querySelector<HTMLElement>('a[aria-current="page"]');
-		if (!link || wrapper.clientHeight === 0) return;
+	function revealCurrent(sidebar: Element) {
+		const link = sidebar.querySelector<HTMLElement>('a[aria-current="page"]');
+		if (!link || sidebar.clientHeight === 0) return;
 
-		const style = getComputedStyle(wrapper);
+		const style = getComputedStyle(sidebar);
 		const fadeStart = parseFloat(style.scrollPaddingBlockStart) || 0;
 		const fadeEnd = parseFloat(style.scrollPaddingBlockEnd) || 0;
-		const view = wrapper.getBoundingClientRect();
+		const view = sidebar.getBoundingClientRect();
 		const box = link.getBoundingClientRect();
 		if (box.top >= view.top + fadeStart && box.bottom <= view.bottom - fadeEnd) return;
 
-		const offset = box.top - view.top + wrapper.scrollTop;
-		const max = wrapper.scrollHeight - wrapper.clientHeight;
-		const centered = offset + box.height / 2 - wrapper.clientHeight / 2;
+		const offset = box.top - view.top + sidebar.scrollTop;
+		const max = sidebar.scrollHeight - sidebar.clientHeight;
+		const centered = offset + box.height / 2 - sidebar.clientHeight / 2;
 		const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-		wrapper.scrollTo({ top: Math.min(Math.max(centered, 0), max), behavior: reduce ? "auto" : "smooth" });
+		sidebar.scrollTo({ top: Math.min(Math.max(centered, 0), max), behavior: reduce ? "auto" : "smooth" });
 	}
 
 	// Swap main-content on route changes, keep the sidebar in place so scroll position and hover state survive
@@ -63,61 +63,54 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 				else link.removeAttribute("aria-current");
 			}
 
-			const wrapper = sidebar.querySelector<HTMLElement>('[data-part="wrapper"]');
-			if (wrapper) requestAnimationFrame(() => revealCurrent(wrapper));
+			requestAnimationFrame(() => revealCurrent(sidebar));
 		};
 	});
 
 	// A direct visit: show the current link without animating.
-	const wrapper = document.querySelector<HTMLElement>(`${SIDEBAR} [data-part="wrapper"]`);
-	if (wrapper) {
-		const link = wrapper.querySelector<HTMLElement>('a[aria-current="page"]');
-		if (link) wrapper.scrollTop = link.offsetTop - wrapper.clientHeight / 2;
+	const sidebar = document.querySelector<HTMLElement>(SIDEBAR);
+	if (sidebar) {
+		const link = sidebar.querySelector<HTMLElement>('a[aria-current="page"]');
+		if (link) sidebar.scrollTop = link.offsetTop - sidebar.clientHeight / 2;
 	}
 </script>
 
 <nav data-component="docs-sidebar" data-slot={dataSlot} aria-label="Documentation">
-	<div data-part="wrapper">
-		{sidebar.map((section, index) => (
-			<div data-part="section">
-				{section.label && (
-					<span data-part="label" id={`docs-section-${index}`}>
-						{section.label}
-					</span>
-				)}
-				<ul
-					role="list"
-					data-part="list"
-					aria-labelledby={section.label ? `docs-section-${index}` : undefined}
-				>
-					{section.items.map((item) => (
-						<li data-part="list-item" data-draft={item.draft || undefined}>
-							{item.href ? (
-								<a
-									href={item.href}
-									aria-current={item.current ? (item.href === canonical ? "page" : "true") : undefined}
-									data-part="link"
-								>
-									{item.title}
-								</a>
-							) : (
-								<span>{item.title}</span>
-							)}
-						</li>
-					))}
-				</ul>
-			</div>
-		))}
-	</div>
+	{sidebar.map((section, index) => (
+		<div data-part="section">
+			{section.label && (
+				<span data-part="label" id={`docs-section-${index}`}>
+					{section.label}
+				</span>
+			)}
+			<ul role="list" data-part="list" aria-labelledby={section.label ? `docs-section-${index}` : undefined}>
+				{section.items.map((item) => (
+					<li data-part="list-item" data-draft={item.draft || undefined}>
+						{item.href ? (
+							<a
+								href={item.href}
+								aria-current={item.current ? (item.href === canonical ? "page" : "true") : undefined}
+								data-part="link"
+							>
+								{item.title}
+							</a>
+						) : (
+							<span>{item.title}</span>
+						)}
+					</li>
+				))}
+			</ul>
+		</div>
+	))}
 </nav>
 
 <style>
 	@layer components {
 		/**
-		* Docs Sidebar
-		* @component docs-sidebar
-		* @queries --q-page-columns-sidebar
-		*/
+			* Docs Sidebar
+			* @component docs-sidebar
+			* @queries --q-page-columns-sidebar
+			*/
 		[data-component="docs-sidebar"] {
 			--s-display: none;
 
@@ -127,7 +120,22 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 			inset-block-start: var(--t-app-header-block-size);
 			display: var(--s-display);
 			flex-direction: column;
-			max-block-size: calc(100svb - var(--t-app-header-block-size) - var(--t-app-page-row-gap));
+			gap: var(--t-space-6);
+			max-block-size: calc(100svb - var(--t-app-header-block-size));
+			overflow-y: auto;
+			overscroll-behavior: contain;
+			scrollbar-width: none;
+			padding-block: var(--t-app-header-scrim-block-size) var(--t-app-scroll-fade-block-size);
+			padding-inline: var(--t-focus-ring-extent);
+			margin-inline: calc(-1 * var(--t-focus-ring-extent));
+			scroll-padding-block: var(--t-app-header-scrim-block-size) var(--t-app-scroll-fade-block-size);
+			mask-image: linear-gradient(
+				to bottom,
+				transparent,
+				oklch(0 0 0) var(--t-app-scroll-fade-block-size),
+				oklch(0 0 0) calc(100% - var(--t-app-scroll-fade-block-size)),
+				transparent
+			);
 
 			@container style(--q-page-columns-sidebar: visible) {
 				--s-display: flex;
@@ -135,28 +143,6 @@ const { canonical, sidebar, "data-slot": dataSlot } = Astro.props;
 		}
 
 		@scope ([data-component="docs-sidebar"]) to (:global([data-component])) {
-			[data-part="wrapper"] {
-				flex: 1;
-				min-block-size: 0;
-				display: flex;
-				flex-direction: column;
-				gap: var(--t-space-6);
-				overflow-y: auto;
-				overscroll-behavior: contain;
-				scrollbar-width: none;
-				padding-block: var(--t-app-header-scrim-block-size) var(--t-app-scroll-fade-block-size);
-				padding-inline: var(--t-focus-ring-extent);
-				margin-inline: calc(-1 * var(--t-focus-ring-extent));
-				scroll-padding-block: var(--t-space-12);
-
-				mask-image: linear-gradient(
-					to bottom,
-					transparent,
-					oklch(0 0 0) var(--t-app-scroll-fade-block-size),
-					oklch(0 0 0) calc(100% - var(--t-app-scroll-fade-block-size)),
-					transparent
-				);
-			}
 			[data-part="section"] {
 				display: flex;
 				flex-direction: column;

@@ -9,6 +9,7 @@ html {
 	-moz-osx-font-smoothing: grayscale;
 	tab-size: 4;
 	scroll-padding-block-start: var(--s-scroll-padding-block-start);
+	scrollbar-gutter: stable;
 	min-block-size: var(--t-app-min-block-size);
 
 	&:has([data-component="app-header"][data-sticky]) {

@@ -39,6 +39,7 @@ const contents = headings.filter((heading) => heading.depth === 2 || heading.dep
 			grid-template-columns: subgrid;
 			grid-template-rows: auto auto 1fr;
 			grid-template-areas: var(--s-grid-template-areas);
+			row-gap: var(--t-space-12);
 
 			@container style(--q-page-columns-outline: visible) {
 				--s-grid-template-areas: "header outline" "content outline" "navigation outline";
